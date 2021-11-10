@@ -6,12 +6,12 @@ const path = require('path');
 const os = require('os');
 const {WinstonLogger} = require('./libs/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
-const eRetCodes = require('./public/js/retcodes');
+const eRetCodes = require('./common/retcodes');
 const pubdefs = require('./pubdefs');
 const tools = require('./tools');
 const consulClient = require('./libs/consul.wrapper');
 // Project configuration
-const config = require('./config');
+const config = require('../utils/config');
 const serviceConf = config.service;
 const inetConf = config.inet;
 let version = null;

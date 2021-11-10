@@ -1,0 +1,49 @@
+{
+    "service": {
+      "name": "RapidDevFramework4Node.Core",
+      "alias": "rdf4node",
+      "registry": "rdf-core",
+      "tags": ["Rapid", "Development", "Framework", "Linux", "Alpine", "node", "amd64"],
+      "port": 3000
+    },
+    "consul": {
+        "host": "127.0.0.1",
+        "port": 8500
+    },
+    "rateLimit": {
+        "windowMs": 60000,
+        "max": 100,
+        "expireTimeMs": 900000
+    },
+    "inet": {
+        "apm": {
+          "baseUrl": "http://127.0.0.1"
+        }
+    },
+    "database": "mongodb://admin:Dev#2021@localhost/apm?authSource=admin",
+    "redis": {
+      "host": "127.0.0.1",
+      "port": 6379,
+      "password": "123456"
+    },
+    "mq": {
+      "vhost": "rich2",
+      "connection": {
+        "slashes": true,
+        "protocol": "amqp",
+        "hostname": "127.0.0.1",
+        "user": "admin",
+        "password": "Dev#2021",
+        "port": 5672,
+        "options": {
+          "heartbeat": 4
+        }
+      }
+    },
+    "auth": {
+      "ip": false,
+      "token": true,
+      "secret": "secret123456"
+    }
+  }
+  

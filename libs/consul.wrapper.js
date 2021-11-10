@@ -6,11 +6,13 @@
  *   not exist when err is set. The body property can be a decoded object, string, or Buffer.
  */
  const async = require('async');
- const {consul: config} = require('../../conf/config');
- const pubdefs = require('../pubdefs');
- const tools = require('../tools');
  const {WinstonLogger} = require('./winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'consul');
+
+ const {consul: config} = require('../common/config');
+ const pubdefs = require('../common/pubdefs');
+ const tools = require('../utils/tools');
+
  
  // Create local client
  const consul = require('consul')({
@@ -22,7 +24,7 @@
   * consul.agent.service  methods
   */
  // List
- exports.listServices = function(callback) {
+ exports.listServices = (callback) => {
      consul.agent.service.list((err, result) => {
          if (err) {
              logger.error('agent.service.list: ', err.code, err.message);
@@ -33,7 +35,7 @@
      });
  }
  // Register
- exports.regService = function(options, callback) {
+ exports.regService = (options, callback) => {
      logger.info('Reg service:', tools.inspect(options));
      consul.agent.service.register(options, err => {
          if (err) {
@@ -44,7 +46,7 @@
      });
  };
  // Deregister
- exports.deregService = function (options, callback) {
+ exports.deregService = (options, callback) => {
      logger.info('De-register service:', tools.inspect(options));
      if (options.id === undefined) {
          return callback({
@@ -62,7 +64,7 @@
      })
  };
  // Maintenance
- exports.maintainService = function (options, callback) {
+ exports.maintainService = (options, callback) => {
      if (options.id === undefined) {
          return callback({
              code: eRetCodes.OP_FAILED,
@@ -111,11 +113,11 @@
  /**
   * consul kv
   */
- exports.setKv = function (key, val, callback) {
+ exports.setKv = (key, val, callback) => {
      return consul.kv.set(key, val, callback);
  };
  
- exports.getKv = function (key, callback) {
+ exports.getKv = (key, callback) => {
      let options = {
          key: key,
          raw: true
