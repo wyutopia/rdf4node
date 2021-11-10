@@ -1,0 +1,292 @@
+const assert = require('assert');
+const async = require('async');
+const EventEmitter = require('events');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const {WinstonLogger} = require('./libs/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
+const eRetCodes = require('./public/js/retcodes');
+const pubdefs = require('./pubdefs');
+const tools = require('./tools');
+const consulClient = require('./libs/consul.wrapper');
+// Project configuration
+const config = require('./config');
+const serviceConf = config.service;
+const inetConf = config.inet;
+let version = null;
+
+function _regService(callback) {
+    let localIp = tools.getLocalIp()[0];
+    let port = process.env.PORT || serviceConf.port || 3000;
+    consulClient.regService({
+        name: serviceConf.registry,
+        id: this._id,
+        tags: serviceConf.tags,
+        address: localIp,
+        port: port,
+        check: {
+            http: `http://${localIp}:${port}/monitor/health`,
+            interval: '15s'
+        }
+    }, (err) => {
+        if (err) {
+            logger.error('Register to consul error!');
+        } else {
+            logger.info('Register to consul succeed.');
+        }
+        return callback();
+    });
+}
+
+function _deregService(callback) {
+    logger.info('Try to de-register from consul...');
+    consulClient.deregService({
+        id: this._id
+    }, (err) => {
+        if (err) {
+            logger.error('De-register from consul failed.');
+        } else {
+            logger.info('De-register from consul succeed.');
+        }
+        return callback();
+    });
+}
+
+function _raiseStartupAlarm(callback) {
+    let options = {
+        eventId: pubdefs.eAlarmCode.SERVICE_STARTUP,
+        content: 'This is a startup alarm test!'
+    }
+    return this.fireAlarm(options, callback);
+}
+
+function _raiseGracefulExitAlarm(callback) {
+    let options = {
+        eventId: pubdefs.eAlarmCode.GRACEFUL_EXIT,
+        content: 'This is a graceful-exit alarm test!'
+    }
+    return this.fireAlarm(options, callback);
+}
+
+// The application class
+class TheApp extends EventEmitter {
+    constructor(config) {
+        super();
+        // Declaring member variables
+        this._id = `${serviceConf.registry}_${process.env.DEPLOY === 'native'? tools.uuidv4() : os.hostname()}`;
+        this._config = Object.assign(config, {pushAlarm: true});
+        this._state = pubdefs.eModuleState.INIT;
+        this._modules = {};
+        this._isMaster = false;
+        // Implementing member methods
+        this.getServiceName = () => {
+            return serviceConf.name;
+        }
+        this.getServiceAlias = () => {
+            return serviceConf.alias;
+        }
+        this.getRegistry = () => {
+            return serviceConf.registry;
+        }
+        this.getInstance = () => {
+            return this._id;
+        }
+        this.setState = (s) => {
+            this._state = s;
+        }
+        // Fire alarm
+        this.fireAlarm = (args, callback) => {
+            if (process.env.NODE_ENV !== 'production') {
+                return callback();
+            }
+            let options = {
+                url: `${inetConf.apm.baseUrl}/v1/alarm/raise`,
+                method: 'POST',
+                json: true,
+                body: {
+                    service: this.getServiceAlias(),
+                    instance: this._id,
+                    eventId: args.eventId,
+                    content: args.content
+                }
+            };
+            logger.debug(__file, __line, 'Alarm options:', tools.inspect(options));
+            tools.invokeHttpRequest(options, tools.defaultBodyParser, (err, body) => {
+                if (err) {
+                    return callback(err);
+                }
+                return callback(null, body);
+            });
+        }
+        /**
+         *
+         * @param mod
+         */
+        this.regModule = (mod) => {
+            logger.info('New module registry:', mod.name, mod.mandatory, mod.status);
+            if (this._modules[mod.name] !== undefined) {
+                logger.error(`Conflict! ${mod.name} already registered.`)
+            } else {
+                this._modules[mod.name] = mod;
+            }
+        }
+        this.setModuleState = (name, s) => {
+            assert(name !== undefined);
+            assert(pubdefs.isValidModuleState(s));
+            if (this._modules[name] !== undefined) {
+                this._modules[name].state = s;
+                logger.info(name, s);
+            } else {
+                logger.error('Unrecognized module name:', name);
+            }
+        }
+        this.getModuleState = (name) => {
+            return this._modules[name]? this._modules[name].state : undefined;
+        }
+        this.isActive = () => {
+            let active = true;
+            let keys = Object.keys(this._modules);
+            for (let i = 0; i < keys.length; i++) {
+                let key = keys[i];
+                if (this._modules[key].mandatory === true &&  this._modules[key].state === pubdefs.eModuleState.ACTIVE) {
+                    active = false;
+                    break;
+                }
+            }
+            return active;
+        }
+        this.gracefulExit = () => {
+            logger.info('>>>>>> Perform system clean-up before exit <<<<<<');
+            _raiseGracefulExitAlarm.call(this, () => {
+                let keys = Object.keys(this._modules);
+                async.each(keys, (key, next) => {
+                    let m = this._modules[key];
+                    if (typeof m.dispose !== 'function') {
+                        return process.nextTick(next);
+                    }
+                    m.dispose(err => {
+                        if (err) {
+                            logger.error(err.code, err.message);
+                        }
+                        return next();
+                    });
+                }, () => {
+                    _deregService.call(this, () => {
+                        return process.exit(0);
+                    });
+                });
+            });
+        }
+        this.isActive = () => {
+            return this._state === pubdefs.eModuleState.ACTIVE;
+        }
+        this.setInnerToken = (token) => {
+            this._prevToken = this._innerToken;
+            this._innerToken = token;
+        }
+        this.getAuthConfig = () => {
+            return this._config.auth;
+        }
+        this.setConfigAsync = (args, callback) =>{
+            if (args.token !== Buffer.from(config.accToken, 'base64').toString()) {
+                logger.error('Invalid secret!');
+                return callback({
+                    code: eRetCodes.FORBIDDEN,
+                    message: 'Invalid secret!'
+                });
+            }
+            let conf = pubdefs.extractValidConfig(args);
+            this._config = Object.assign(this._config, conf);
+            return callback(null, this._config);
+        }
+        this.setDebugLevel = (args, callback) => {
+            if (['info', 'debug', 'error'].indexOf(args.level) === -1) {
+                return callback({
+                    code: eRetCodes.BAD_REQUEST,
+                    message: 'Invalid level!'
+                })
+            }
+            return logger.setRotateFileLevel(args.level, callback);
+        }
+        /**
+         * Get configuration data
+         * @returns {*}
+         * @param path
+         * @param callback
+         */
+        this.getConfigAsync = (path, callback) => {
+            let val = undefined;
+            try {
+                let keys = path.split('.');
+                let i = 0;
+                val = this._config[keys[i++]];
+                while (i < keys.length) {
+                    val = val[keys[i++]];
+                }
+                return callback(null, val);
+            } catch (ex) {
+                return callback(ex);
+            }
+        }
+        this.getConfig = (path) => {
+            try {
+                let keys = path.split('.');
+                let i = 0;
+                let val = this._config[keys[i++]];
+                while (val !== undefined && i < keys.length) {
+                    val = val[keys[i++]];
+                }
+                return val;
+            } catch (err) {
+                logger.error(__file, __line, path, err.code, err.message);
+            }
+        }
+        this.getSysConfig = (req, res) => {
+            if (req.query.token !== Buffer.from(config.accToken, 'base64').toString()) {
+                return res.sendRsp(eRetCodes.FORBIDDEN, 'Access denied!');
+            }
+            return res.sendSuccess(this._config);
+        }
+        this.getVersion = (req, res) => {
+            if (version === null) {
+                version = JSON.parse(fs.readFileSync(path.join(__dirname + '/../conf/version.json')).toString());
+            }
+            return res.sendSuccess(version);
+        }
+        this.isMaster = () => {
+            return (process.env.NODE_ENV === 'production' && this._isMaster === true);
+        }
+        this.sendMessage = (msg) =>  {
+            let hostModule = null;
+            if (msg && msg.host && msg.host.mid) {
+                hostModule = this._modules[msg.host.mid];
+            }
+            if (hostModule) {
+                hostModule.emit('MESSAGE', msg);
+            } else {
+                logger.error('Invalid host module!', tools.inspect(msg));
+            }
+        }
+        (() => {
+            let beginTime = new Date();
+            logger.info('>>>>>> System initializing <<<<<<');
+            async.parallel({
+                regService: _regService.bind(this),
+                fireStartupAlarm: _raiseStartupAlarm.bind(this)
+            }, () => {
+                logger.info(`>>>>>> System startup in ${new Date().valueOf() - beginTime.valueOf()}ms`);
+                this._state = pubdefs.eModuleState.ACTIVE;
+                return null;
+            });
+        })();
+    }
+}
+
+let theApp = new TheApp(config);
+process.on('SIGINT', () => {
+    logger.info('>>>>>> On SIGINT <<<<<<');
+    theApp.setState(pubdefs.eModuleState.STOP_PENDING);
+    theApp.gracefulExit();
+});
+module.exports = theApp;
