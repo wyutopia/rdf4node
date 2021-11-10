@@ -1,6 +1,6 @@
 {
     "name": "rdf4node",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "description": "A rapid develop framework for nodejs",
     "author": {
         "name": "Eric Wang",
