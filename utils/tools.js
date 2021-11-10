@@ -9,8 +9,8 @@
  const {v4: uuidv4} = require('uuid');
  
  const pubdefs = require('./pubdefs');
- const eRetCodes = require('../public/js/retcodes');
- const {WinstonLogger} = require('./libs/winston.wrapper');
+ const eRetCodes = require('../common/retcodes');
+ const {WinstonLogger} = require('../libs/winston.wrapper');
  const {networkInterfaces} = require("os");
  const logger = WinstonLogger(process.env.SRV_ROLE || 'sign');
  
@@ -102,8 +102,10 @@
  
  
  function _specialUrlEncode(origStr) {
-     return encodeURIComponent(origStr).replace('+', '%20')
-         .replace('*', '%2A').replace('%7E', '~');
+     return encodeURIComponent(origStr)
+            .replace('+', '%20')
+            .replace('*', '%2A')
+            .replace('%7E', '~');
  }
  exports.specialUrlEncode = _specialUrlEncode;
  
@@ -122,7 +124,7 @@
  }
  exports.getSortedString = _getSortedString;
  
- exports.defaultBodyParser = function (body, callback) {
+ exports.defaultBodyParser = (body, callback) => {
      if (!body) {
          return callback();
      }
@@ -135,27 +137,27 @@
      return callback(null, body.data);
  }
  
- exports.invokeHttpRequest = function (options, bodyParser, callback) {
-     logger.debug('Options:', _inspect(options));
+ exports.invokeHttpRequest = (options, bodyParser, callback) => {
+     logger.debug(`Request options: ${_inspect(options)}`);
      if (options.timeout === undefined) {
          options.timeout = pubdefs.eInterval._3_SEC;
      }
-     request(options, function(err, rsp, body){
+     request(options, (err, rsp, body) => {
          if (err) {
              logger.error(err.code, err.message);
              return callback({
                  code: eRetCodes.INTERNAL_SERVER_ERR,
-                 message: 'Http invoke error!'
+                 message: `Http invoke error! - ${err.message}`
              });
          }
          if (rsp.statusCode !== eRetCodes.SUCCESS) {
-             logger.error('Http response status:', rsp.statusCode, rsp.statusMessage);
+             logger.error(`Http response status: ${rsp.statusCode} ${rsp.statusMessage}`);
              return callback({
                  code: rsp.statusCode,
                  message: rsp.statusMessage
              });
          }
-         logger.debug('Body:', _inspect(body));
+         logger.debug(`Body: ${_inspect(body)}`);
          if (typeof bodyParser === 'function') {
              return bodyParser(body, callback);
          }
@@ -163,16 +165,17 @@
      });
  };
  
- exports.checkParameters = function(parameters, pList, callback) {
+ exports.checkParameters = (parameters, pList, callback) => {
      let args = Object.assign({}, parameters);
-     logger.info('Parameters: ', _inspect(args));
+     logger.info(`Input parameters: ${_inspect(args)}`);
      for (let i in pList) {
          let key = pList[i];
          if (args[key] === undefined) {
-             logger.error('Missing parameter(s):', key);
+             let msg = `Missing parameter: ${key}`;
+             logger.error(msg);
              return callback({
                  code: 400,
-                 message: 'Missing parameter: ' + key
+                 message: msg
              });
          }
      }
@@ -180,7 +183,7 @@
  };
  
  exports.parseParameters = (params, options, callback) => {
-     logger.info('Input parameters:', _inspect(params));
+     logger.info(`Input parameters: ${_inspect(params)}`);
      if (typeof options === 'function') {
          callback = options;
          options = {};
