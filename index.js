@@ -3,5 +3,9 @@
  */
 
 exports.theApp = require('./bootstrap');
-exports.confg = require('./common/config');
-exports.WinstonLogger = require('./libs/winston.wrapper');
+exports.sysConfig = require('./common/config');
+exports.loggerWrapper = require('./libs/winston.wrapper');
+exports.promWrapper = require('./libs/prom.wrapper');
+exports.XTask = require('./libs/xtask');
+exports.amqpWrapper = require('./libs/ampq.wrapper');
+exports.router = require('./libs/route-loader');

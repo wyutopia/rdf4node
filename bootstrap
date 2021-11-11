@@ -13,8 +13,8 @@ const {WinstonLogger} = require('./libs/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
 const eRetCodes = require('./common/retcodes');
 const pubdefs = require('./common/pubdefs');
+const config = require('./common/config');
 const tools = require('./utils/tools');
-const config = require('../utils/config');
 //
 const serviceConf = config.service;
 const inetConf = config.inet;
