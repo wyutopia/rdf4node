@@ -6,12 +6,13 @@
  *   not exist when err is set. The body property can be a decoded object, string, or Buffer.
  */
  const async = require('async');
+
+ const pubdefs = require('../common/pubdefs');
+ const {consul: config} = require('../common/config');
+ const tools = require('../utils/tools');
  const {WinstonLogger} = require('./winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'consul');
 
- const {consul: config} = require('../common/config');
- const pubdefs = require('../common/pubdefs');
- const tools = require('../utils/tools');
 
  
  // Create local client

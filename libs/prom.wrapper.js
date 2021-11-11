@@ -9,7 +9,7 @@ const pubdefs = require('../common/pubdefs');
 const Registry = client.Registry;
 const register = new Registry();
 register.setDefaultLabels({ instance: os.hostname() });
-const prefix = 'rdf4_';
+const prefix = process.env.PROM_PREFIX || 'rdf4_';
 
 const collectDefaultMetrics = client.collectDefaultMetrics;
 collectDefaultMetrics({ prefix, register });

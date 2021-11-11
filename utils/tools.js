@@ -6,13 +6,13 @@
  const request = require('request');
  const spawn = require('child_process').spawn;
  const util = require("util");
+ const {networkInterfaces} = require("os");
  const {v4: uuidv4} = require('uuid');
  
- const pubdefs = require('./pubdefs');
+ const pubdefs = require('../common/pubdefs');
  const eRetCodes = require('../common/retcodes');
  const {WinstonLogger} = require('../libs/winston.wrapper');
- const {networkInterfaces} = require("os");
- const logger = WinstonLogger(process.env.SRV_ROLE || 'sign');
+ const logger = WinstonLogger(process.env.SRV_ROLE || 'tools');
  
  function _inspect(obj) {
      return util.inspect(obj, {showHidden: false, depth: null});
@@ -165,23 +165,6 @@
      });
  };
  
- exports.checkParameters = (parameters, pList, callback) => {
-     let args = Object.assign({}, parameters);
-     logger.info(`Input parameters: ${_inspect(args)}`);
-     for (let i in pList) {
-         let key = pList[i];
-         if (args[key] === undefined) {
-             let msg = `Missing parameter: ${key}`;
-             logger.error(msg);
-             return callback({
-                 code: 400,
-                 message: msg
-             });
-         }
-     }
-     return callback(null, args);
- };
- 
  exports.parseParameters = (params, options, callback) => {
      logger.info(`Input parameters: ${_inspect(params)}`);
      if (typeof options === 'function') {
@@ -274,13 +257,3 @@
      }
      return results;
  }
- 
- exports.parseArgs = function (source, target, keys) {
-     keys.forEach(key => {
-         if (source[key] !== undefined) {
-             target[key] = source[key];
-         }
-     });
- }
- 
- 

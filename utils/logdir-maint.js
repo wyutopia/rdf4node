@@ -1,17 +1,21 @@
+/**
+ * Create by eric on 2021/11/10
+ */
+const appRoot = require('app-root-path');
 const async = require('async');
 const fs = require('fs');
 const path = require('path');
-const appRoot = require('app-root-path');
 const moment = require('moment');
-const eRetCodes = require('../public/js/retcodes');
-const {WinstonLogger} = require('../common/libs/winston.wrapper');
-const logger = WinstonLogger('logdir');
+
+const eRetCodes = require('../common/retcodes');
 const tools = require('../common/tools');
+const {WinstonLogger} = require('../libs/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'logdir');
 
 let logDir = process.env.LOG_DIR || path.join(appRoot.path, 'logs');
-console.log('Log directory: ', logDir);
+console.log(`>>>>>> Log directory: ${logDir}`);
 
-const gExludeFiles = new RegExp(/^\.nfs/)
+const gExludeFiles = new RegExp(/^\.nfs/);
 function _isExclude(filename) {
     return gExludeFiles.test(filename);
 }
