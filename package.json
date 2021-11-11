@@ -1,6 +1,6 @@
 {
     "name": "rdf4node",
-    "version": "0.3.2",
+    "version": "0.3.3",
     "description": "A rapid develop framework for nodejs",
     "author": {
         "name": "Eric Wang",
@@ -23,6 +23,7 @@
         "prom-client": "^14.0.1",
         "rascal": "^14.0.0",
         "request": "^2.88.2",
+        "uuid": "^8.3.2",
         "winston": "^3.3.3",
         "winston-daily-rotate-file": "^4.5.5"
     }

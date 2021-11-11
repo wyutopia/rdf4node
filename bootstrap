@@ -1,17 +1,21 @@
+/**
+ * Create by eric on 2021/11/10
+ */
 const assert = require('assert');
 const async = require('async');
 const EventEmitter = require('events');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+// project libs
+const consulClient = require('./libs/consul.wrapper');
 const {WinstonLogger} = require('./libs/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
 const eRetCodes = require('./common/retcodes');
-const pubdefs = require('./pubdefs');
-const tools = require('./tools');
-const consulClient = require('./libs/consul.wrapper');
-// Project configuration
+const pubdefs = require('./common/pubdefs');
+const tools = require('./utils/tools');
 const config = require('../utils/config');
+//
 const serviceConf = config.service;
 const inetConf = config.inet;
 let version = null;
@@ -111,7 +115,7 @@ class TheApp extends EventEmitter {
                     content: args.content
                 }
             };
-            logger.debug(__file, __line, 'Alarm options:', tools.inspect(options));
+            logger.debug(`Alarm options: ${tools.inspect(options)}`);
             tools.invokeHttpRequest(options, tools.defaultBodyParser, (err, body) => {
                 if (err) {
                     return callback(err);
@@ -124,7 +128,7 @@ class TheApp extends EventEmitter {
          * @param mod
          */
         this.regModule = (mod) => {
-            logger.info('New module registry:', mod.name, mod.mandatory, mod.status);
+            logger.info(`New module registry: ${mod.name} - ${mod.mandatory} - ${mod.status}`);
             if (this._modules[mod.name] !== undefined) {
                 logger.error(`Conflict! ${mod.name} already registered.`)
             } else {
@@ -138,7 +142,7 @@ class TheApp extends EventEmitter {
                 this._modules[name].state = s;
                 logger.info(name, s);
             } else {
-                logger.error('Unrecognized module name:', name);
+                logger.error(`Unrecognized module name: ${name}`);
             }
         }
         this.getModuleState = (name) => {
