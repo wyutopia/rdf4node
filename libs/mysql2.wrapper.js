@@ -8,7 +8,7 @@
  const pubdefs = require('../pubdefs');
  const {WinstonLogger} = require('./winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'mysql2');
- const theApp = require('../system');
+ const theApp = require('../bootstrap');
  const mntService = require('../../services/monitor');
  
  const MODULE_NAME = 'MYSQL_CM';  //
