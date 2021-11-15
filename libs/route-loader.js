@@ -7,9 +7,9 @@ let router = express.Router();
 const appRoot = require('app-root-path');
 const fs = require('fs');
 const path = require('path');
-const {WinstonLogger} = require('../libs/winston.wrapper');
+const {WinstonLogger} = require('./winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
-const mntService = require('../libs/prom.wrapper');
+const mntService = require('./prom.wrapper');
 const projectRoutePath = process.env.ROUTE_PATH || path.join(appRoot.path, 'routes');
 logger.info(`>>>>>> projectRoutePath=${projectRoutePath}`);
 /**
