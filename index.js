@@ -11,3 +11,4 @@ exports.amqpWrapper = require('./libs/ampq.wrapper');
 exports.router = require('./libs/route-loader');
 exports.rateLimiter = require('./libs/ratelimit.wrapper');
 exports.dbHelper = require('./utils/db-helper');
+exports.eventModule = require('./libs/event-module');
