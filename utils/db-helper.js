@@ -2,13 +2,12 @@
  * Create by eric 2021/11/15
  */
  const assert = require('assert');
- const {Document} = require('mongoose').Schema.Types;
- const eRetCodes = require('../public/js/retcodes');
- const pubdefs = require('../utils/pubdefs');
- const tools = require('../utils/tools');
- const {WinstonLogger} = require('../utils/winston.wrapper');
- const {ecsModel} = require("../models/ecs");
- const logger = WinstonLogger(process.env.SRV_ROLE || 'apm');
+ const tools = require('./tools');
+ const eRetCodes = require('../common/retcodes');
+ const pubdefs = require('../common/pubdefs');
+ const {WinstonLogger} = require('../libs/winston.wrapper');
+ const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
+
  //
  
  function _unifiedFind(db, options, callback) {

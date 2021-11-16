@@ -3,16 +3,16 @@
  */
  const RateLimit = require('express-rate-limit');
  const MongoStore = require('rate-limit-mongo');
- const config = require('../common/config');
+ const {database: dbUrl, rateLimit: config} = require('../common/config');
  
  const limiter = new RateLimit({
      store: new MongoStore({
-         uri: config.database
+         uri: dbUrl
      }),
      collectionName: 'accessRateLimit',
-     windowMs: config.rateLimit.windowMs || (15 * 60 * 1000),
-     max: config.rateLimit.max || 100,
-     expireTimeMs: config.rateLimit.expireTimeMs || (60 * 1000)
+     windowMs: config.windowMs || (15 * 60 * 1000),
+     max: config.max || 100,
+     expireTimeMs: config.expireTimeMs || (60 * 1000)
  });
  
  module.exports = limiter;
