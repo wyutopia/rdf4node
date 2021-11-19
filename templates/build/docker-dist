@@ -1,0 +1,133 @@
+#!/usr/bin/env node
+/**
+ * Created by eric on 2021/11/16
+ */
+ const async = require('async');
+ const assert = require('assert');
+ const fs = require('fs');
+ const path = require('path');
+ const moment = require('moment');
+ const spawn = require('child_process').spawn;
+ 
+ const MAIN_VER = '1.10.3';
+ const IMAGE_NAME = 'rdf4node';
+ const REGISTRY = 'some-registry/rdf4node/';
+ 
+ function execCli(program, args, options, callback) {
+     assert(program !== undefined);
+     assert(args !== undefined);
+     if (typeof options === 'function') {
+         callback = options;
+         options = {};
+     }
+     assert(typeof callback === 'function');
+     //
+     console.log(`Execute command: ${program} ${args} ${options}`);
+     try {
+         let result = options.multi === true? [] : null;
+         let proc = spawn(program, args);
+         proc.on('error', (err) => {
+             console.log('Execute command error!', err);
+         });
+         proc.stdout.on('data', (data) => {
+             if (data) {
+                 let info = data.toString().trim();
+                 if (options.multi === true) {
+                     result.push(info);
+                 } else if (result === null) {
+                     result = info;
+                 } // Discard result
+             }
+         });
+         proc.on('close', (code, signal) => {
+             console.log('Stdout: ', result);
+             console.log('Process exit.', code, signal);
+             if (code === 0) {
+                 return callback(null, result);
+             }
+             return callback({
+                 code: 500,
+                 message: 'Execute error or abort!'
+             });
+         });
+     } catch (ex) {
+         return callback(ex);
+     }
+ }
+ 
+ function updateVersion(callback) {
+     let error = null;
+     try {
+         const verFile = path.join(__dirname + '/../conf/version.json');
+         let rawData = fs.readFileSync(verFile).toString();
+         let verData = JSON.parse(rawData.toString());
+         verData.version = MAIN_VER;
+         verData.build = moment().format('YYYYMMDDHHmmssSSS');
+         console.log('New version: ', verData);
+         fs.writeFileSync(verFile, JSON.stringify(verData));
+     } catch (ex) {
+         console.log(ex);
+         error = ex;
+     }
+     //
+     if (error) {
+         return callback(error);
+     }
+     async.series([
+         execCli.bind(null, 'git', ['add', '.', '-v']),
+         execCli.bind(null, 'git', ['commit', '-m', 'Update version.'])
+     ], (err) => {
+         return callback(err);
+     });
+ }
+ 
+ function getLatestGitCommitHash(callback) {
+     let program = 'git';
+     let args = ['log', '-1', '--format=%h', '--abbrev=8'];
+     let options = {
+         multi: false
+     };
+     execCli(program, args, options, (err, commitHash) => {
+         if (err) {
+             return callback(err);
+         }
+         console.log(`Latest commit hash: ${commitHash}`);
+         return callback(null, commitHash);
+     });
+ }
+ 
+ //docker build -t registry.cn-hangzhou.aliyuncs.com/rich-v2/apm:2.0.0-b791964
+ 
+ function buildDockerImage(commitHash, callback) {
+     let tag = MAIN_VER + '-' + commitHash;
+     let program = 'docker';
+     let args = ['build', '-t', `${REGISTRY}${IMAGE_NAME}:${tag}`, '.'];
+     execCli(program, args, {multi: true}, (err) => {
+         if (err) {
+             console.log(`Build docker image error! - ${err.message}`);
+         } else {
+             console.log('Build docker image succeed.');
+         }
+         return callback(err, tag);
+     });
+ }
+ 
+ async.waterfall([
+     // Step 1:
+     updateVersion,
+     // Step 2:
+     getLatestGitCommitHash,
+     // Step 3:
+     buildDockerImage
+ ], (err, tag) => {
+     if (err) {
+         return console.log('Build error!', err);
+     }
+     execCli('git', ['tag', `"${tag}"`], (err) => {
+         if (err) {
+             return console.log(`Tag error! - ${err.message}`);
+         }
+         return console.log(`Push image to docker-registry:  docker image push ${REGISTRY}${IMAGE_NAME}:${tag}`);
+     });
+ });
+ 

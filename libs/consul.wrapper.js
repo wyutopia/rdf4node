@@ -13,8 +13,6 @@
  const {WinstonLogger} = require('./winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'consul');
 
-
- 
  // Create local client
  const consul = require('consul')({
      host: config.host,    // String: agent address
@@ -22,33 +20,47 @@
  });
  
  /**
-  * consul.agent.service  methods
+  * consul.catalog.service  methods
   */
- // List
+ // List services
  exports.listServices = (callback) => {
-     consul.agent.service.list((err, result) => {
-         if (err) {
-             logger.error('agent.service.list: ', err.code, err.message);
-             return callback(err);
-         }
-         logger.info(`List services: ${tools.inspect(result)}`);
-         return callback(null, result);
-     });
+    consul.catalog.service.list((err, result) => {
+        if (err) {
+            logger.error(`list services error! - ${err.code}#${err.message}`);
+            return callback(err);
+        }
+        logger.debug(`List services: ${tools.inspect(result)}`);
+        return callback(null, result);
+    });
  }
+
+ // List nodes of service
+ exports.listServiceNodes = (serviceName, callback) => {
+    consul.catalog.service.nodes(serviceName, (err, result) => {
+        if (err) {
+            logger.error(`list nodes of service error! - ${err.code}#${err.message}`);
+            return callback(err);
+        }
+        logger.debug(`List service nodes: ${tools.inspect(result)}`);
+        return callback(null, result);
+    });
+}
+
  // Register
  exports.regService = (options, callback) => {
-     logger.info('Reg service:', tools.inspect(options));
+     logger.info(`Register service: ${tools.inspect(options)}`);
      consul.agent.service.register(options, err => {
          if (err) {
-             logger.error('service.register: ', err.code, err.message);
+             logger.error(`Register service error! - ${err.code}#${err.message}`);
              return callback(err);
          }
          return callback();
      });
- };
+ }
+
  // Deregister
  exports.deregService = (options, callback) => {
-     logger.info('De-register service:', tools.inspect(options));
+     logger.info(`De-register service: ${tools.inspect(options)}`);
      if (options.id === undefined) {
          return callback({
              code: eRetCodes.OP_FAILED,
@@ -57,13 +69,14 @@
      }
      consul.agent.service.deregister(options, (err, data, result) => {
          if (err) {
-             logger.error('service.deregister: ', err.code, err.message);
+             logger.error(`De-register service error! - ${err.code}#${err.message}`);
              return callback(err);
          }
-         logger.info('De-register service succeed.');
+         logger.info(`De-register service succeed.`);
          return callback(null, data, result);
      })
- };
+ }
+
  // Maintenance
  exports.maintainService = (options, callback) => {
      if (options.id === undefined) {
