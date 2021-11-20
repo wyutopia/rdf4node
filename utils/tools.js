@@ -124,6 +124,12 @@ function _getSortedString(args, caseSense = true, urlEncode = true) {
 }
 exports.getSortedString = _getSortedString;
 
+/**
+ * The default parser for RESTful API's response body
+ * @param {*} body 
+ * @param {*} callback 
+ * @returns 
+ */
 exports.defaultBodyParser = (body, callback) => {
     if (!body) {
         return callback();
@@ -137,6 +143,11 @@ exports.defaultBodyParser = (body, callback) => {
     return callback(null, body.data);
 }
 
+/**
+ * The http request wrapper based on request@2.88.2
+ * @param {*} options 
+ * @param {*} callback 
+ */
 exports.invokeHttpRequest = function (options, callback) {
 
     if (options.timeout === undefined) {
@@ -172,6 +183,13 @@ exports.invokeHttpRequest = function (options, callback) {
     });
 };
 
+/**
+ * The parameter parser for http request
+ * @param {json object} params 
+ * @param {mandatory, optional} options 
+ * @param {*} callback 
+ * @returns 
+ */
 exports.parseParameters = (params, options, callback) => {
     logger.info(`Input parameters: ${_inspect(params)}`);
     // Step 1: Preparing the input parameters
