@@ -218,8 +218,8 @@ exports.parseParameters = (params, options, callback) => {
         if (!params[key]) {
             errMsg = `Missing parameter(s): ${key}`;
             break;
-
-        } else if (key === '_id' && !ObjectId.isValid(params[key])) {
+        }
+        if (options.checkObjectId === true && key === '_id' && !ObjectId.isValid(params[key])) {
             errMsg = `Invalid ObjectId value: ${params[key]}`;
             break;
         }
@@ -228,7 +228,7 @@ exports.parseParameters = (params, options, callback) => {
     if (errMsg !== null) {
         logger.error(errMsg);
         return callback({
-            code: 400,
+            code: eRetCodes.BAD_REQUEST,
             message: errMsg
         });
     }
@@ -237,7 +237,7 @@ exports.parseParameters = (params, options, callback) => {
         let key = options.optional[j];
         // Note: Exclude duplicate keys from mandatory
         if (options.mandatory.indexOf(key) === -1 && params[key] !== undefined) {
-            if (key === '_id' && !ObjectId.isValid(params[key])) {
+            if (options.checkObjectId === true && key === '_id' && !ObjectId.isValid(params[key])) {
                 errMsg = `Invalid ObjectId value format: ${params[key]}`;
                 break;
             }

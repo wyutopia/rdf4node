@@ -13,7 +13,7 @@
  function _unifiedFind(db, options, callback) {
      logger.info(`${db.modelName} - options: ${tools.inspect(options)}`);
      let filter = options.filter || {};
-     let query = db.find(filter);
+     let query = options.multi === true? db.find(filter) : db.findOne(filter);
      if (options.select) {
          query.select(options.select);
      }
@@ -29,19 +29,26 @@
      if (options.populate) {
          query.populate(options.populate);
      }
-     query.exec().then(docs => {
-         return callback(null, docs);
-     }).catch(ex => {
-         let msg = `Query ${db.modelName} error! - ${ex.message}`;
-         logger.error(msg);
-         return callback({
-             code: eRetCodes.DB_QUERY_ERR,
-             message: msg
-         })
+     return query.exec((err, result) => {
+         if (err) {
+            let msg = `Query ${db.modelName} error! - ${err.message}`;
+            logger.error(msg);
+            return callback({
+                code: eRetCodes.DB_QUERY_ERR,
+                message: msg
+            })
+         }
+         if (!result) {
+            return callback({
+                code: eRetCodes.NOT_FOUND,
+                message: `Specified ${db.modelName} not exists! - ${tools.inspect(filter)}`
+            })
+         }
+         return callback(null, result);
      });
  }
  
- exports.findAll = (db, options, callback) => {
+ exports.findMany = (db, options, callback) => {
      assert(Object.getPrototypeOf(db).name === 'Model');
      //
      return _unifiedFind(db, options, callback);
@@ -53,14 +60,13 @@
   * @param options
   * @param callback
   */
- exports.pageQuery = (db, options, callback) => {
+ exports.findPartial = (db, options, callback) => {
      assert(Object.getPrototypeOf(db).name === 'Model');
      //
      let name = db.modelName;
      let ps = parseInt(options.pageSize || '10');
      let pn = parseInt(options.page || '1');
      let filter = options.filter || {};
-     let sort = options.sort || {};
  
      logger.info(`Query ${name} with filter: ${tools.inspect(filter)}`);
      db.countDocuments(filter, (err, total) => {
@@ -81,23 +87,25 @@
              results.values = [];
              return callback(null, results);
          }
-         db.find(filter)
-             .sort(sort)
-             .skip((pn - 1) * ps)
-             .limit(ps)
-             .populate(options.populate || '')
-             .exec((err, docs) => {
-                 if (err) {
-                     let msg = `Query ${name} error! - ${err.message}`;
-                     logger.error(msg);
-                     return callback({
-                         code: eRetCodes.DB_QUERY_ERR,
-                         message: msg
-                     });
-                 }
-                 results.values = docs;
-                 return callback(null, results);
-             });
+         let query = db.find(filter).skip((pn - 1) * ps).limit(ps);
+         if (options.sort) {
+             query.sort();
+         }
+         if (options.populate) {
+             query.populate();
+         }
+         return query.exec((err, docs) => {
+            if (err) {
+                let msg = `Query ${name} error! - ${err.message}`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.DB_QUERY_ERR,
+                    message: msg
+                });
+            }
+            results.values = docs;
+            return callback(null, results);
+         });
      });
  }
  
