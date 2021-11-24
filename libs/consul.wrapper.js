@@ -7,7 +7,7 @@
  */
  const async = require('async');
 
- const pubdefs = require('../common/pubdefs');
+ const pubdefs = require('../pubdefs');
  const {consul: config} = require('../common/config');
  const tools = require('../utils/tools');
  const {WinstonLogger} = require('./winston.wrapper');

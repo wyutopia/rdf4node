@@ -8,7 +8,7 @@ const BrokerPro = require('rascal').BrokerAsPromised;
 // Project scope
 const { WinstonLogger } = require('./winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
-const pubdefs = require('../common/pubdefs');
+const pubdefs = require('../pubdefs');
 const tools = require('../utils/tools');
 const theApp = require('../bootstrap');
 

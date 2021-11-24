@@ -4,8 +4,8 @@
 let assert = require('assert');
 let mongoose = require('mongoose');
 mongoose.Promise = require('bluebird');
+const pubdefs = require('../pubdefs');
 const config = require('../common/config');
-const pubdefs = require('../common/pubdefs');
 const { WinstonLogger } = require('./winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
 const theApp = require('../bootstrap');

@@ -4,7 +4,7 @@
 const assert = require('assert');
 const os = require('os');
 const client = require('prom-client');
-const pubdefs = require('../common/pubdefs');
+const pubdefs = require('../pubdefs');
 
 const Registry = client.Registry;
 const register = new Registry();

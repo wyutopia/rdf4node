@@ -7,8 +7,8 @@ const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
 
-const eRetCodes = require('../common/retcodes');
-const tools = require('../common/tools');
+const eRetCodes = require('../common/retcodes.js');
+const tools = require('./tools');
 const {WinstonLogger} = require('../libs/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'logdir');
 

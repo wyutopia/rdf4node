@@ -6,7 +6,7 @@
  
  const theApp = require('../bootstrap');
  const tools = require('../utils/tools');
- const pubdefs = require('../common/pubdefs');
+ const pubdefs = require('../pubdefs');
  const ePrimitives = pubdefs.ePrimitives;
  const mntService = require('./prom.wrapper');
  const {WinstonLogger} = require('./winston.wrapper');

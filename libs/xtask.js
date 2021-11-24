@@ -5,7 +5,7 @@
  const EventEmitter = require('events');
  const schedule = require('node-schedule');
 
- const pubdefs = require('../common/pubdefs');
+ const pubdefs = require('../pubdefs');
  const {WinstonLogger} = require('./winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'xtask');
  
