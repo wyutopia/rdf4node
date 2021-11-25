@@ -7,8 +7,8 @@ const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
 
-const eRetCodes = require('../common/retcodes.js');
 const tools = require('./tools');
+const eRetCodes = require('../common/retcodes.js');
 const {WinstonLogger} = require('../libs/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'logdir');
 
@@ -38,7 +38,7 @@ exports.listDir = function (req, res) {
                     logger.error(`Stat file: ${file} - ${err.message}`);
                     return callback();
                 }
-                logger.info(file, 'Stat: ', stats.size);
+                logger.info(`${file} - stat: ${stats.size}`);
                 result.num++;
                 result.size += stats.size;
                 result.manifest.push({
@@ -48,7 +48,7 @@ exports.listDir = function (req, res) {
                 return callback();
             })
         }, function() {
-            logger.info('Scan result: ', tools.inspect(result));
+            logger.info(`Scan result: ${tools.inspect(result)}`);
             return res.sendSuccess(result);
         });
     });
@@ -59,7 +59,7 @@ exports.cleanDir = function (req, res) {
         if (err) {
             return res.sendRsp(err.code, err.message);
         }
-        logger.info(logDir, ': ', files);
+        logger.info(`${logDir}: ${tools.inspect(files)}`);
         _realRemoveFiles(files, function(err, num) {
             if (err) {
                 return res.sendRsp(err.code, err.message);
@@ -90,16 +90,16 @@ exports.removeFiles = function (req, res) {
 function _realReadDir(dir, callback) {
     fs.readdir(dir, function(err, files) {
         if (err) {
-            logger.error('Read logDir error!', err.code, err.message);
+            logger.error(`Read logDir error! - ${err.code} - ${err.message}`);
             return callback(err);
         }
-        logger.info('Files: ', files);
+        logger.info(`Files: ${tools.inspect(files)}`);
         return callback(null, files);
     });
 }
 
 function _realRemoveFiles(files, callback) {
-    logger.info('Remove files: ', files);
+    logger.info(`Remove files: ${tools.inspect(files)}`);
     if (!tools.isTypeOfArray(files)) {
         return callback({
             code: eRetCodes.BAD_REQUEST,
@@ -114,11 +114,11 @@ function _realRemoveFiles(files, callback) {
         }
         fs.unlink(fullPathFile, (err) => {
             if (err) {
-                logger.error('Remove file error!', file, err.code, err.message);
+                logger.error(`Remove file error! - ${file} - ${err.code} - ${err.message}`);
                 return callback(err);
             }
             num++;
-            logger.info('File: ', file, ' removed.');
+            logger.info(`File: ${file} removed.`);
             return callback();
         });
     }, function (err) {

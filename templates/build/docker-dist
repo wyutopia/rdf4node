@@ -9,7 +9,7 @@
  const moment = require('moment');
  const spawn = require('child_process').spawn;
  
- const MAIN_VER = '1.10.3';
+ const MAIN_VER = '0.0.0';
  const IMAGE_NAME = 'rdf4node';
  const REGISTRY = 'some-registry/rdf4node/';
  
