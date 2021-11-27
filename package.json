@@ -1,6 +1,6 @@
 {
     "name": "rdf4node",
-    "version": "0.3.31",
+    "version": "0.3.38",
     "description": "A rapid develop framework for nodejs",
     "author": {
         "name": "Eric Wang",
@@ -15,9 +15,11 @@
         "app-root-path": "3.0.0",
         "async": "^3.2.2",
         "bluebird": "^3.7.2",
+        "connect-mongodb-session": "^3.1.1",
         "consul": "^0.40.0",
         "express": "^4.17.1",
         "express-rate-limit": "^5.5.1",
+        "express-session": "^1.17.2",
         "ldap-authentication": "^2.2.9",
         "moment": "^2.29.1",
         "mongoose": "^6.0.12",

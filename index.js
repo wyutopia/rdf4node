@@ -12,11 +12,11 @@ exports.winstonWrapper = require('./libs/winston.wrapper');
 exports.promWrapper = require('./libs/prom.wrapper');
 exports.XTask = require('./libs/xtask');
 exports.amqpWrapper = require('./libs/ampq.wrapper');
-exports.router = require('./libs/route-loader');
 exports.rateLimiter = require('./libs/ratelimit.wrapper');
 exports.eventModule = require('./libs/event-module');
 exports.expressWrapper = require('./libs/express.wrapper');
 exports.mongoose = require('./libs/mongoose.wrapper');
+exports.mongoSession = require('./libs/mongo-session.wrapper');
 // utilities
 exports.tools = require('./utils/tools');
 exports.dbHelper = require('./utils/db-helper');

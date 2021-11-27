@@ -1,5 +1,6 @@
 ## Initilaztion
 ### Setup project manually
+* Create new express project with command: express --view ejs <project-name>
 * Copy all folders inside templates into <project-root-dir>
 * Modify <project-root-dir>/conf/config.json as you need
 * 

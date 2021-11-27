@@ -40,7 +40,7 @@ function isExclude(filename) {
 
 function _loadRoutes() {
     let entries = fs.readdirSync(__dirname, READDIR_OPTIONS);
-    let rootPath = '';
+    let rootPath = '/';
     entries.forEach( dirent => {
         if (dirent.isFile() && !isExclude(dirent.name)) {
             _loadRouteConfig(rootPath, __dirname, dirent.name);

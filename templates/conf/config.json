@@ -20,14 +20,21 @@
           "baseUrl": "http://127.0.0.1"
         }
     },
-    "database": "mongodb://admin:Dev#2021@localhost/apm?authSource=admin",
+    "mongodb": {
+      "ip": "127.0.0.1",
+      "port": 27017,
+      "user": "dbo",
+      "pwd": "Dev#2021",
+      "db": "rdf",
+      "authSource": "rdf"
+    },
     "redis": {
       "host": "127.0.0.1",
       "port": 6379,
       "password": "123456"
     },
     "mq": {
-      "vhost": "rich2",
+      "vhost": "rdf",
       "connection": {
         "slashes": true,
         "protocol": "amqp",

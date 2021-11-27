@@ -5,7 +5,7 @@ let assert = require('assert');
 let mongoose = require('mongoose');
 mongoose.Promise = require('bluebird');
 const pubdefs = require('../pubdefs');
-const config = require('../common/config');
+const {mongodb: config} = require('../common/config');
 const { WinstonLogger } = require('./winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
 const theApp = require('../bootstrap');
@@ -47,7 +47,9 @@ theApp.regModule({
             useNewUrlParser: true
         };
         logger.info('Connect to MongoDb......');
-        const result = await mongoose.connect(config.database, options);
+        let connStr = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}` 
+                        + `@${config.ip}:${config.port || 27017}/${config.db}?authSource=${config.authSource || config.db}`;
+        const result = await mongoose.connect(connStr, options);
         if (result) {
             conn = mongoose.connection;
             logger.info(`mongo-db@${process.env.NODE_ENV} connected!`);
