@@ -5,7 +5,7 @@
  const mysql = require('mysql2');
  const {EventModule} = require('../wrappers/event-module');
  const tools = require('../tools');
- const pubdefs = require('../pubdefs');
+ const pubdefs = require('../sysdefs');
  const {WinstonLogger} = require('./winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'mysql2');
  const theApp = require('../bootstrap');

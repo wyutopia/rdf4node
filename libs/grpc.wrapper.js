@@ -8,7 +8,7 @@ const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 // Project modules
 const theApp = require("../bootstrap");
-const pubdefs = require("../pubdefs");
+const pubdefs = require("../sysdefs");
 const {grpc: config} =  require('../common/config');
 const {WinstonLogger} = require('./winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'grpc');

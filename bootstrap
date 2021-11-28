@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 // project libs
-const pubdefs = require('./pubdefs');
+const pubdefs = require('./sysdefs');
 const eRetCodes = require('./common/retcodes');
 const config = require('./common/config');
 const consulClient = require('./libs/consul.wrapper');

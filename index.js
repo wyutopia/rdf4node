@@ -1,7 +1,7 @@
 /**
  * Create by wyutopia on 2021/11/10
  */
-exports.pubdefs = require('./pubdefs');
+exports.sysdefs = require('./sysdefs');
 exports.theApp = require('./bootstrap');
 // configuration and constants
 exports.sysConfig = require('./common/config');

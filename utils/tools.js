@@ -9,7 +9,7 @@ const util = require("util");
 const { networkInterfaces } = require("os");
 const { v4: uuidv4 } = require('uuid');
 
-const pubdefs = require('../pubdefs');
+const pubdefs = require('../sysdefs');
 const eRetCodes = require('../common/retcodes.js');
 const { WinstonLogger } = require('../libs/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'tools');

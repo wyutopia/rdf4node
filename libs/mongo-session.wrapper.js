@@ -7,10 +7,10 @@
  let MongoDBStore = require('connect-mongodb-session')(session);
  
  function sessionStore (collect) {
-    let connUri = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}` 
+    let dbUri = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}` 
             + `@${config.ip}:${config.port || 27017}/${config.db}?authSource=${config.authSource || config.db}`;
      let store = new MongoDBStore({
-         uri: connUri,
+         uri: dbUri,
          collection: collect,
          connectionOptions: {
              useUnifiedTopology: true,

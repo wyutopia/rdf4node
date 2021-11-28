@@ -4,7 +4,7 @@
  const assert = require('assert');
  const tools = require('./tools');
  const eRetCodes = require('../common/retcodes.js');
- const pubdefs = require('../pubdefs');
+ const pubdefs = require('../sysdefs');
  const {WinstonLogger} = require('../libs/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
 
