@@ -8,8 +8,8 @@ const path = require('path');
 const moment = require('moment');
 
 const tools = require('./tools');
-const eRetCodes = require('../common/retcodes.js');
-const {WinstonLogger} = require('../libs/winston.wrapper');
+const eRetCodes = require('../include/retcodes.js');
+const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'logdir');
 
 let logDir = process.env.LOG_DIR || path.join(appRoot.path, 'logs');

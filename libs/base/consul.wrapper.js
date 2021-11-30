@@ -7,10 +7,10 @@
  */
  const async = require('async');
 
- const pubdefs = require('../sysdefs');
- const {consul: config} = require('../common/config');
+ const pubdefs = require('../../include/sysdefs');
+ const {consul: config} = require('./config');
  const tools = require('../utils/tools');
- const {WinstonLogger} = require('./winston.wrapper');
+ const {WinstonLogger} = require('../common/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'consul');
 
  // Create local client

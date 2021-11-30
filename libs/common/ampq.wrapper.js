@@ -6,11 +6,11 @@ const EventEmitter = require('events');
 const ObjectId = require('mongoose').Types.ObjectId;
 const BrokerPro = require('rascal').BrokerAsPromised;
 // Project scope
-const { WinstonLogger } = require('./winston.wrapper');
+const pubdefs = require('../../include/sysdefs');
+const theApp = require('../../bootstrap');
+const tools = require('../../utils/tools');
+const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
-const pubdefs = require('../sysdefs');
-const tools = require('../utils/tools');
-const theApp = require('../bootstrap');
 
 const MODULE_NAME = 'RMQ_MNG';
 class RmqClientManager {

@@ -3,13 +3,16 @@
  */
  const async = require('async');
  const mysql = require('mysql2');
- const {EventModule} = require('../wrappers/event-module');
- const tools = require('../tools');
- const pubdefs = require('../sysdefs');
- const {WinstonLogger} = require('./winston.wrapper');
+ //
+ const pubdefs = require('../../include/sysdefs');
+ const theApp = require('../../bootstrap');
+ const {EventModule} = require('../event-module');
+ const tools = require('../../utils/tools');
+ 
+ const {WinstonLogger} = require('../base/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'mysql2');
- const theApp = require('../bootstrap');
- const mntService = require('../../services/monitor');
+ 
+ const mntService = require('../base/prom.wrapper');
  
  const MODULE_NAME = 'MYSQL_CM';  //
  /*********************************************

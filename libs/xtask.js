@@ -5,8 +5,8 @@
  const EventEmitter = require('events');
  const schedule = require('node-schedule');
 
- const pubdefs = require('../sysdefs');
- const {WinstonLogger} = require('./winston.wrapper');
+ const pubdefs = require('../include/sysdefs');
+ const {WinstonLogger} = require('./base/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'xtask');
  
  // the cron format:

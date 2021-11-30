@@ -4,11 +4,11 @@
 let assert = require('assert');
 let mongoose = require('mongoose');
 mongoose.Promise = require('bluebird');
-const pubdefs = require('../sysdefs');
-const {mongodb: config} = require('../common/config');
-const { WinstonLogger } = require('./winston.wrapper');
+const pubdefs = require('../../include/sysdefs');
+const theApp = require('../../bootstrap');
+const {mongodb: config} = require('../base/config');
+const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
-const theApp = require('../bootstrap');
 
 const MODULE_NAME = 'MONGODB_CONN';
 let conn = null;

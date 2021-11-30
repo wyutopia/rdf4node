@@ -3,7 +3,7 @@
  */
  const RateLimit = require('express-rate-limit');
  const MongoStore = require('rate-limit-mongo');
- const {mongodb, rateLimit: config} = require('../common/config');
+ const {mongodb, rateLimit: config} = require('./config');
  
  const dbUri = `mongodb://${mongodb.user}:${encodeURIComponent(mongodb.pwd)}` 
                 + `@${mongodb.ip}:${mongodb.port || 27017}/${mongodb.db}?authSource=${mongodb.authSource || mongodb.db}`;

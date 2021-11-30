@@ -3,14 +3,15 @@
  */
  const assert = require('assert');
  const EventEmitter = require('events');
- 
+ //
+ const pubdefs = require('../inlcude/sysdefs');
+ const ePrimitives = pubdefs.ePrimitives;
  const theApp = require('../bootstrap');
  const tools = require('../utils/tools');
- const pubdefs = require('../sysdefs');
- const ePrimitives = pubdefs.ePrimitives;
- const mntService = require('./prom.wrapper');
- const {WinstonLogger} = require('./winston.wrapper');
- const logger = WinstonLogger(process.env.SRV_ROLE);
+ const mntService = require('../base/prom.wrapper');
+ 
+ const {WinstonLogger} = require('./base/winston.wrapper');
+ const logger = WinstonLogger(process.env.SRV_ROLE || 'evm');
  
  const eFsmFlag = {
      REDIRECT   : -1,

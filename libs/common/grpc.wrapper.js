@@ -7,16 +7,15 @@ const async = require('async');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 // Project modules
-const theApp = require("../bootstrap");
-const pubdefs = require("../sysdefs");
-const {grpc: config} =  require('../common/config');
-const {WinstonLogger} = require('./winston.wrapper');
+const pubdefs = require("../../include/sysdefs");
+const theApp = require("../../bootstrap");
+const {grpc: config} =  require('../base/config');
+const mntService = require('../base/prom.wrapper');
+const {WinstonLogger} = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'grpc');
-const tools = require('../utils/tools');
-const mntService = require('../../services/monitor');
-const {publications} = require("rascal/lib/config/baseline");
+const tools = require('../../utils/tools');
 
-const MODULE_NAME_PREFIX = 'GRPC';
+const MODULE_NAME_PREFIX = 'GRPC_PD';
 /*********************************************
  * Set monitor metrics
  *********************************************/
