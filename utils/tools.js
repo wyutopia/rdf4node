@@ -32,17 +32,17 @@ exports.execCli = (program, args, options, callback) => {
     let error = [];
     let proc = spawn(program, args);
     proc.on('error', (err) => {
-        logger.error('Execute command error!', err);
+        logger.error(`Execute command error! - ${err.message}`);
         error.push(err.toString());
     });
     proc.stdout.on('data', (data) => {
-        logger.info('stdout:', data);
+        logger.info(`stdout: ${tools.inspect(data)}`);
         if (data) {
             info.push(data.toString());
         }
     });
     proc.stderr.on('data', (data) => {
-        logger.error(`stderr: ${data}`);
+        logger.error(`stderr: ${tools.inspect(data)}`);
         info.push(data.toString());
     });
     proc.on('close', (code, signal) => {
