@@ -1,4 +1,4 @@
-FROM node:14-alpine
+FROM node:16-alpine
 # Set aliyun-mirror
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 # Set Timezone
