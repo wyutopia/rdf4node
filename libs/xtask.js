@@ -24,20 +24,31 @@
          this.hTask = null;
          // Methods
          this.realWork = (callback) => {
-             return callback();
-         }
-         this.doWork = () => {
-             //logger.debug(this.alias, 'Start working...');
-             if (this.mutex) {
-                 logger.error(this.alias, 'conflict!');
-                 return null;
-             }
-             this.mutex = true;
-             this.realWork(() => {
-                 //logger.debug(this.alias, 'Finished.')
-                 this.mutex = false;
-             });
-         }
+            return process.nextTick(callback);
+        }
+        this.beforeWork = (callback) => {
+            return process.nextTick(callback);
+        }
+        this.afterWork = (callback) => {
+            return process.nextTick(callback);
+        }
+        this.doWork = () => {
+            //logger.debug(this.alias, 'Start working...');
+            if (this.mutex) {
+                logger.error(this.alias, 'conflict!');
+                return null;
+            }
+            this.mutex = true;
+            this.beforeWork(() => {
+                this.realWork(() => {
+                    //logger.debug(this.alias, 'Finished.')
+                    this.afterWork(() => {
+                        this.mutex = false;
+                        return null;
+                    });
+                });
+            });
+        }
          this.start = (itv) => {
              if (itv !== undefined) {
                  this.interval = itv;
@@ -76,6 +87,9 @@
          }
          // Startup script
          (() => {
+             if (options.immediateExec) {
+                 this.doWork();
+             }
              if (this.startup === 'AUTO' || this.startup === 'ONCE') {
                  this.start();
              } else if (this.startup === 'SCHEDULE' && this.cronExp !== undefined) {
