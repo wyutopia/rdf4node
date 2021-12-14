@@ -69,7 +69,8 @@
      let filter = options.filter || {};
  
      logger.info(`Query ${name} with filter: ${tools.inspect(filter)}`);
-     db.countDocuments(filter, (err, total) => {
+     let countMethod = options.allowRealCount === true? db.countDocuments : db.estimatedDocumentCount;
+     countMethod(filter, (err, total) => {
          if (err) {
              let msg = `Count ${name} error! - ${err.message}`;
              logger.error(msg);
@@ -109,42 +110,114 @@
      });
  }
  
- exports.updateOne = (db, params, callback) => {
-     assert(Object.getPrototypeOf(db).name === 'Model');
-     //
-     let filter = params.filter || {};
-     let updates = params.updates || {};
-     let options = params.options || {};
-     if (Object.keys(updates).length === 0) {
-         let msg = `Empty updates! - ${tools.inspect(updates)}`;
-         logger.info(msg);
-         return callback({
-             code: eRetCodes.OP_FAILED,
-             message: msg
-         });
-     }
-     if (options.new === undefined) {
-         options.new = true;
-     }
-     logger.info(`Update: ${db.modelName} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`)
-     db.findOneAndUpdate(filter, updates, options, (err, doc) => {
-         if (err) {
-             let msg = `Update ${db.modelName} error! - ${err.message}`;
-             logger.error(msg);
-             return callback({
-                 code: eRetCodes.DB_UPDATE_ERR,
-                 message: msg
-             });
-         }
-         if (!doc) {
-             let msg = `Specified ${db.modelName} not found! - ${tools.inspect(filter)}`;
-             logger.error(msg);
-             return callback({
-                 code: eRetCodes.NOT_FOUND,
-                 message: msg
-             });
-         }
-         return callback(null, doc);
-     });
- };
+ function _updateOne (db, params, callback) {
+    assert(Object.getPrototypeOf(db).name === 'Model');
+    //
+    let filter = params.filter || {};
+    let updates = params.updates || {};
+    let options = params.options || {};
+    if (Object.keys(updates).length === 0) {
+        let msg = `Empty updates! - ${tools.inspect(updates)}`;
+        logger.info(msg);
+        return callback({
+            code: eRetCodes.OP_FAILED,
+            message: msg
+        });
+    }
+    if (options.new === undefined) {
+        options.new = true;
+    }
+    logger.info(`Update: ${db.modelName} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`)
+    db.findOneAndUpdate(filter, updates, options, (err, doc) => {
+        if (err) {
+            let msg = `Update ${db.modelName} error! - ${err.message}`;
+            logger.error(msg);
+            return callback({
+                code: eRetCodes.DB_UPDATE_ERR,
+                message: msg
+            });
+        }
+        if (!doc) {
+            let msg = `Specified ${db.modelName} not found! - ${tools.inspect(filter)}`;
+            logger.error(msg);
+            return callback({
+                code: eRetCodes.NOT_FOUND,
+                message: msg
+            });
+        }
+        return callback(null, doc);
+    });
+}
+exports.updateOne = _updateOne;
  
+exports.removeOne = (db, id, callback) => {
+    return _updateOne(db, {
+        filter: {
+            _id: id
+        },
+        updates: {
+            $set: {
+                status: pubdefs.eStatus.DELETED,
+                updateAt: new Date()
+            }
+        }
+    }, callback);
+ };
+
+ exports.aggregate = (db, pipeline, callback) => {
+    assert(Object.getPrototypeOf(db).name === 'Model');
+    //
+    logger.debug(`Aggregate ${db.modelName} with pipeline: ${tools.inspect(pipeline)}`);
+    return db.aggregate(pipeline).allowDiskUse(true).exec((err, results) => {
+        if (err) {
+            let msg = `Aggregate ${db.modelName} error! - ${err.message}`;
+            logger.error(msg);
+            return callback({
+                code: eRetCodes.DB_AGGREGATE_ERR,
+                message: msg
+            });
+        }
+        if (!results || results.length === 0) {
+            let msg = 'Empty data set.';
+            logger.error(`Aggregate ${db.modelName} with ${tools.inspect(pipeline)} results: ${msg}`);
+            return callback({
+                code: eRetCodes.NOT_FOUND,
+                message: msg
+            });
+        }
+        logger.debug(`Aggregate ${db.modelName} results: ${tools.inspect(results)}`);
+        return callback(null, results);
+    });
+};
+
+exports.create = (db, data, callback) => {
+    assert(Object.getPrototypeOf(db).name === 'Model');
+    //
+    db.create(data).then((doc) => {
+        return callback(null, doc);
+    }).catch (err => {
+        let msg = `Create ${db.modelName} error! - ${err.message}`;
+        logger.error(msg);
+        return callback({
+            code: eRetCodes.DB_INSERT_ERR,
+            message: msg
+        });
+    });
+};
+
+exports.remove = (db, options, callback) => {
+    assert(Object.getPrototypeOf(db).name === 'Model');
+    //
+    let filter = options.filter || {};
+    db.remove(filter, (err, result) => {
+        if (err) {
+            let msg = `Delete ${db.modelName} error! - ${err.message}`;
+            logger.error(msg);
+            return callback({
+                code: eRetCodes.DB_DELETE_ERR,
+                message: msg
+            });
+        }
+        return callback(null, result);
+    });
+};

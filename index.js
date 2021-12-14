@@ -24,6 +24,7 @@ exports.mongoSession = require('./libs/common/mongo-session.wrapper');
 exports.mysql2Wrapper = require('./libs/common/mysql2.wrapper');
 exports.grpcWrapper = require('./libs/common/grpc.wrapper');
 exports.ldapWrapper = require('./libs/common/ldap-auth.wrapper');
+exports.httpMonitor = require('./libs/common/http-monitor');
 
 // utilities
 exports.tools = require('./utils/tools');
