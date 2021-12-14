@@ -6,36 +6,41 @@ const os = require('os');
 const client = require('prom-client');
 const pubdefs = require('../../include/sysdefs');
 
-const Registry = client.Registry;
-const register = new Registry();
-register.setDefaultLabels({ instance: os.hostname() });
-const prefix = process.env.PROM_PREFIX || 'rdf4_';
+const register = client.register;
 
 const collectDefaultMetrics = client.collectDefaultMetrics;
-collectDefaultMetrics({ prefix, register });
+collectDefaultMetrics({
+    register: register
+});
 
-function _regCounter(name, help) {
+const defaultLabels = {
+    service: theApp.getRegistry(),
+    instance: theApp.getInstance()
+};
+register.setDefaultLabels(defaultLabels);
+
+function _regCounter(name, help, labelNames) {
     return new client.Counter({
         name: name,
         help: help,
-        registers: [register]
+        labelNames: labelNames
     });
 }
 
-function _regGauge(name, help) {
+function _regGauge(name, help, labelNames) {
     return new client.Gauge({
         name: name,
         help: help,
-        registers: [register]
+        labelNames: labelNames
     });
 }
 
-function _regGaugeAsync(name, help, fnCollectAsync) {
+function _regGaugeAsync(name, help, labelNames, fnCollectAsync) {
     assert(typeof fnCollectAsync === 'function');
     new client.Gauge({
         name: name,
         help: help,
-        registers: [register],
+        labelNames: labelNames,
         async collect() {
             const d = await fnCollectAsync();
             this.set(d)
@@ -49,13 +54,14 @@ exports.regMetrics = (options) => {
     options.metrics.forEach(metric => {
         let name = `${prefix}_${metric.name}`
         let help = metric.help || `${name}_help`;
+        let labelNames = metric.labelNames || [];
         if (metric.type === pubdefs.eMetricType.COUNTER) {
-            collectors[metric.name] = _regCounter(name, help);
+            collectors[metric.name] = _regCounter(name, help, labelNames);
         } else if (metric.type === pubdefs.eMetricType.GAUGE) {
             if (metric.fnCollectAsync) {
-                _regGaugeAsync(name, help, metric.fnCollectAsync);
+                _regGaugeAsync(name, help, labelNames, metric.fnCollectAsync);
             } else {
-                collectors[metric.name] = _regGauge(name, help);
+                collectors[metric.name] = _regGauge(name, help, labelNames);
             }
         }
     });
