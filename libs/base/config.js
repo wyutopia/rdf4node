@@ -6,7 +6,8 @@
  const path = require('path');
  const Util = require('util');
  const appRoot = require('app-root-path');
- const cnfFileName = `conf-${process.env.NODE_ENV}.json`;
+ let nodeEnv = process.env.NODE_ENV? process.env.NODE_ENV.slice(0, 3) : 'dev';
+ const cnfFileName = `conf-${nodeEnv}.json`;
  const cnfFilePath = process.env.CFG_FILE || path.join(appRoot.path, 'conf', cnfFileName);
  assert(cnfFilePath !== undefined);
  
