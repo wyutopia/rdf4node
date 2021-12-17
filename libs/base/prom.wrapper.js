@@ -2,8 +2,8 @@
  * Create by eric 2021/06/16
  */
 const assert = require('assert');
-const os = require('os');
 const client = require('prom-client');
+const theApp = require('../../bootstrap');
 const pubdefs = require('../../include/sysdefs');
 
 const register = client.register;

@@ -4,11 +4,11 @@
  const assert = require('assert');
  const EventEmitter = require('events');
  //
- const pubdefs = require('../inlcude/sysdefs');
+ const pubdefs = require('../include/sysdefs');
  const ePrimitives = pubdefs.ePrimitives;
  const theApp = require('../bootstrap');
  const tools = require('../utils/tools');
- const mntService = require('../base/prom.wrapper');
+ const mntService = require('./base/prom.wrapper');
  
  const {WinstonLogger} = require('./base/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'evm');
