@@ -10,23 +10,38 @@ exports.eRetCodes = require('./include/retcodes.js');
 exports.XTask = require('./libs/xtask');
 exports.eventModule = require('./libs/event-module');
 
-exports.sysConfig = require('./libs/base/config');
+const config = require('./libs/base/config');
+exports.sysConfig = config;
 exports.expressWrapper = require('./libs/base/express.wrapper');
 exports.MorganWrapper = require('./libs/base/morgan.wrapper');
 exports.winstonWrapper = require('./libs/base/winston.wrapper');
 exports.monitor = require('./libs/base/prom.wrapper');
 exports.rateLimiter = require('./libs/base/ratelimit.wrapper');
 
-// common libs
-exports.amqpWrapper = require('./libs/common/ampq.wrapper');
-exports.mongoose = require('./libs/common/mongoose.wrapper');
-exports.mongoSession = require('./libs/common/mongo-session.wrapper');
-exports.mysql2Wrapper = require('./libs/common/mysql2.wrapper');
-exports.grpcWrapper = require('./libs/common/grpc.wrapper');
-exports.ldapWrapper = require('./libs/common/ldap-auth.wrapper');
-exports.httpMonitor = require('./libs/common/http-monitor');
-
 // utilities
 exports.tools = require('./utils/tools');
-exports.dbHelper = require('./utils/db-helper');
 exports.logDirMainter = require('./utils/logdir-maint');
+
+// common libs
+if (config.mongodb) {
+    exports.mongoose = require('./libs/common/mongoose.wrapper');
+    exports.mongoSession = require('./libs/common/mongo-session.wrapper');
+    exports.dbHelper = require('./utils/db-helper');
+}
+if (config.amp) {
+    exports.amqpWrapper = require('./libs/common/ampq.wrapper');
+}
+if (config.mysql2) {
+    exports.mysql2Wrapper = require('./libs/common/mysql2.wrapper');
+}
+if (config.grpc) {
+    exports.grpcWrapper = require('./libs/common/grpc.wrapper');
+}
+if (config.ldap) {
+    exports.ldapWrapper = require('./libs/common/ldap-auth.wrapper');
+}
+if (config.httpMonitor) {
+    exports.httpMonitor = require('./libs/common/http-monitor');
+}
+
+

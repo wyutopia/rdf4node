@@ -52,7 +52,7 @@ theApp.regModule({
         const result = await mongoose.connect(connStr, options);
         if (result) {
             conn = mongoose.connection;
-            logger.info(`mongo-db@${process.env.NODE_ENV} connected!`);
+            logger.info(`${config.db}@${process.env.NODE_ENV} connected!`);
             theApp.setModuleState(MODULE_NAME, pubdefs.eModuleState.ACTIVE);
         }
     } catch (err) {

@@ -11,7 +11,7 @@ const os = require('os');
 const pubdefs = require('./include/sysdefs');
 const eRetCodes = require('./include/retcodes');
 const config = require('./libs/base/config');
-const consulClient = require('./libs/base/consul.wrapper');
+const consulClient = (config.consul? require('./libs/base/consul.wrapper') : null);
 const {WinstonLogger} = require('./libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
 const tools = require('./utils/tools');
@@ -21,6 +21,10 @@ const inetConf = config.inet;
 let version = null;
 
 function _regService(callback) {
+    if (consulClient === null) {
+        logger.warn(`>>>>>> Consul not configged! -ignore register service.`);
+        return callback();
+    }
     let localIp = tools.getLocalIp()[0];
     let port = process.env.PORT || serviceConf.port || 3000;
     consulClient.regService({
@@ -44,6 +48,10 @@ function _regService(callback) {
 }
 
 function _deregService(callback) {
+    if (consulClient === null) {
+        logger.warn(`>>>>>> Consul not configged! - ignore de-register service.`);
+        return callback();
+    }
     logger.info('Try to de-register from consul...');
     consulClient.deregService({
         id: this._id
