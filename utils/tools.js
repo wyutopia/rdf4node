@@ -2,6 +2,7 @@
  * Created by eric on 2021/09/09
  */
 const assert = require('assert');
+const crypto = require('crypto');
 const ObjectId = require('mongoose').Types.ObjectId;
 const request = require('request');
 const spawn = require('child_process').spawn;
@@ -286,3 +287,54 @@ exports.getLocalIp = function () {
     }
     return results;
 }
+
+// Generate random token
+function _generateRandom(length, encode) {
+    let len = length || 24;   // Set default to 24
+    let enc = encode || 'base64';
+    return crypto.randomBytes(Math.ceil(len * 3 / 4))
+        .toString(enc)
+        .slice(0, len);
+}
+exports.genAKey = function() {
+    return _generateRandom(6, 'hex');
+};
+
+exports.genToken = function() {
+    return _generateRandom(16, 'hex');
+};
+
+exports.genInvitation = function() {
+    return _generateRandom(6, 'hex');
+};
+
+exports.md5Sign = function() {
+    let seed = '';
+    for (let i = 0; i < arguments.length; i ++) {
+        seed += arguments[i];
+    }
+    return crypto.createHash('md5').update(seed).digest('hex');
+};
+
+exports.sha1Sign = function() {
+    let seed = '';
+    for (let i = 0; i < arguments.length; i ++) {
+        seed += arguments[i];
+    }
+    return crypto.createHash('sha1').update(seed).digest('hex');
+};
+
+exports.isEmail = function(email) {
+    let re = new RegExp(/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
+    return re.test(email);
+};
+
+exports.isMobile = function(mobile) {
+    let r = new RegExp(/^1[3-9][0-9]\d{8}$/);
+    return r.test(mobile);
+};
+
+exports.isIpAddr = function(ip) {
+    let re = new RegExp(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/);
+    return re.test(ip);
+};

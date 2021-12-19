@@ -60,7 +60,8 @@
   * @param options
   * @param callback
   */
- exports.findPartial = (db, options, callback) => {
+
+ function _findPartial (db, options, callback) {
      assert(Object.getPrototypeOf(db).name === 'Model');
      //
      let name = db.modelName;
@@ -69,8 +70,8 @@
      let filter = options.filter || {};
  
      logger.info(`Query ${name} with filter: ${tools.inspect(filter)}`);
-     let countMethod = options.allowRealCount === true? db.countDocuments : db.estimatedDocumentCount;
-     countMethod(filter, (err, total) => {
+     let countMethod = options.allowRealCount === true? 'countDocuments' : 'estimatedDocumentCount';
+     db[countMethod](filter, (err, total) => {
          if (err) {
              let msg = `Count ${name} error! - ${err.message}`;
              logger.error(msg);
@@ -109,7 +110,20 @@
          });
      });
  }
- 
+ exports.findPartial = _findPartial;
+
+ exports.pageFind = (db, params, callback) => {
+    let options = {
+        page: params.page,
+        pageSize: params.pageSize
+    };
+    delete params.page;
+    delete params.pageSize;
+    options.filter = params;
+    options.allowRealCount = true;
+    return _findPartial(db, options, callback);
+ }
+
  function _updateOne (db, params, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
     //
