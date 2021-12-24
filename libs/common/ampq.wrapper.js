@@ -3,7 +3,6 @@
  */
 const assert = require('assert');
 const EventEmitter = require('events');
-const ObjectId = require('mongoose').Types.ObjectId;
 const BrokerPro = require('rascal').BrokerAsPromised;
 // Project scope
 const pubdefs = require('../../include/sysdefs');

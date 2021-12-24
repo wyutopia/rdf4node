@@ -300,8 +300,8 @@ exports.genAKey = function() {
     return _generateRandom(6, 'hex');
 };
 
-exports.genToken = function() {
-    return _generateRandom(16, 'hex');
+exports.genToken = function(length = 16, encoding = 'hex') {
+    return _generateRandom(length || 16, encoding);
 };
 
 exports.genInvitation = function() {

@@ -20,7 +20,7 @@ exports.rateLimiter = require('./libs/base/ratelimit.wrapper');
 
 // utilities
 exports.tools = require('./utils/tools');
-exports.logDirMainter = require('./utils/logdir-maint');
+exports.logDir = require('./utils/logdir-maint');
 
 // common libs
 if (config.mongodb) {
@@ -28,7 +28,7 @@ if (config.mongodb) {
     exports.mongoSession = require('./libs/common/mongo-session.wrapper');
     exports.dbHelper = require('./utils/db-helper');
 }
-if (config.amp) {
+if (config.amq) {
     exports.amqpWrapper = require('./libs/common/ampq.wrapper');
 }
 if (config.mysql2) {
@@ -44,4 +44,6 @@ if (config.httpMonitor) {
     exports.httpMonitor = require('./libs/common/http-monitor');
 }
 
-
+if (config.redis) {
+    exports.RedisClient = require('./libs/common/redis.wrapper');
+}
