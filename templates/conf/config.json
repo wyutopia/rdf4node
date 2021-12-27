@@ -33,7 +33,7 @@
       "port": 6379,
       "password": "123456"
     },
-    "mq": {
+    "amq": {
       "vhost": "rdf",
       "connection": {
         "slashes": true,
