@@ -27,6 +27,7 @@ COPY . .
 # Set default env
 ENV NODE_ENV=production
 ENV SRV_ROLE=rdf4node
+ENV PORT=3000
 
 EXPOSE 3000
 CMD ["pm2-runtime", "start", "standalone.json"]

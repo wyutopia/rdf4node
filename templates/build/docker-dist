@@ -1,17 +1,23 @@
 #!/usr/bin/env node
 /**
- * Created by eric on 2021/11/16
+ * Created by eric on 2021/01/27
  */
  const async = require('async');
  const assert = require('assert');
+ const appRootPath = require('app-root-path');
  const fs = require('fs');
  const path = require('path');
  const moment = require('moment');
  const spawn = require('child_process').spawn;
- 
- const MAIN_VER = '0.0.0';
+ const util = require('util');
+ //
+ let MAIN_VER = '0.0.0';
  const IMAGE_NAME = 'rdf4node';
  const REGISTRY = 'some-registry/rdf4node/';
+ 
+ function _inspect (obj) {
+     return util.inspect(obj, {depth: null});
+ }
  
  function execCli(program, args, options, callback) {
      assert(program !== undefined);
@@ -22,12 +28,12 @@
      }
      assert(typeof callback === 'function');
      //
-     console.log(`Execute command: ${program} ${args} ${options}`);
+     console.log(`Execute command: ${program} - ${_inspect(args)} - ${_inspect(options)}`);
      try {
          let result = options.multi === true? [] : null;
          let proc = spawn(program, args);
          proc.on('error', (err) => {
-             console.log('Execute command error!', err);
+             console.error('Execute command error!', err);
          });
          proc.stdout.on('data', (data) => {
              if (data) {
@@ -40,8 +46,8 @@
              }
          });
          proc.on('close', (code, signal) => {
-             console.log('Stdout: ', result);
-             console.log('Process exit.', code, signal);
+             console.log(`Stdout: ${_inspect(result)}`);
+             console.log(`Process exit. ${code} - ${signal}`);
              if (code === 0) {
                  return callback(null, result);
              }
@@ -55,15 +61,21 @@
      }
  }
  
+ function _getProgramVersion() {
+     let pkgFile = path.join(appRootPath.path, 'package.json');
+     return JSON.parse(fs.readFileSync(pkgFile).toString()).version;
+ }
+ 
  function updateVersion(callback) {
      let error = null;
      try {
-         const verFile = path.join(__dirname + '/../conf/version.json');
+         MAIN_VERSION = _getProgramVersion();
+         const verFile = path.join(appRootPath.path, 'conf/version.json');
          let rawData = fs.readFileSync(verFile).toString();
          let verData = JSON.parse(rawData.toString());
-         verData.version = MAIN_VER;
+         verData.version = MAIN_VERSION;
          verData.build = moment().format('YYYYMMDDHHmmssSSS');
-         console.log('New version: ', verData);
+         console.log(`New version: ${_inspect(verData)}`);
          fs.writeFileSync(verFile, JSON.stringify(verData));
      } catch (ex) {
          console.log(ex);
@@ -96,15 +108,13 @@
      });
  }
  
- //docker build -t registry.cn-hangzhou.aliyuncs.com/rich-v2/apm:2.0.0-b791964
- 
  function buildDockerImage(commitHash, callback) {
-     let tag = MAIN_VER + '-' + commitHash;
+     let tag = `${MAIN_VERSION}-${commitHash}`;
      let program = 'docker';
      let args = ['build', '-t', `${REGISTRY}${IMAGE_NAME}:${tag}`, '.'];
      execCli(program, args, {multi: true}, (err) => {
          if (err) {
-             console.log(`Build docker image error! - ${err.message}`);
+             console.error(`Build docker image error! - ${_inspect(err)}`);
          } else {
              console.log('Build docker image succeed.');
          }
@@ -121,11 +131,11 @@
      buildDockerImage
  ], (err, tag) => {
      if (err) {
-         return console.log('Build error!', err);
+         return console.error(`Build error! - ${_inspect(err)}`);
      }
      execCli('git', ['tag', `"${tag}"`], (err) => {
          if (err) {
-             return console.log(`Tag error! - ${err.message}`);
+             return console.error(`Tag error! - ${err}`);
          }
          return console.log(`Push image to docker-registry:  docker image push ${REGISTRY}${IMAGE_NAME}:${tag}`);
      });
