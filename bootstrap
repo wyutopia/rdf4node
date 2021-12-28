@@ -121,10 +121,11 @@ class TheApp extends EventEmitter {
                     instance: this._id,
                     eventId: args.eventId,
                     content: args.content
-                }
+                },
+                bodyParser: tools.defaultBodyParser
             };
             logger.debug(`Alarm options: ${tools.inspect(options)}`);
-            tools.invokeHttpRequest(options, tools.defaultBodyParser, (err, body) => {
+            tools.invokeHttpRequest(options, (err, body) => {
                 if (err) {
                     return callback(err);
                 }

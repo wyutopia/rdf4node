@@ -47,8 +47,9 @@ theApp.regModule({
             useNewUrlParser: true
         };
         logger.info('Connect to MongoDb......');
+        let host = config.host || `${config.ip}:${config.port}`;
         let connStr = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}` 
-                        + `@${config.ip}:${config.port || 27017}/${config.db}?authSource=${config.authSource || config.db}`;
+                        + `@${host}/${config.db}?authSource=${config.authSource || config.db}`;
         const result = await mongoose.connect(connStr, options);
         if (result) {
             conn = mongoose.connection;

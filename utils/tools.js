@@ -150,7 +150,6 @@ exports.defaultBodyParser = (body, callback) => {
  * @param {*} callback 
  */
 exports.invokeHttpRequest = function (options, callback) {
-
     if (options.timeout === undefined) {
         options.timeout = pubdefs.eInterval._5_SEC;
     }
