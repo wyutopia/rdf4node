@@ -1,6 +1,7 @@
 /**
 * Create by Eric on 2021/12/28
 */
+const async = require('async');
 const {Connection, Request} = require('tedious');
 const theApp = require('../../bootstrap');
 const tools = require('../../utils/tools');
@@ -10,28 +11,33 @@ const logger = WinstonLogger(process.env.SRV_ROLE || 'redis');
 
 const MODULE_NAME = "TDS_CONN";
 
-class TdsConnection {
-    constructor() {
-        this.id = tools.uuidv4(),
+class TdsClient {
+    constructor(options) {
+        this.name = options.name,
+        this.config = options.config;
+        this.isConnected = false;
         this.connection = null,
         // Implementing methods
-        this.createConnection = (config, callback) => {
+        this.connect = () => {
+            if (this.isConnected) {
+                return null;
+            }
             let conn = new Connection(config);
             conn.on('connect', (err) => {
                 if (err) {
                     logger.error(`${this.name}: connect error! - ${err.message}`);
-                    return callback(err);
                 }
                 this.connection = conn;
-                return this;
+                this.isConnected = true;
             });
             conn.on('end', () => {
-                if (this.connection === null) {
-                    logger.info(`${this.name}: disconnected.`);
-                } else {
+                if (this.isConnected) {
                     logger.error(`${this.name}: Server closed or network error!`);
-                    this.connection = null;
+                    this.isConnected = false;
+                } else {
+                    logger.info(`${this.name}: disconnected.`);
                 }
+                this.connection = null;
             })
             conn.connect();
         },
@@ -47,36 +53,34 @@ class TdsConnection {
             let req = new Request(options.sql, callback);
             this.connection.execute(req, options.params || {});
         }
-    }
-}
-
-class TdsConnectionPool {
-    constructor() {
-        this.name = MODULE_NAME;
-        this.connections = {};
-        //
-        this.createConnection = (options) => {
-
-        },
         this.dispose = (callback) => {
-            logger.info(`${this.name}: Disconnect from server...`);
-            if (this.connection !== null) {
+            if (this.isConnected) {
+                logger.info(`${this.id}: Close connection...`);
+                this.isConnected = false;
                 this.connection.close();
-                this.connection = null;
             }
             return process.nextTick(callback);
         }
+        //
+        this.connect();
     }
 }
 
 const tdsWrapper = {
     name: MODULE_NAME,
-    connections: {},
-    createConnection: () => {
-
+    _clients: [],
+    createClient: (options) => {
+        let client = new TdsClient(options);
+        this._clients.push(client);
+        return client;
     },
     dispose: (callback) => {
-
+        logger.info(`${this.name}: close all connections...`);
+        async.eachLimit(_clients, 4, (client, next) => {
+            return client.dispose(next);
+        }, () => {
+            return callback();
+        });
     }
 }
 theApp.regModule(tdsWrapper);

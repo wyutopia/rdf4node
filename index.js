@@ -48,5 +48,5 @@ if (config.redis) {
     exports.RedisClient = require('./libs/common/redis.wrapper');
 }
 if (config.tedious) {
-    exports.tediousWrapper = require('./libs/common/tedious.wrapper');
+    exports.tdsWrapper = require('./libs/common/tedious.wrapper');
 }
