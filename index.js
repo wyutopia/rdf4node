@@ -12,6 +12,7 @@ exports.eventModule = require('./libs/event-module');
 
 const config = require('./libs/base/config');
 exports.sysConfig = config;
+exports.allConfig = config;
 exports.expressWrapper = require('./libs/base/express.wrapper');
 exports.MorganWrapper = require('./libs/base/morgan.wrapper');
 exports.winstonWrapper = require('./libs/base/winston.wrapper');
@@ -43,7 +44,9 @@ if (config.ldap) {
 if (config.httpMonitor) {
     exports.httpMonitor = require('./libs/common/http-monitor');
 }
-
 if (config.redis) {
     exports.RedisClient = require('./libs/common/redis.wrapper');
+}
+if (config.tedious) {
+    exports.tediousWrapper = require('./libs/common/tedious.wrapper');
 }

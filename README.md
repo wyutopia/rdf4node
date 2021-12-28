@@ -84,3 +84,41 @@ docker exec -it redis-dev redis-cli
 > auth "Dev#2021"
 > select 0         // System allocated database #
 ```
+### Start elasticsearch instance for development
+```
+docker pull elasticsearch
+docker run -id --name es-dev -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:7.13.1
+```
+### Run Consul for Development In Docker
+```
+$docker run -id \
+    -p 8300-8302:8300-8302/tcp \
+    -p 8500:8500/tcp \
+    -p 8301-8302:8301-8302/udp \
+    -p 8600:8600/tcp \
+    -p 8600:8600/udp \
+    -e CONSUL_BIND_INTERFACE=eth0 \
+    --name=consul-dev consul
+$docker run -id --name=consul-dev -e CONSUL_BIND_INTERFACE=eth0 consul
+```
+This runs a completely in-memory Consul Server agent with default bridge networking and no services exposed on the host, which is useful for development bu should not be used in production. For example, if that server is running at internal address 172.17.0.2, you can run a three node cluster for development by starting up two more instances and telling them to join the first node.
+```
+$ docker run -d -e CONSUL_BIND_INTERFACE=eth0 consul agent -dev -join=172.17.0.2 // server 2 starts
+$ docker run -d -e CONSUL_BIND_INTERFACE=eth0 consul agent -dev -join=172.17.0.2 // server 3 starts
+```
+Then we can query for all the members in the cluster by running a Consul CLI command in the first container:
+```
+$ docker exec -t consul-dev consul members
+```
+### Start sql-server 2017 for develop
+```
+docker pull mcr.microsoft.com/mssql/server:2017-latest
+docker run -id \
+    -e "ACCEPT_EULA=Y" \
+    -e "SA_PASSWORD=Dev#2022" \
+    -p 1433:1433 \
+    --name sqlsrv-dev \
+    mcr.microsoft.com/mssql/server:2017-latest
+// Connect to local server
+docker exec -it sqlsrv-dev /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Dev#2022
+```

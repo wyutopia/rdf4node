@@ -51,6 +51,17 @@
       "ip": false,
       "token": true,
       "secret": "secret123456"
+    },
+    "tedious": {
+      "server": "127.0.0.1",
+      "options": {},
+      "authentication": {
+        "type": "default",
+        "options": {
+          "username": "sa",
+          "password": "Dev#2022"
+        }
+      }
     }
   }
   
