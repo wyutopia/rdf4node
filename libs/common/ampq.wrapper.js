@@ -79,6 +79,7 @@ class RmqClient extends EventEmitter {
         this._id = options.id || tools.uuidv4();
         this.alias = options.alias || this._id;
         this.broker = null;
+        this.pubKeys = [];
         // Implementing methods
         this.dispose = async () => {
             try {

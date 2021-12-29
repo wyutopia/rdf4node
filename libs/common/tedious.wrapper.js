@@ -94,8 +94,14 @@ class TdsClient {
                     message: msg
                 });
             }
-            let req = new Request(options.sql, callback);
-            this.connection.execute(req, options.params || {});
+            let req = new Request(options.statement, (err, rowCount, rows) => {
+                if (err) {
+                    logger.error(`${this.name}[${this.state}]: ${err.message}`);
+                    return callback(err);
+                }
+                return callback(null, rowCount);
+            });
+            this.connection.execSql(req);
         }
         this.dispose = (callback) => {
             if (this.state === eClientState.Connected) {

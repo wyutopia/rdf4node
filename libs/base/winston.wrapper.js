@@ -9,7 +9,7 @@
  require('winston-daily-rotate-file');
  const { combine, timestamp, label, printf } = winston.format;
  
- const logLevel = process.env.NODE_ENV === 'development'? 'debug' : 'info';
+ const logLevel = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'development'? 'debug' : 'info');
  const logDir = process.env.LOG_DIR || path.join(appRootPath.path, 'logs');
  console.log('>>>>>> Log parameters:', logDir, logLevel);
  
