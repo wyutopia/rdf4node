@@ -8,7 +8,7 @@ exports.eRetCodes = require('./include/retcodes.js');
 
 // base libs
 exports.XTask = require('./libs/xtask');
-exports.eventModule = require('./libs/event-module');
+exports.moduleWrapper = require('./libs/event-module');
 
 const config = require('./libs/base/config');
 exports.sysConfig = config;

@@ -35,7 +35,7 @@
         this.doWork = () => {
             //logger.debug(this.alias, 'Start working...');
             if (this.mutex) {
-                logger.error(this.alias, 'conflict!');
+                logger.error(`${this.alias}: loop conflict!`);
                 return null;
             }
             this.mutex = true;
@@ -56,9 +56,9 @@
              if (this.hTask === null) {
                  this.mutex = false;
                  this.hTask = this.startup === 'ONCE'? setTimeout(this.doWork, this.interval) : setInterval(this.doWork, this.interval);
-                 logger.info(this.alias, 'started.');
+                 logger.info(`${this.alias}: started. - ${this.startup} - ${this.interval}`);
              } else {
-                 logger.error(this.alias, 'already exists.');
+                 logger.error(`${this.alias}: already exists.`);
              }
          }
          this.stop = () => {
@@ -66,7 +66,7 @@
                  this.startup === 'ONCE'? clearTimeout(this.hTask) : clearInterval(this.hTask);
                  this.hTask = null;
                  this.mutex = false;
-                 logger.info(this.alias, '>>>>> Backend task <<<<<', 'stopped.');
+                 logger.info(`${this.alias}: >>>>> Backend task <<<<< stopped.`);
              }
          }
          this.restart = (itv) => {
