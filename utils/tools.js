@@ -197,6 +197,12 @@ exports.parseParameters = (params, options, callback) => {
         callback = options;
         options = {};
     }
+    if (!params) {
+        return callback({
+            code: eRetCodes.BAD_REQUEST,
+            message: 'Null parameters'
+        });
+    }
     if (_isTypeOfArray(options)) {
         options = {
             mandatory: options,
