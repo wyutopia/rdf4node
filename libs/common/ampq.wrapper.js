@@ -134,15 +134,21 @@ class RmqClient extends EventEmitter {
                             const sub = await this.broker.subscribe(key);
                             sub.on('message', (message, content, ackOrNack) => {
                                 logger.debug(`${this.alias}: Content= ${tools.inspect(content)}`);
-                                let msg = null;
+                                let evt = null;
                                 try {
-                                    msg = JSON.parse(typeof content === 'string' ? content : content.toString());
-                                    
+                                    evt = JSON.parse(typeof content === 'string' ? content : content.toString());
                                 } catch (ex) {
                                     logger.error(`${this.alias}: Parsing content error! - ${ex.message}. Content= ${tools.inspect(content)}`);
                                 }
-                                if (msg) {
-                                    this.onMessage(msg);
+                                if (evt) {
+                                    if (evt.uuid && evt.msg) {
+                                        if (evt.body === undefined) {
+                                            evt.body = {};
+                                        }
+                                        this.onMessage(evt);
+                                    } else {
+                                        
+                                    }
                                 }
                                 ackOrNack();
                             }).on('error', (err) => {
