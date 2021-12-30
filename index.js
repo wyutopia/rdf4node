@@ -45,7 +45,7 @@ if (config.httpMonitor) {
     exports.httpMonitor = require('./libs/common/http-monitor');
 }
 if (config.redis) {
-    exports.RedisClient = require('./libs/common/redis.wrapper');
+    exports.redisWrapper = require('./libs/common/redis.wrapper');
 }
 if (config.tedious) {
     exports.tdsWrapper = require('./libs/common/tedious.wrapper');

@@ -6,6 +6,7 @@ const {Connection, Request} = require('tedious');
 const theApp = require('../../bootstrap');
 const tools = require('../../utils/tools');
 const pubdefs = require('../../include/sysdefs');
+const eRetCodes = require('../../include/retcodes');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'redis');
@@ -90,7 +91,7 @@ class TdsClient {
                 let msg = `Execute error: connection lost! - ${tools.inspect(options)}`;
                 logger.error(msg);
                 return callback({
-                    code: 1433,
+                    code: eRetCodes.TEDIOUS_ERROR,
                     message: msg
                 });
             }

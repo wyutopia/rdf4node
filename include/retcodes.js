@@ -75,7 +75,11 @@ let eRetCodes = {
     DB_INSERT_ERR: 512,
     DB_UPDATE_ERR: 513,
     DB_DELETE_ERR: 514,
-    REDIS_ERR: 515
+    REDIS_ERR: 515,
+    // REDIS ERRORs
+    REDIS_CONNECT_ERR: 600,
+    // TEDIOUS ERRORs
+    TEDIOUS_ERROR: 1433
 };
 Object.freeze(eRetCodes);
 
