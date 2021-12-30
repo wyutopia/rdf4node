@@ -147,7 +147,7 @@ class RmqClient extends EventEmitter {
                                         }
                                         this.onMessage(evt);
                                     } else {
-                                        
+                                        logger.error(`${this.alias}: Bad message format! uuid or msg missing`)
                                     }
                                 }
                                 ackOrNack();
