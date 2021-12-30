@@ -172,23 +172,52 @@ class TheApp extends EventEmitter {
         this.gracefulExit = () => {
             logger.info('>>>>>> Perform system clean-up before exit <<<<<<');
             _raiseGracefulExitAlarm.call(this, () => {
-                let keys = Object.keys(this._modules);
-                async.each(keys, (key, next) => {
-                    let m = this._modules[key];
-                    if (typeof m.dispose !== 'function') {
-                        return process.nextTick(next);
+                async.series([
+                    (next) => {
+                        logger.info('>>>>>>>> Step 1: Stop application modules...');
+                        let keys = Object.keys(this._modules);
+                        async.each(keys, (key, next) => {
+                            let m = this._modules[key];
+                            if (m.type === pubdefs.eModuleType.PLATFORM || typeof m.dispose !== 'function') {
+                                return process.nextTick(next);
+                            }
+                            m.dispose(err => {
+                                if (err) {
+                                    logger.error(err.code, err.message);
+                                }
+                                return next();
+                            });
+                        }, () => {
+                            logger.info('>>>>>>>>>> All application modules stopped.');
+                            return next();
+                        });
+                    },
+                    (next) => {
+                        logger.info('>>>>>>>> Step 2: Stop platform modules...');
+                        let keys = Object.keys(this._modules);
+                        async.each(keys, (key, next) => {
+                            let m = this._modules[key];
+                            if (m.type !== pubdefs.eModuleType.PLATFORM || typeof m.dispose !== 'function') {
+                                return process.nextTick(next);
+                            }
+                            m.dispose(err => {
+                                if (err) {
+                                    logger.error(err.code, err.message);
+                                }
+                                return next();
+                            });
+                        }, () => {
+                            logger.info('>>>>>>>>>> All platform modules stopped.');
+                            return next();
+                        });
                     }
-                    m.dispose(err => {
-                        if (err) {
-                            logger.error(err.code, err.message);
-                        }
-                        return next();
-                    });
-                }, () => {
+                ], () => {
                     _deregService.call(this, () => {
                         return process.exit(0);
                     });
-                });
+                })
+
+
             });
         }
         this.isActive = () => {
