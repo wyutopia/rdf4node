@@ -55,6 +55,12 @@ exports.isValidModuleState = (s) => {
     return Object.values(eModuleState).indexOf(s) > -1;
 };
 
+const eModuleType = {
+    PLATFORM     : 'plat',
+    APPLICATION  : 'app'
+};
+exports.eModuleType = eModuleType;
+
 const eStatus = {
     UNREG     : -1,
     ACTIVE    : 0,

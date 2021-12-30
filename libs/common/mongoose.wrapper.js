@@ -17,6 +17,7 @@ theApp.regModule({
     name: MODULE_NAME,
     mandatory: true,
     state: pubdefs.eModuleState.INIT,
+    type: pubdefs.eModuleType.PLATFORM,
     dispose: (callback) => {
         try {
             logger.info('Disconnect from MongoDb...');
