@@ -32,7 +32,7 @@ function _regService(callback) {
         id: this._id,
         tags: serviceConf.tags,
         address: localIp,
-        port: port,
+        port: parseInt(port, 10),
         check: {
             http: `http://${localIp}:${port}/monitor/health`,
             interval: '15s'
