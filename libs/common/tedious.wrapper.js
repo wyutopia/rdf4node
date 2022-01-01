@@ -2,7 +2,7 @@
 * Create by Eric on 2021/12/28
 */
 const async = require('async');
-const {Connection, Request} = require('tedious');
+const {Connection, Request, TYPES} = require('tedious');
 const theApp = require('../../bootstrap');
 const tools = require('../../utils/tools');
 const pubdefs = require('../../include/sysdefs');
@@ -25,6 +25,56 @@ const eClientState = {
 function _retryConnect() {
     this.hRetry = null;
     this.connect();
+}
+
+const eDataTypes = {
+    // Exact numberics
+    'bit'            : TYPES.Bit,
+    'tinyint'        : TYPES.TinyInt,
+    'smallint'       : TYPES.SmallInt,
+    'int'            : TYPES.Int,
+    'bigint'         : TYPES.BigInt,
+    'numberic'       : TYPES.Numeric,
+    'decimal'        : TYPES.Decimal,
+    'smallmoney'     : TYPES.SmallMoney,
+    'money'          : TYPES.Money,
+    // Approximate numberics
+    'float'          : TYPES.Float,
+    'real'           : TYPES.Real,
+    // Date and Time
+    'smalldatetime'  : TYPES.SmallDateTime,
+    'datetime'       : TYPES.DateTime,
+    'datetime2'      : TYPES.DateTime2,
+    'datetimeoffset' : TYPES.DateTimeOffset,
+    'time'           : TYPES.Time,
+    'date'           : TYPES.Date,
+    // Character Strings
+    'char'           : TYPES.Char,
+    'varchar'        : TYPES.VarChar,
+    'text'           : TYPES.Text,
+    // Unicoding Strings
+    'nchar'          : TYPES.NChar,
+    'nvarchar'       : TYPES.NVarChar,
+    'ntext'          : TYPES.NText,
+    // Binary Strings
+    'binary'         : TYPES.Binary,
+    'varbinary'      : TYPES.VarBinary,
+    'image'          : TYPES.Image,
+    // Other Data Types
+    'null'           : TYPES.Null,
+    'TVP'            : TYPES.TVP,
+    'UDT'            : TYPES.UDT,
+    'uniqueidentifier' : TYPES.UniqueIdentifier,
+    'variant'        : TYPES.Variant,
+    'xml'            : TYPES.xml
+};
+function _convertDataType(t) {
+    let dt = eDataTypes[t];
+    if (dt === undefined) {
+        logger.error(`${this.name}[${this.state}]: Invalid DataType!`);
+        dt = TYPES.Null;
+    }
+    return dt;
 }
 
 class TdsClient {
@@ -102,6 +152,18 @@ class TdsClient {
                 }
                 return callback(null, rowCount);
             });
+            if (options.parameters) {
+                try {
+                    let params = JSON.parse(options.parameters);
+                    let keys = Object.keys(params)
+                    keys.forEach(key => {
+                        let p = params[key];
+                        req.addParameter(key, _convertDataType.call(this, p.type), p.value);
+                    });
+                } catch (ex) {
+                    logger.error(`${this.name}[${this.state}]: ${ex.message}`);
+                }
+            }
             this.connection.execSql(req);
         }
         this.dispose = (callback) => {
