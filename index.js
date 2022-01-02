@@ -31,6 +31,7 @@ if (config.mongodb) {
 }
 if (config.amq) {
     exports.amqpWrapper = require('./libs/common/ampq.wrapper');
+    exports.rascalWrapper = require('./libs/common/rascal.wrapper');
 }
 if (config.mysql2) {
     exports.mysql2Wrapper = require('./libs/common/mysql2.wrapper');

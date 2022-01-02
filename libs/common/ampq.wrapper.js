@@ -3,7 +3,7 @@
  */
 const assert = require('assert');
 const EventEmitter = require('events');
-const BrokerPro = require('rascal').BrokerAsPromised;
+const {Broker, BrokerAsPromised: BrokerPro} = require('rascal');
 // Project scope
 const pubdefs = require('../../include/sysdefs');
 const theApp = require('../../bootstrap');
@@ -71,7 +71,7 @@ function assembleTotalConfig({ vhost, conn, params }) {
  * @param options
  * @constructor
  */
-class RmqClient extends EventEmitter {
+class RmqClientAsync extends EventEmitter {
     constructor(options) {
         assert(options !== undefined);
         super(options);
@@ -170,4 +170,4 @@ class RmqClient extends EventEmitter {
     }
 }
 
-exports.RmqClient = RmqClient;
+exports.RmqClient = RmqClientAsync;
