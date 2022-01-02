@@ -89,10 +89,11 @@ class RedisWrapper {
             client.on('end', _onConnectionEnd.bind(this, clientId, options.parent));
         }
         this.dispose = (callback) => {
-            this._clients.forEach(client => {
-                client.close();
-            });
-            return callback();
+            let keys = Object.keys(this._clients);
+            for (let id in this._clients) {
+                this._clients[id].close();
+            }
+            return process.nextTick(callback);
         }
         //
         (() => {

@@ -2,6 +2,7 @@
  * Create by Eric on 2022/01/02
  */
 const async = require('async');
+const assert = require('assert');
 const EventEmitter = require('events');
 const { Broker } = require('rascal');
 // Project scope
@@ -13,8 +14,9 @@ const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
 
 const MODULE_NAME = 'AMQP_CONN';
 
-class RascalClientMangager extends EventEmitter{
+class RascalClientMangager extends EventEmitter {
     constructor() {
+        super();
         //
         this.name = MODULE_NAME;
         this.mandatory = true;
@@ -42,7 +44,7 @@ class RascalClientMangager extends EventEmitter{
             });
         }
         // Implementing event handle
-        on('end', (clientId, err) => {
+        this.on('end', (clientId, err) => {
             logger.info(`${this.name}: On client [END] - ${clientId} - ${tools.inspect(err)}`);
             delete this._clients[clientId];
         });
@@ -79,6 +81,10 @@ function assembleTotalConfig({ vhost, conn, params }) {
     };
 }
 
+function onMessage(content = {}) {
+    logger.debug(`${this.name}: Content = ${tools.inspect(content)}`);
+}
+
 class RascalClient {
     constructor(options) {
         // Declaring member variables
@@ -89,6 +95,8 @@ class RascalClient {
         this.state = eClientState.Null;
         this.pubKeys = [];
         //
+        this.onMessage = (options.onMessage ? options.onMessage : onMessage).bind(this);
+
         // Implementing methods
         this.dispose = (callback) => {
             if (this.broker === null || this.state !== eClientState.Active) {
@@ -147,9 +155,7 @@ class RascalClient {
             });
         }
         // Implementing event handlers
-        this.onMessage = (content = {}) => {
-            logger.debug(`${this.alias}: Content = ${tools.inspect(content)}`);
-        }
+
         //
         (() => {
             let config = options.config;
@@ -182,7 +188,7 @@ class RascalClient {
                         let keys = Object.keys(subscriptions);
                         logger.info(`${self.name}[${self.state}]: Subscription keys= ${tools.inspect(keys)}`);
                         async.each(keys, (key, next) => {
-                            self.broker.subscirber(key, (err, sub) => {
+                            broker.subscribe(key, (err, sub) => {
                                 if (err) {
                                     let msg = `${self.name}[${self.state}]: Subscribe key=${key} error! - ${err.message}`;
                                     logger.error(msg);
@@ -225,7 +231,7 @@ class RascalClient {
                         return process.nextTick(callback);
                     }
                 }, () => {
-                    // Assign broker to this
+                    // Save broker and activate client
                     self.broker = broker;
                     self.state = eClientState.Active;
                 });
