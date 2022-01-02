@@ -137,6 +137,7 @@ class TdsClient {
             conn.connect();
         },
         this.execute = (options, callback) => {
+            logger.debug(`${this.name}[${this.state}]: ${tools.inspect(options)}`);
             if (this.connection === null) {
                 let msg = `Execute error: connection lost! - ${tools.inspect(options)}`;
                 logger.error(msg);

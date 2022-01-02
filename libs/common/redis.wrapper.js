@@ -1,6 +1,7 @@
 /**
  * Create by Eric on 2021/12/24
  */
+const EventEmitter = require('events');
 const {createClient} = require('redis');
 const theApp = require('../../bootstrap');
 const eRetCodes = require('../../include/retcodes');
@@ -33,6 +34,21 @@ function _onConnectionEnd(clientId, parent) {
     }
     if (Object.keys(this._clients).length === 0) {
         logger.info(`${this.name}: All connections closed.`);
+    }
+}
+
+class RedisClient extends EventEmitter {
+    constructor(options) {
+        super(options);
+        //
+        this.id = options.id;
+        this.state = eClientState.Init;
+        this._client = null;
+        //
+        
+        (() => {
+
+        })();
     }
 }
 
