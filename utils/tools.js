@@ -88,6 +88,23 @@ exports.safeGetJsonValue = (json, path) => {
     return data;
 };
 
+exports.getValueByPath = function (json, path) {
+    if (typeof json !== 'object') {
+        return null;
+    }
+    let keys = Object.keys(json);
+    if (keys.indexOf(path) === -1) {
+        return null;
+    }
+    let paths = path.split('.');
+    let val = json;
+    let i = 0;
+    while (val !== undefined && i < paths.length) {
+        val = val[paths[i++]];
+    }
+    return val;
+};
+
 exports.packUri = function (url, data) {
     let uri = url;
     if (data) {
