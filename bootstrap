@@ -90,6 +90,7 @@ class TheApp extends EventEmitter {
         this._config = Object.assign(config, {pushAlarm: true});
         this._state = pubdefs.eModuleState.INIT;
         this._modules = {};
+        this._arch = {};
         this._isMaster = false;
         // Implementing member methods
         this.getServiceName = () => {
@@ -108,11 +109,15 @@ class TheApp extends EventEmitter {
             this._state = s;
         }
         // Fire alarm
-        this.fireAlarm = (args, callback) => {
-            if (process.env.NODE_ENV !== 'production') {
+        this.fireAlarm = (args, options, callback) => {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            }
+            if (process.env.NODE_ENV !== 'production' && !options.alwaysSend) {
                 return callback();
             }
-            let options = {
+            let req = {
                 url: `${inetConf.apm.baseUrl}/v1/alarm/raise`,
                 method: 'POST',
                 json: true,
@@ -121,11 +126,11 @@ class TheApp extends EventEmitter {
                     instance: this._id,
                     eventId: args.eventId,
                     content: args.content
-                },
-                bodyParser: tools.defaultBodyParser
+                }
             };
-            logger.debug(`Alarm options: ${tools.inspect(options)}`);
-            tools.invokeHttpRequest(options, (err, body) => {
+            logger.debug(`Alarm options: ${tools.inspect(req)}`);
+            req.bodyParser = tools.defaultBodyParser;
+            tools.invokeHttpRequest(req, (err, body) => {
                 if (err) {
                     return callback(err);
                 }
@@ -139,7 +144,7 @@ class TheApp extends EventEmitter {
         this.regModule = (mod) => {
             logger.info(`New module registry: ${mod.name} - ${mod.mandatory} - ${mod.status}`);
             if (this._modules[mod.name] !== undefined) {
-                logger.error(`Conflict! ${mod.name} already registered.`)
+                logger.error(`>>>>>> Conflict! ${mod.name} already registered.`)
             } else {
                 this._modules[mod.name] = mod;
             }
