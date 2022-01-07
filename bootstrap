@@ -122,7 +122,7 @@ class TheApp extends EventEmitter {
                 method: 'POST',
                 json: true,
                 body: {
-                    service: this.getServiceAlias(),
+                    service: args.service || this.getServiceAlias(),
                     instance: this._id,
                     eventId: args.eventId,
                     content: args.content

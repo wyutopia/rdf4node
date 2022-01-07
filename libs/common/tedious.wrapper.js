@@ -9,6 +9,7 @@ const pubdefs = require('../../include/sysdefs');
 const eRetCodes = require('../../include/retcodes');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
+const { CommonModule } = require('../../include/components');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'redis');
 
 const MODULE_NAME = "TDS_CONN";
@@ -180,9 +181,10 @@ class TdsClient {
     }
 }
 
-class TdsWrapper {
+class TdsWrapper extends CommonModule {
     constructor(options) {
-        this.name = options.name;
+        super(options);
+        //
         this._clients = [];
         //
         this.createClient = (options) => {
@@ -198,11 +200,16 @@ class TdsWrapper {
                 return callback();
             });
         }
+        //
+        (() => {
+            theApp.regModule(tdsWrapper);
+        })();
     }
 }
 const tdsWrapper = new TdsWrapper({
-    name: 'TdsClientManager'
-})
-theApp.regModule(tdsWrapper);
+    name: 'TdsClientManager',
+    mandatory: true,
+    state: pubdefs.eModuleState.ACTIVE
+});
 
 module.exports = exports = tdsWrapper;

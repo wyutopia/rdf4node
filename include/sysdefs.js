@@ -56,6 +56,7 @@ exports.isValidModuleState = (s) => {
 };
 
 const eModuleType = {
+    OBJ          : 'obj',
     OS_EXT       : 'osext',
     CONN         : 'conn',
     APP          : 'app',

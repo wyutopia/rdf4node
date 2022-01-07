@@ -35,18 +35,18 @@ docker pull mongo
 docker run -id --name mongo-dev \
     -p 27017:27017 \
     -e MONGO_INITDB_ROOT_USERNAME=admin \
-    -e MONGO_INITDB_ROOT_PASSWORD=Dev#2021 \
+    -e MONGO_INITDB_ROOT_PASSWORD=Dev#2022 \
     mongo --wiredTigerCacheSizeGB 1.5
 ```
 #### Prepare collection
 ```
 mongosh
 > use admin
-admin> db.auth('admin', 'Dev#2021')
+admin> db.auth('admin', 'Dev#2022')
 admin> use rdf4
 rdf4> db.createUser({ \
     user: 'dbo', \
-    pwd: 'Dev#2021' \
+    pwd: 'Dev#2022' \
     roles: [{role: 'dbOwner', db: 'rdf4}] \
   })
 ```
@@ -59,7 +59,7 @@ docker run -id --name rmq-dev \
     -p 5672:5672 \
     -p 15692:15692 \
     -e RABBITMQ_DEFAULT_USER=admin \
-    -e RABBITMQ_DEFAULT_PASS=Dev#2021 \
+    -e RABBITMQ_DEFAULT_PASS=Dev#2022 \
     rabbitmq
 ```
 #### Enable management plugin
@@ -76,12 +76,12 @@ Then you can open web consol from http://127.0.0.1:15672
 docker pull redis:latest
 docker run -id --name redis-dev \
     -p 6379:6379 \
-    redis --requirepass "Dev#2021"
+    redis --requirepass "Dev#2022"
 ```
 #### Connect with cli
 ```
 docker exec -it redis-dev redis-cli
-> auth "Dev#2021"
+> auth "Dev#2022"
 > select 0         // System allocated database #
 ```
 ### Start elasticsearch instance for development
@@ -121,4 +121,9 @@ docker run -id \
     mcr.microsoft.com/mssql/server:2017-latest
 // Connect to local server
 docker exec -it sqlsrv-dev /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Dev#2022
+```
+
+### Login to registry to publish
+```
+npm adduser --registry https://nexus.ice-deer.com/repository/npm-release
 ```
