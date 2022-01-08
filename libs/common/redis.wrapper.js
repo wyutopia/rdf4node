@@ -45,7 +45,8 @@
          port: this.config.port,
          reconnectStrategy: (retries) => {
              if (retries > this.maxRetryTimes) {
-                 return new Error('Max retry times exceeded.');
+                logger.error(`${this.name}: Max retry times (${this.maxRetryTimes}) exceeded.`);
+                return pubdefs.eInterval._5_MIN;
              }
              return this.retryInterval;
          }
@@ -72,7 +73,7 @@
          //
          this.parent = options.parent;
          this.config = options.config;
-         this.maxRetryTimes = options.maxRetryTimes || 10;
+         this.maxRetryTimes = options.maxRetryTimes || 100;
          this.retryInterval = options.retryInterval || 1000;
          //
          this.state = eClientState.Null;
@@ -155,11 +156,11 @@
              client.on('error', (err) => {
                  switch(this.state) {
                      case eClientState.Init:
-                         logger.error(`${this.name}[${this.state}]: Connecting failed! - ${err.message}`);
-                         this.state = eClientState.Closing;
+                         logger.error(`${this.name}[${this.state}]: On [ERROR] - Connecting failed! - ${err.message}`);
+                         //this.state = eClientState.Closing;
                          break;
                      case eClientState.Conn:
-                         logger.error(`${this.name}[${this.state}]: Connection error! - ${err.message}`);
+                         logger.error(`${this.name}[${this.state}]: On [ERROR] - Connection error! - ${err.message}`);
                          this.state = eClientState.PClose;
                          break;
                      default:
