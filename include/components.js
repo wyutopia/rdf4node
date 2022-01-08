@@ -29,6 +29,8 @@ class CommonObject {
         //
     }
 }
+exports.CommonObject = CommonObject;
+
 class CommonModule extends CommonObject {
     constructor(options) {
         super(options);

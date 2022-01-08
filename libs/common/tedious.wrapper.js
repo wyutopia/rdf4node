@@ -3,25 +3,17 @@
 */
 const async = require('async');
 const {Connection, Request, TYPES} = require('tedious');
-const theApp = require('../../bootstrap');
-const tools = require('../../utils/tools');
 const pubdefs = require('../../include/sysdefs');
 const eRetCodes = require('../../include/retcodes');
+const {CommonObject,  CommonModule, eClientState} = require('../../include/components');
+const theApp = require('../../bootstrap');
+const tools = require('../../utils/tools');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
-const { CommonModule } = require('../../include/components');
+
 const logger = WinstonLogger(process.env.SRV_ROLE || 'redis');
 
 const MODULE_NAME = "TDS_CONN";
-
-const eClientState = {
-    Init: 'init',
-    Connecting: 'connecting',
-    Connected: 'connected',
-    Closing: 'closing',
-    ServerErr: 'srv-err',
-    Pending: 'pending'
-};
 
 function _retryConnect() {
     this.hRetry = null;
@@ -78,50 +70,53 @@ function _convertDataType(t) {
     return dt;
 }
 
-class TdsClient {
+class TdsClient extends CommonObject {
     constructor(options) {
-        this.name = options.name,
+        super(options);
+        //
         this.config = options.config;
         this.connectionRetry = options.connectionRetry !== undefined? options.connectionRetry : true;
         this.connectionRetryInterval = options.connectionRetryInterval? options.connectionRetryInterval : pubdefs.eInterval._10_SEC;
         this.hRetry = null;
-        this.state = eClientState.Init;
+        this.state = eClientState.Null;
         this.connection = null;
         // Implementing methods
         this.isConnected = () => {
-            return this.state === eClientState.Connected;
+            return this.state === eClientState.Conn;
         },
         this.connect = () => {
-            if (this.state !== eClientState.Init) {
-                logger.error(`${this.name}[${this.state}]: Already in active.`)
+            if (this.state !== eClientState.Null) {
+                logger.error(`${this.name}[${this.state}]: Not idle.`)
                 return null;
             }
-            this.state = eClientState.Connecting;
+            this.state = eClientState.Init;
             let conn = new Connection(this.config);
             conn.on('connect', (err) => {
+                if (this.state !== eClientState.Init) {
+                    logger.error(`${this.name}[${this.state}]: on <CONNECT> - Invalid state!`);
+                    return null;
+                }
                 if (err) {
                     logger.error(`${this.name}[${this.state}]: ${err.message}`);
+                    this.state = eClientState.Null;
                 } else {
-                    logger.debug(`${this.name}[${this.state}]: connected.`);
+                    logger.info(`${this.name}[${this.state}]: on <CONNECT>.`);
                     this.connection = conn;
-                    this.state = eClientState.Connected;
+                    this.state = eClientState.Conn;
                 }
+                return null;
             });
             conn.on('end', () => {
+                logger.info(`${this.name}[${this.state}]: Connection closed.`);
                 switch(this.state) {
-                    case eClientState.Connecting:
-                        this.state = eClientState.Init;
+                    case eClientState.Init:
+                        this.state = eClientState.Null;
                         break;
-                    case eClientState.Connected:
-                    case eClientState.ServerErr:
-                        logger.error(`${this.name}[${this.state}]: Server closed or network error!`);
-                        this.connection = null;
-                        this.state = eClientState.Init;
-                        break;
+                    case eClientState.Conn:
+                    case eClientState.PClosing:
                     case eClientState.Closing:
-                        logger.info(`${this.name}[${this.state}]: Connection closed.`);
                         this.connection = null;
-                        this.state = eClientState.Init;
+                        this.state = eClientState.Null;
                         break;
                     default:
                         break;
@@ -133,7 +128,7 @@ class TdsClient {
             })
             conn.on('error', (err) => {
                 logger.error(`${this.name}[${this.state}]: ${err.message}`);
-                this.state = eClientState.ServerErr;
+                this.state = eClientState.PClosing;
             });
             conn.connect();
         },
@@ -169,7 +164,7 @@ class TdsClient {
             this.connection.execSql(req);
         }
         this.dispose = (callback) => {
-            if (this.state === eClientState.Connected) {
+            if (this.state === eClientState.Conn) {
                 logger.info(`${this.name}[${this.state}]: Close connection...`);
                 this.state = eClientState.Closing;
                 this.connection.close();

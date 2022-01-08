@@ -3,7 +3,7 @@
  */
  const async = require('async');
  const {createClient} = require('redis');
- const {CommonModule, EventModule, eClientState} = require('../../include/components');
+ const {CommonModule, EventModule, eClientState, CommonObject} = require('../../include/components');
  const theApp = require('../../bootstrap');
  const eRetCodes = require('../../include/retcodes');
  const pubdefs = require('../../include/sysdefs');
@@ -66,11 +66,10 @@
      return config;
  }
  
- class RedisClient extends CommonModule {
+ class RedisClient extends CommonObject {
      constructor(options) {
          super(options);
          //
-         this.id = options.id;
          this.parent = options.parent;
          this.config = options.config;
          this.maxRetryTimes = options.maxRetryTimes || 10;
@@ -129,6 +128,7 @@
              if (this.isConnected()) {
                  this.state = eClientState.Closing;
                  this._client.quit();
+                 this._client = null;
              }
              return process.nextTick(callback);
          }
