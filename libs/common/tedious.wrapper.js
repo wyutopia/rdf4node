@@ -100,7 +100,7 @@ class TdsClient extends CommonObject {
                     logger.error(`${this.name}[${this.state}]: ${err.message}`);
                     this.state = eClientState.Null;
                 } else {
-                    logger.info(`${this.name}[${this.state}]: on <CONNECT>.`);
+                    logger.info(`${this.name}[${this.state}]: on <CONNECT> - Server connected.`);
                     this.connection = conn;
                     this.state = eClientState.Conn;
                 }
@@ -188,16 +188,17 @@ class TdsWrapper extends CommonModule {
             return client;
         },
         this.dispose = (callback) => {
-            logger.info(`${this.name}: close all connections...`);
+            logger.info(`${this.name}: destroy all clients...`);
             async.eachLimit(this._clients, 4, (client, next) => {
                 return client.dispose(next);
             }, () => {
+                logger.info(`${this.name}: all clients destroied.`);
                 return callback();
             });
         }
         //
         (() => {
-            theApp.regModule(tdsWrapper);
+            theApp.regModule(this);
         })();
     }
 }
