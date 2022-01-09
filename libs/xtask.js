@@ -6,8 +6,10 @@ const async = require('async');
 const EventEmitter = require('events');
 const schedule = require('node-schedule');
 
-const theApp = require('../bootstrap');
 const pubdefs = require('../include/sysdefs');
+const {CommonModule} = require('../include/components');
+
+const theApp = require('../bootstrap');
 const tools = require('../utils/tools');
 const { WinstonLogger } = require('./base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'xtask');
@@ -31,9 +33,10 @@ const metricCollector = mntService.regMetrics({
 });
 
 //
-class XTaskManager {
+class XTaskManager extends CommonModule {
     constructor(options) {
-        this.name = MODULE_NAME;
+        super(options)
+        //
         this.tasks = {};
         this.register = (task) => {
             this.tasks[task._id] = task;
@@ -60,10 +63,12 @@ class XTaskManager {
         })();
     }
 }
-const taskMng = new XTaskManager();
-
-
-
+const taskMng = new XTaskManager({
+    name: MODULE_NAME,
+    mandatory: true,
+    state: pubdefs.eModuleState.ACTIVE,
+    type: pubdefs.eModuleType.TASK
+});
 
 // The interval task wrapper
 class XTask extends EventEmitter {
@@ -113,7 +118,10 @@ class XTask extends EventEmitter {
         }
         this.dispose = (callback) => {
             this._run = false;
-            return setTimeout(callback, 200);
+            return setTimeout(() => {
+                logger.info(`${this.alias}: >>>>> Backend task <<<<< stopped.`);
+                return callback();
+            }, 200);
         }
         this.start = (itv) => {
             if (itv !== undefined) {
@@ -132,7 +140,7 @@ class XTask extends EventEmitter {
                 this.startup === 'ONCE' ? clearTimeout(this.hTask) : clearInterval(this.hTask);
                 this.hTask = null;
                 this.mutex = false;
-                logger.info(`${this.alias}: >>>>> Backend task <<<<< stopped.`);
+                logger.info(`${this.alias}: >>>>> Backend task <<<<< destroyed.`);
             }
         }
         this.restart = (itv) => {

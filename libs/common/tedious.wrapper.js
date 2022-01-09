@@ -192,7 +192,7 @@ class TdsWrapper extends CommonModule {
             async.eachLimit(this._clients, 4, (client, next) => {
                 return client.dispose(next);
             }, () => {
-                logger.info(`${this.name}: all clients destroied.`);
+                logger.info(`${this.name}: all clients destroyed.`);
                 return callback();
             });
         }
