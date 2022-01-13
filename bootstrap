@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * Create by eric on 2021/11/10
  */
@@ -81,16 +82,24 @@ function _raiseGracefulExitAlarm(callback) {
     return this.fireAlarm(options, callback);
 }
 
+function _buildModuleArch() {
+    let arch = {};
+    Object.keys(pubdefs.eModuleType).forEach(layer => {
+        arch[layer.toLowerCase()] = [];
+    });
+    return arch;
+}
+
 // The application class
 class TheApp extends EventEmitter {
     constructor(config) {
         super();
         // Declaring member variables
-        this._id = `${serviceConf.registry}_${process.env.DEPLOY === 'native'? tools.uuidv4() : os.hostname()}`;
+        this._id = `${serviceConf.registry}_${process.env.DEPLOY === pubdefs.eDeployMode.NATIVE? tools.uuidv4() : os.hostname()}`;
         this._config = Object.assign(config, {pushAlarm: true});
         this._state = pubdefs.eModuleState.INIT;
         this._modules = {};
-        this._arch = {};
+        this._arch = _buildModuleArch();
         this._isMaster = false;
         // Implementing member methods
         this.getServiceName = () => {
@@ -142,11 +151,14 @@ class TheApp extends EventEmitter {
          * @param mod
          */
         this.regModule = (mod) => {
-            logger.info(`New module registry: ${mod.name} - ${mod.mandatory} - ${mod.status}`);
+            logger.info(`New module registry: ${mod.name} - ${mod.mandatory} - ${mod.state}`);
             if (this._modules[mod.name] !== undefined) {
-                logger.error(`>>>>>> Conflict! ${mod.name} already registered.`)
+                logger.error(`>>>>>> Conflict! ${mod.name} already exists.`)
             } else {
                 this._modules[mod.name] = mod;
+                // Add to clean up chain
+                let layer = mod.type || pubdefs.eModuleType.OBJ;
+                this._arch[layer].push(mod);
             }
         }
         this.setModuleState = (name, s) => {
@@ -167,7 +179,7 @@ class TheApp extends EventEmitter {
             let keys = Object.keys(this._modules);
             for (let i = 0; i < keys.length; i++) {
                 let key = keys[i];
-                if (this._modules[key].mandatory === true &&  this._modules[key].state === pubdefs.eModuleState.ACTIVE) {
+                if (this._modules[key].mandatory === true && this._modules[key].state !== pubdefs.eModuleState.ACTIVE) {
                     active = false;
                     break;
                 }
@@ -177,52 +189,25 @@ class TheApp extends EventEmitter {
         this.gracefulExit = () => {
             logger.info('>>>>>> Perform system clean-up before exit <<<<<<');
             _raiseGracefulExitAlarm.call(this, () => {
-                async.series([
-                    (next) => {
-                        logger.info('>>>>>>>> Step 1: Stop application modules...');
-                        let keys = Object.keys(this._modules);
-                        async.each(keys, (key, next) => {
-                            let m = this._modules[key];
-                            if (m.type === pubdefs.eModuleType.PLATFORM || typeof m.dispose !== 'function') {
-                                return process.nextTick(next);
-                            }
-                            m.dispose(err => {
-                                if (err) {
-                                    logger.error(err.code, err.message);
-                                }
-                                return next();
-                            });
-                        }, () => {
-                            logger.info('>>>>>>>>>> All application modules stopped.');
-                            return next();
-                        });
-                    },
-                    (next) => {
-                        logger.info('>>>>>>>> Step 2: Stop platform modules...');
-                        let keys = Object.keys(this._modules);
-                        async.each(keys, (key, next) => {
-                            let m = this._modules[key];
-                            if (m.type !== pubdefs.eModuleType.PLATFORM || typeof m.dispose !== 'function') {
-                                return process.nextTick(next);
-                            }
-                            m.dispose(err => {
-                                if (err) {
-                                    logger.error(err.code, err.message);
-                                }
-                                return next();
-                            });
-                        }, () => {
-                            logger.info('>>>>>>>>>> All platform modules stopped.');
-                            return next();
-                        });
-                    }
-                ], () => {
+                logger.info(`>>>>>> Stop all modules ...`);
+                let layers = Object.keys(this._arch);
+                async.eachSeries(layers, (layer, callback) => {
+                    logger.info(`>>>>>>>> ${layer}: Clean up modules ...`);
+                    async.eachLimit(this._arch[layer], 4, (m, next) => {
+                        if (typeof m.dispose !== 'function') {
+                            return process.nextTick(next);
+                        }
+                        return m.dispose(next);
+                    }, () => {
+                        logger.info(`>>>>>>>> ${layer}: all modules disposed.`);
+                        return callback();
+                    });
+                }, () => {
+                    logger.info('>>>>>> All modules disposed.');
                     _deregService.call(this, () => {
                         return process.exit(0);
                     });
-                })
-
-
+                });
             });
         }
         this.isActive = () => {

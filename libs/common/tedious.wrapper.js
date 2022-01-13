@@ -204,6 +204,7 @@ class TdsWrapper extends CommonModule {
 }
 const tdsWrapper = new TdsWrapper({
     name: 'TdsClientManager',
+    type: pubdefs.eModuleType.CONN,
     mandatory: true,
     state: pubdefs.eModuleState.ACTIVE
 });

@@ -236,6 +236,8 @@
  
  const redisWrapper = new RedisWrapper({
      name: MODULE_NAME,
-     type: pubdefs.eModuleType.CONN
+     mandatory: true,
+     type: pubdefs.eModuleType.CONN,
+     state: pubdefs.eModuleState.ACTIVE
  });
  module.exports = redisWrapper;

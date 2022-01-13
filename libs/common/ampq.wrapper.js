@@ -18,6 +18,7 @@ class RmqClientManager {
         this.name = MODULE_NAME;
         this.mandatory = true;
         this.state = pubdefs.eModuleState.ACTIVE;
+        this.type = pubdefs.eModuleType.CONN;
         this._clients = {};
         // Implementing member methods
         this.regClient = (id, client) => {

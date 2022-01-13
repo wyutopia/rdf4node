@@ -208,6 +208,9 @@
  }
  
  const mysqlWrapper = new MysqlWrapper({
-     name: MODULE_NAME
+     name: MODULE_NAME,
+     type: pubdefs.eModuleType.CONN,
+     mandatory: true,
+     state: pubdefs.eModuleState.ACTIVE
  });
  module.exports = exports = mysqlWrapper;

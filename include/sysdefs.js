@@ -35,14 +35,18 @@
     });
 })();
 
-
-let eSysMode = {
+const eSysMode = {
     OFFLINE    : "offline",
     MAINTAIN   : "maintain",
     ONLINE     : "online"
 };
-Object.freeze(eSysMode);
 exports.eSysMode = eSysMode;
+
+const eDeployMode = {
+    NATIVE     : 'native',
+    K8S        : 'k8s'
+};
+exports.eDeployMode = eDeployMode;
 
 const eModuleState = {
     INIT         : 'init',
@@ -57,10 +61,10 @@ exports.isValidModuleState = (s) => {
 
 const eModuleType = {
     OBJ          : 'obj',
-    OS_EXT       : 'osext',
-    CONN         : 'conn',
+    TASK         : 'task',
     APP          : 'app',
-    TASK         : 'task'
+    CONN         : 'conn',
+    OSEXT        : 'osext'
 };
 exports.eModuleType = eModuleType;
 exports.isValidModuleType = (s) => {
