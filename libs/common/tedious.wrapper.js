@@ -15,7 +15,8 @@ const logger = WinstonLogger(process.env.SRV_ROLE || 'redis');
 
 const MODULE_NAME = "TDS_CONN";
 
-function _retryConnect() {
+function _onRetryTimeout() {
+    // Reset timer handle and perform connecting ...
     this.hRetry = null;
     this.connect();
 }
@@ -123,7 +124,7 @@ class TdsClient extends CommonObject {
                 }
                 //
                 if (this.connectionRetry && this.hRetry === null) {
-                    this.hRetry = setTimeout(_retryConnect.bind(this), this.connectionRetryInterval);
+                    this.hRetry = setTimeout(_onRetryTimeout.bind(this), this.connectionRetryInterval);
                 }
             })
             conn.on('error', (err) => {
