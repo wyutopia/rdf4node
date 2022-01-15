@@ -1,5 +1,5 @@
 {
-    "service": {
+    "app": {
       "name": "RapidDevFramework4Node.Core",
       "alias": "rdf4node",
       "registry": "rdf-core",

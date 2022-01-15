@@ -17,7 +17,7 @@ const {WinstonLogger} = require('./libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
 const tools = require('./utils/tools');
 //
-const serviceConf = config.service;
+const appConf = config.app;
 const inetConf = config.inet;
 let version = null;
 
@@ -27,11 +27,11 @@ function _regService(callback) {
         return callback();
     }
     let localIp = tools.getLocalIp()[0];
-    let port = process.env.PORT || serviceConf.port || 3000;
+    let port = process.env.PORT || appConf.port || 3000;
     consulClient.regService({
-        name: serviceConf.registry,
+        name: appConf.registry,
         id: this._id,
-        tags: serviceConf.tags,
+        tags: appConf.tags,
         address: localIp,
         port: parseInt(port, 10),
         check: {
@@ -95,7 +95,7 @@ class TheApp extends EventEmitter {
     constructor(config) {
         super();
         // Declaring member variables
-        this._id = `${serviceConf.registry}_${process.env.DEPLOY === pubdefs.eDeployMode.NATIVE? tools.uuidv4() : os.hostname()}`;
+        this._id = `${appConf.registry}_${process.env.DEPLOY === pubdefs.eDeployMode.NATIVE? tools.uuidv4() : os.hostname()}`;
         this._config = Object.assign(config, {pushAlarm: true});
         this._state = pubdefs.eModuleState.INIT;
         this._modules = {};
@@ -103,13 +103,13 @@ class TheApp extends EventEmitter {
         this._isMaster = false;
         // Implementing member methods
         this.getServiceName = () => {
-            return serviceConf.name;
+            return appConf.name;
         }
         this.getServiceAlias = () => {
-            return serviceConf.alias;
+            return appConf.alias;
         }
         this.getRegistry = () => {
-            return serviceConf.registry;
+            return appConf.registry;
         }
         this.getInstance = () => {
             return this._id;
