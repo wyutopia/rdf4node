@@ -18,7 +18,8 @@
     "inet": {
         "apm": {
           "baseUrl": "http://127.0.0.1"
-        }
+        },
+        "maxHopCount": 3
     },
     "mongodb": {
       "ip": "127.0.0.1",

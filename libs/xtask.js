@@ -106,7 +106,11 @@ class XTask extends EventEmitter {
                 return null;
             }
             this.mutex = true;
-            this.beforeWork(() => {
+            this.beforeWork((err) => {
+                if (err) {
+                    this.mutex = false;
+                    return null;
+                }
                 this.realWork(() => {
                     //logger.debug(this.alias, 'Finished.')
                     this.afterWork(() => {
@@ -173,8 +177,8 @@ class XTask extends EventEmitter {
                     this.start();
                 }
             } else if (this.startup === 'SCHEDULE' && this.cronExp !== undefined) {
-                logger.info(`Schedule task with cron: ${this.cronExp}`);
-                schedule.scheduleJob(this.cronExp, this.start.bind(this));
+                logger.info(`${this.alias}: Schedule task with cron: ${this.cronExp}`);
+                schedule.scheduleJob(this.cronExp, this.doWork.bind(this));
             }
         })();
     }
