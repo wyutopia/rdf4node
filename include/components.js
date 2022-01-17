@@ -68,6 +68,7 @@ const eClientState = {
     Null: 'null',
     Init: 'init',
     Conn: 'conn',
+    ConnErr: 'connerr',
     PClosing: 'pclose',
     Closing: 'closing',
     Pending: 'pending'

@@ -50,13 +50,15 @@ const metricsCollector = mntService.regMetrics({
     }]
 });
 
-class TcpServer extends CommonObject {
+class TcpServer extends EventObject {
     constructor(options) {
         super(options);
         //
         this.state = eClientState.Null;
     }
 }
+exports.TcpServer = TcpServer;
+
 /**
  * The TcpClient Object
  */
@@ -82,14 +84,14 @@ class TcpClient extends EventObject {
                 });
             }
             // Connecting event sequence: 
-            // 1. Connecting failure: 
+            // 1. Connecting failure: error -> close
             this.state = eClientState.Init;
             let client = net.createConnection({
                 host: options.ip || '127.0.0.1',
                 port: options.port || 3000,
                 timeout: options.connectTimeoutMs || pubdefs.eInterval._3_SEC
             }, () => {
-                logger.debug(`${this.name}: on createConnection callback...`);
+                logger.debug(`${this.name}[${this.state}]: on createConnection callback...`);
                 if (this.state === eClientState.Init) {
                     this.client = client;
                     this.state = eClientState.Conn;
@@ -97,21 +99,24 @@ class TcpClient extends EventObject {
                 }
             });
             client.on('error', err => {
-                logger.debug(`${this.name}: on [ERROR] event...`);
+                logger.debug(`${this.name}[${this.state}]: on [ERROR] event...`);
                 if (this.state === eClientState.Init) {
-                    logger.error(`${this.name}: Connecting failed! - ${err.message}`);
-                    this.state = eClientState.Closing;
+                    logger.error(`${this.name}[${this.state}]: Connecting failed! - ${err.message}`);
+                    this.state = eClientState.ConnErr;
                 }
             });
             client.on('data', trunk => {
-                logger.debug(`${this.name}: on [DATA] event...`);
+                logger.debug(`${this.name}[${this.state}]: on [DATA] event...`);
                 setImmediate(this.onRawData.bind(this, trunk));
             });
             client.on('end', () => {
                 logger.debug(`${this.name}: on [END] event...`);
             });
             client.on('close', () => {
-                logger.debug(`${this.name}: on [END] event...`);
+                logger.debug(`${this.name}[${this.state}]: on [CLOSE] event...`);
+                if (this.state === eClientState.ConnErr) {
+                    this.state = eClientState.Null;
+                }
             });
         }
         this.sendData = (data, callback) => {
@@ -126,11 +131,12 @@ class TcpClient extends EventObject {
         }
     }
 }
+exports.TcpClient = TcpClient;
 
-class UdpServer extends CommonObject {
+class UdpServer extends EventObject {
     constructor(options) {
         super(options);
         //
     }
 }
-
+exports.UdpServer = UdpServer;
