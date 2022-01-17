@@ -17,13 +17,15 @@ exports.expressWrapper = require('./libs/base/express.wrapper');
 exports.MorganWrapper = require('./libs/base/morgan.wrapper');
 exports.winstonWrapper = require('./libs/base/winston.wrapper');
 exports.monitor = require('./libs/base/prom.wrapper');
-exports.rateLimiter = require('./libs/base/ratelimit.wrapper');
 
 // utilities
 exports.tools = require('./utils/tools');
 exports.logDir = require('./utils/logdir-maint');
 
 // common libs
+if (config.rateLimit) {
+    exports.rateLimiter = require('./libs/base/ratelimit.wrapper');
+}
 if (config.mongodb) {
     exports.mongoose = require('./libs/common/mongoose.wrapper');
     exports.mongoSession = require('./libs/common/mongo-session.wrapper');
