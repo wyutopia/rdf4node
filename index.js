@@ -23,6 +23,7 @@ exports.tools = require('./utils/tools');
 exports.logDir = require('./utils/logdir-maint');
 
 // common libs
+exports.netWrapper = require('./libs/common/net.wrapper');
 if (config.rateLimit) {
     exports.rateLimiter = require('./libs/base/ratelimit.wrapper');
 }

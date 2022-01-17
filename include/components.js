@@ -40,10 +40,17 @@ class CommonModule extends CommonObject {
 }
 exports.CommonModule = CommonModule;
 
-class EventModule extends EventEmitter {
+class EventObject extends EventEmitter {
     constructor(options) {
         super(options);
         objectInit.call(this, options);
+    }
+}
+exports.EventObject = EventObject;
+
+class EventModule extends EventObject {
+    constructor(options) {
+        super(options);
         moduleInit.call(this, options);
         //
         this._msgProc = (msg, ackOrNack) => {
@@ -67,3 +74,9 @@ const eClientState = {
 };
 exports.eClientState = eClientState;
 exports.eConnectionState = eClientState;
+
+const eServerState = {
+    Null: 'null',
+    Init: 'init'
+};
+exports.eServerState = eServerState;
