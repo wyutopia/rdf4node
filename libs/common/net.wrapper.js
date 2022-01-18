@@ -68,7 +68,16 @@ class TcpClient extends EventObject {
         //
         this.client = null;
         this.state = eClientState.Null;
+        this.disposeCallback = null;
         // Implements member methods
+        this.dispose = (callback) => {
+           if (this.state !== eClientState.Conn) {
+               return callback();
+           }
+           this.state = eClientState.Closing;
+           this.client.end();
+           this.disposeCallback = callback;
+        }
         this.connect = (options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -85,49 +94,64 @@ class TcpClient extends EventObject {
             }
             // Connecting event sequence: 
             // 1. Connecting failure: error -> close
+            // 2. Connect success: data
+            // 3. Disconnect from peer: end -> close
+            // 4. Disconnect from local: end -> close
+            // 5. TODO: Network error!
             this.state = eClientState.Init;
             let client = net.createConnection({
                 host: options.ip || '127.0.0.1',
                 port: options.port || 3000,
                 timeout: options.connectTimeoutMs || pubdefs.eInterval._3_SEC
             }, () => {
-                logger.debug(`${this.name}[${this.state}]: on createConnection callback...`);
-                if (this.state === eClientState.Init) {
-                    this.client = client;
-                    this.state = eClientState.Conn;
-                    return callback();
-                }
+                logger.debug(`${this.name}[${this.state}]: server connected.`);
+                this.client = client;
+                this.state = eClientState.Conn;
+                return callback();
             });
             client.on('error', err => {
-                logger.debug(`${this.name}[${this.state}]: on [ERROR] event...`);
                 if (this.state === eClientState.Init) {
                     logger.error(`${this.name}[${this.state}]: Connecting failed! - ${err.message}`);
                     this.state = eClientState.ConnErr;
-                }
+                    return callback(err);
+                }                     
+                logger.debug(`${this.name}[${this.state}]: Connection error! - ${err.message}`);
+                this.state = eClientState.ConnErr;
             });
             client.on('data', trunk => {
-                logger.debug(`${this.name}[${this.state}]: on [DATA] event...`);
-                setImmediate(this.onRawData.bind(this, trunk));
+                logger.debug(`${this.name}[${this.state}]: on [DATA] event: ${tools.inspect(trunk)}`);
+                if (typeof this.onData === 'function') {
+                    setImmediate(this.onData.bind(this, trunk));                
+                }
             });
             client.on('end', () => {
-                logger.debug(`${this.name}: on [END] event...`);
+                logger.debug(`${this.name}[${this.state}]: on [END] event...`);
+                if (typeof this.onEnd === 'function') {
+                    setImmediate(this.onEnd.bind(this));
+                }
             });
             client.on('close', () => {
                 logger.debug(`${this.name}[${this.state}]: on [CLOSE] event...`);
-                if (this.state === eClientState.ConnErr) {
-                    this.state = eClientState.Null;
+                this.state = eClientState.Null;
+                this.client = null;
+                if (this.disposeCallback) {
+                    this.disposeCallback();
+                    this.disposeCallback = null;
+                }
+                if (typeof this.onClose === 'function') {
+                    setImmediate(this.onClose.bind(this));
                 }
             });
         }
         this.sendData = (data, callback) => {
-            logger.debug(`${this.name}: TODO: send data...`);
-            return callback();
-        }
-        this.onRawData = (trunk) => {
-            logger.debug(`${this.name}: TODO: onRawData ...`);
-        }
-        this.onPacketData = (pkt) => {
-            logger.debug(`${this.name}: TODO: onPacketData ...`);
+            logger.debug(`${this.name}[${this.state}]: send data - ${tools.inspect(data)}`);
+            if (this.state !== eClientState.Conn) {
+                return callback({
+                    code: eRetCodes.METHOD_NOT_ALLOWED,
+                    message: 'Connection lost!'
+                });
+            }
+            return this.client.write(data, callback);
         }
     }
 }
