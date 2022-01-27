@@ -135,7 +135,7 @@ class TcpClient extends EventObject {
                 this.state = eClientState.Null;
                 this.client = null;
                 if (this.disposeCallback) {
-                    this.disposeCallback();
+                    this.disposeCallback.call(this);
                     this.disposeCallback = null;
                 }
                 if (typeof this.onClose === 'function') {

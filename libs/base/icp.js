@@ -43,10 +43,15 @@ function _invalidateParams(options, callback) {
     return callback();
 }
 
+function _invokeRemoteCall(options, callback) {
+
+}
+
 class InterCommPlatform extends CommonModule {
     constructor(options) {
         super(options);
         //
+        this._modules = {};
         //
         this.request = (options, callback) => {
             options.hopCount = (options.hopCount || 0)++;
@@ -62,8 +67,23 @@ class InterCommPlatform extends CommonModule {
                 if (err) {
                     return callback(err);
                 }
+                let m = this._modules[options.host.mid];
+                if (m === 'undefined') {
 
+                }
+                if (typeof  m[options.host.method]!== 'function') {
+                    let msg = 'host method not exists!'
+                    logger.error(`${this.name}: ${msg}`);
+                    return callback({
+                        code: eRetCodes.NOT_FOUND,
+                        message: msg
+                    });
+                }
+                this._modules[options.host.mid](options, callback)
             })
+        }
+        this.regModule = () => {
+
         }
     }
 } 
