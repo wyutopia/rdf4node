@@ -18,6 +18,8 @@ const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'icp');
 const tools = require('../../utils/tools');
 
+const registry = require('./registry');
+
 class IcpRequest extends CommonObject {
     constructor(options) {
         super(options);
@@ -43,17 +45,20 @@ function _invalidateParams(options, callback) {
     return callback();
 }
 
-function _invokeRemoteCall(options, callback) {
+function _getLocalHandler(options, callback) {
+    return true;
+}
+
+function _invokeRemote(options, callback) {
 
 }
 
 class InterCommPlatform extends CommonModule {
     constructor(options) {
         super(options);
-        //
-        this._modules = {};
-        //
-        this.request = (options, callback) => {
+        // Delcaring member variables here ...
+        // Implementing member methods
+        this.execute = (options, callback) => {
             options.hopCount = (options.hopCount || 0)++;
             if (options.hopCount > config.maxHopCount) {
                 let msg = 'Exceed max hop count!'
@@ -67,23 +72,16 @@ class InterCommPlatform extends CommonModule {
                 if (err) {
                     return callback(err);
                 }
-                let m = this._modules[options.host.mid];
-                if (m === 'undefined') {
-
-                }
-                if (typeof  m[options.host.method]!== 'function') {
-                    let msg = 'host method not exists!'
-                    logger.error(`${this.name}: ${msg}`);
-                    return callback({
-                        code: eRetCodes.NOT_FOUND,
-                        message: msg
-                    });
-                }
-                this._modules[options.host.mid](options, callback)
-            })
-        }
-        this.regModule = () => {
-
+                _getLocalHandler(options, (err, handler) => {
+                    if (err) {
+                        return callback(err);
+                    }
+                    if (handler) {
+                        return handler(options, callback);
+                    }
+                    return _invokeRemote.call(options, callback);
+                });
+            });
         }
     }
 } 
