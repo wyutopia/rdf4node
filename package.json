@@ -1,13 +1,16 @@
 {
     "name": "rdf4node",
-    "version": "0.8.19",
+    "version": "0.9.0",
     "description": "A rapid develop framework for nodejs",
     "author": {
         "name": "Eric Wang",
         "email": "wyutopia@hotmail.com"
     },
+    "scripts": {
+        "dist": "npm pack --pack-destination=dist/"
+    },
     "publishConfig": {
-        "registry": "https://nexus.ice-deer.com/repository/npm-release"
+        "registry": "http://nexus.ice-deer.com/repository/npm-release"
     },
     "dependencies": {
         "@grpc/grpc-js": "^1.4.4",

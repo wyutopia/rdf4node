@@ -1,5 +1,6 @@
 /**
  * Create by Eric on 2022/01/02
+ * To replace amqp.wrapper in the future
  */
 const async = require('async');
 const assert = require('assert');

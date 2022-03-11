@@ -24,6 +24,9 @@ class IcpRequest extends CommonObject {
     constructor(options) {
         super(options);
         //
+        this.host = options.host;
+        this.sender = options.sender || {};
+        this.
         this.hopCount = 0;
         //
         (() => {
@@ -46,7 +49,7 @@ function _invalidateParams(options, callback) {
 }
 
 function _getLocalHandler(options, callback) {
-    return true;
+    let m = registry.getMethod(options.host.mid, options.action);
 }
 
 function _invokeRemote(options, callback) {
