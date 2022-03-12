@@ -4,7 +4,7 @@
  */
 const async = require('async');
 const assert = require('assert');
-const EventEmitter = require('events');
+const {eClientState, EventModule} = require('../../include/components');
 const { Broker } = require('rascal');
 // Project scope
 const pubdefs = require('../../include/sysdefs');
@@ -15,14 +15,10 @@ const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
 
 const MODULE_NAME = 'AMQP_CONN';
 
-class RascalClientMangager extends EventEmitter {
-    constructor() {
-        super();
+class RascalClientMangager extends EventModule {
+    constructor(options) {
+        super(options);
         //
-        this.name = MODULE_NAME;
-        this.mandatory = true;
-        this.state = pubdefs.eModuleState.ACTIVE;
-        this.type = pubdefs.eModuleType.CONN;
         this._clients = {};
         // Implementing member methods
         this.createClient = (options) => {
@@ -56,14 +52,6 @@ class RascalClientMangager extends EventEmitter {
         })();
     }
 }
-
-const eClientState = {
-    Null: 'null',
-    Init: 'init',
-    Active: 'act',
-    Closing: 'closing',
-    Pending: 'pending'
-};
 
 function assembleTotalConfig({ vhost, conn, params }) {
     assert(conn !== undefined);
@@ -101,7 +89,7 @@ class RascalClient {
 
         // Implementing methods
         this.dispose = (callback) => {
-            if (this.broker === null || this.state !== eClientState.Active) {
+            if (this.broker === null || this.state !== eClientState.Conn) {
                 return process.nextTick(callback);
             }
             this.state = eClientState.Closing;
@@ -118,7 +106,7 @@ class RascalClient {
         // Perform publish
         this.publish = (pubKey, data, options, callback) => {
             logger.info(`${this.name}[${this.state}]: Publish - ${pubKey}, ${tools.inspect(data)}, ${tools.inspect(options)}`);
-            if (this.state !== eClientState.Active) {
+            if (this.state !== eClientState.Conn) {
                 let msg = `${this.name}[${this.state}]: Please execute initializing before use.`
                 logger.error(msg);
                 return callback({
@@ -235,11 +223,16 @@ class RascalClient {
                 }, () => {
                     // Save broker and activate client
                     self.broker = broker;
-                    self.state = eClientState.Active;
+                    self.state = eClientState.Conn;
                 });
             });
         })();
     }
 }
 
-module.exports = exports = new RascalClientMangager();
+module.exports = exports = new RascalClientMangager({
+    name: MODULE_NAME,
+    mandatory: true,
+    state: pubdefs.eModuleState.ACTIVE,
+    type: pubdefs.eModuleType.CONN
+});
