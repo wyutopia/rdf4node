@@ -6,6 +6,9 @@
       "tags": ["Rapid", "Development", "Framework", "Linux", "Alpine", "node", "amd64"],
       "port": 3000
     },
+    "security": {
+      "allowOrigin": "*"
+    },
     "consul": {
         "host": "127.0.0.1",
         "port": 8500
