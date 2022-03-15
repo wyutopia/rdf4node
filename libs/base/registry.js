@@ -14,7 +14,7 @@
  
  const {icp: config} = require('./config');
  const { WinstonLogger } = require('../base/winston.wrapper');
- const logger = WinstonLogger(process.env.SRV_ROLE || 'icp');
+ const logger = WinstonLogger(process.env.SRV_ROLE);
  const tools = require('../../utils/tools');
 
 exports.register = function () {

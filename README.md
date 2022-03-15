@@ -1,12 +1,17 @@
 ## Initilaztion
 ### Setup project manually
-* Create new express project with command: express --view ejs nodejs-example
-* Copy files inside templates into project folders
+#### Create new project with express cli
+```
+express --view ejs <project-name>
+```
+#### Copy files inside templates into project folders
 * Modify nodejs-example/conf/config.json as you need
-* 
-
-### You can also using cli to initilze a new project
-
+#### Replace \<project-root-dir\>/routes/index.js with following code snippet
+```
+// routes/index.js
+const router = require('@icedeer/rdf4node/libs/base/router');
+module.exports = router;
+```
 
 ## Build docker iamge
 * Copy Dockerfile, .dockerignore and standalone.json from templates/build into root directory of the host project
