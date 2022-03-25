@@ -4,21 +4,21 @@
 let express = require('express');
 let router = express.Router();
 
-
 const fs = require('fs');
 const path = require('path');
 const {WinstonLogger} = require('./winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
+const jwt = require('./jwt');
 
 const appRoot = require('app-root-path');
 const routeDir = path.join(appRoot.path, 'routes');
 
 const config = require('./config');
+const securityConf = config.security || {};
 /**
  * Middleware to Support CORS
  */
 router.all('*', function (req, res, next) {
-    let securityConf = config.security || {};
     res.header('Access-Control-Allow-Origin', securityConf.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
     res.header('Access-Control-Allow-Headers', securityConf.allowHeaders || 'Content-Type, Content-Length, Authorization, Accept, X-Requested-With, Rabbit-Token, Rabbit-Rand');
     res.header('Access-Control-Allow-Methods', securityConf.allowMethods || 'POST, GET, OPTIONS');
@@ -79,6 +79,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
             if (toh === 'function') {
                 gRoutes.push({
                     path: path.join(pathPrefix, filename.split('.')[0].replace('-', ''), route.path),
+                    noauth: route.noauth || false,
                     method: route.method.toUpperCase(),
                     handler: route.handler
                 });
@@ -97,13 +98,13 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
         _loadRoutes();
         //
         gRoutes.forEach(route => {
-            logger.info(`Set system route: ${route.path} - ${route.method}`);
+            logger.info(`Set system route: ${route.path} - ${route.method} - ${route.noauth}`);
             if (route.method === 'GET') {
-                router.get(route.path, route.handler);
+                route.noauth? router.get(route.path, route.handler) : router.get(route.path, jwt.validateToken, route.handler);
             } else if (route.method === 'POST') {
-                router.post(route.path, route.handler);
+                route.noauth? router.post(route.path, route.handler) : router.post(route.path, jwt.validateToken, route.handler);
             } else if (route.method === 'USE') {
-                router.use(route.path, route.handler);
+                route.noauth? router.use(route.path, route.handler) : router.use(route.path, jwt.validateToken, route.handler);
             } else {
                 logger.error(`Illegal route with method = ${route.method}`);
             }

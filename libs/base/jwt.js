@@ -1,29 +1,44 @@
 /**
  * Created by Eric on 2022/02/15
  */
- const assert = require('assert');
- const async = require('async');
- const EventEmitter = require('events');
- const fs = require('fs');
- const path = require('path');
- const os = require('os');
- // project libs
- const pubdefs = require('../../include/sysdefs');
- const eRetCodes = require('../../include/retcodes');
- const {CommonModule} = require('../../include/components');
- 
- const {icp: config} = require('./config');
- const { WinstonLogger } = require('../base/winston.wrapper');
- const logger = WinstonLogger(process.env.SRV_ROLE);
- const tools = require('../../utils/tools');
 
+const jsonwebtoken = require('jsonwebtoken');
+// project libs
+const pubdefs = require('../../include/sysdefs');
+const eRetCodes = require('../../include/retcodes');
 
+const { security: config } = require('./config');
+const { WinstonLogger } = require('../base/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE);
+const tools = require('../../utils/tools');
 
- exports.genToken = function (seed) {
-    return 
- };
+const ENCRYPT_KEY = 'abcd1234';
+const EXPIRES_IN = '120s';
 
+exports.genToken = function (seed) {
+    return jsonwebtoken.sign(seed, config.encryptKey || ENCRYPT_KEY, { expiresIn: config.expires || EXPIRES_IN })
+};
 
- exports.validateToken = function (req, res, next) {
-
- };
+exports.validateToken = function (req, res, next) {
+    if (config.jwt === true) {
+        // Extract JWT from the request header
+        const authHeader = req.headers['authorization'];
+        const jwt = authHeader && authHeader.split(' ')[1];
+        if (jwt === null) {
+            return res.sendRsp(eRetCodes.UNAUTHORIZED, 'JWT is required!');
+        }
+        return jsonwebtoken.verify(jwt, config.encryptKey || ENCRYPT_KEY, (err, token) => {
+            if (err) {
+                logger.error(`Verfiy JWT error! - ${err.message}`);
+                return res.sendRsp(eRetCodes.FORBIDDEN, 'Invalid JWT value!');
+            }
+            req.token = token;
+            return next();
+        });
+    }
+    if (config.cookie === true) {
+        //TODO: Add cookie support here ...
+        return next();
+    }
+    return next();
+};
