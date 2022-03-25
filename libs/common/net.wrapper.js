@@ -1,5 +1,5 @@
 /**
- * Create by Eric 2022/01/17
+ * Created by Eric on 2022/01/17
  */
 // Global modules
 const assert = require('assert');

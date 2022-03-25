@@ -1,5 +1,5 @@
 /**
- * Create by eric on 2021/11/15
+ * Created by Eric on 2021/11/15
  */
  const RateLimit = require('express-rate-limit');
  const MongoStore = require('rate-limit-mongo');

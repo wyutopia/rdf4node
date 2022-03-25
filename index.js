@@ -1,5 +1,5 @@
 /**
- * Create by wyutopia on 2021/11/10
+ * Created by Eric on 2021/11/10
  */
 exports.theApp = require('./bootstrap');
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Create by Eric on 2022/02/15
+ * Created by Eric on 2022/02/15
  */
 const assert = require('assert');
 const async = require('async');

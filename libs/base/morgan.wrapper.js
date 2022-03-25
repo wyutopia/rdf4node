@@ -1,5 +1,5 @@
 /**
- * Created by eric on 2021/11/09.
+ * Created by Eric on 2021/11/09.
  */
  const appRootPath = require('app-root-path');
  const fs = require('fs');

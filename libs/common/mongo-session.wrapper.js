@@ -1,5 +1,5 @@
 /**
- * Created by eric on 16/6/13.
+ * Created by Eric on 16/6/13.
  */
  let assert = require('assert');
  const {mongodb: config} = require('../base/config');

@@ -1,5 +1,5 @@
 /**
- * Create by eric 2021/06/17
+ * Created by Eric 2021/06/17
  */
  const {monitor} = require('@icedeer/rdf4node');
 

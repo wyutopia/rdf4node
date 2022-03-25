@@ -1,6 +1,6 @@
 /**
  * Caution: Only for winston v3
- * Created by eric on 2021/09/28.
+ * Created by Eric on 2021/09/28.
  */
  const appRootPath = require('app-root-path');
  const fs = require('fs');

@@ -1,5 +1,5 @@
 /**
- * Create by eric on 2021/11/10
+ * Created by Eric on 2021/11/10
  */
 const appRoot = require('app-root-path');
 const async = require('async');

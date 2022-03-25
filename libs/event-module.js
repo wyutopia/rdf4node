@@ -1,5 +1,5 @@
 /**
- * Create by eric 2021/11/16
+ * Created by Eric 2021/11/16
  */
  const assert = require('assert');
  const EventEmitter = require('events');

@@ -1,5 +1,5 @@
 /**
- * Created by eric on 2021/09/09
+ * Created by Eric on 2021/09/09
  */
 const assert = require('assert');
 const crypto = require('crypto');
@@ -268,6 +268,51 @@ exports.parseParameters = (params, options, callback) => {
         }
     }
     return callback(errMsg, args);
+};
+
+exports.parseParameter2 = function (args, validator, callback) {
+    logger.info(`Parsing: ${_inspect(args)}, ${_inspect(validator)}`);
+    if (typeof validator === 'function') {
+        callback = options;
+        validator = {};
+    }
+    let fields = Object.keys(validator);
+    if (fields.length === 0) {
+        return callback(null, args);
+    }
+    let params = {};
+    let errMsg = null;
+    for (let i = 0; i < fields.length; i++) {
+        let field = fields[i];
+        let v = validator[field];
+        let argv = args[field];
+
+        if (argv === undefined) {
+            if (v.required === true) {
+                errMsg = `Missing parameter(s): ${field}!`;
+                break;
+            }
+            continue;
+        }
+        // field exists...
+        if (v.type === 'ObjectId' && !ObjectId.isValid(argv)) {
+            errMsg = `Invalid ObjectId value: ${field}!`;
+            break;
+        }
+        if (v.type === 'Number' && Number.isNaN(argv)) {
+            errMsg = `Error parameter type - Number: ${field}!`
+            break;
+        }             
+        // Copy directly
+        params[field] = argv;
+    }
+    if (errMsg) {
+        return callback({
+            code: eRetCodes.BAD_REQUEST,
+            message: errMsg
+        })
+    }
+    return callback(null, params);
 };
 
 exports.getClientIp = function (req) {
