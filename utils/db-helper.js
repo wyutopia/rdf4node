@@ -61,12 +61,11 @@ exports.findOne = function (db, options, callback) {
     return _unifiedFind(query, options, callback);
 };
 
-exports.findById = function (db, options, callback) {
+exports.findById = function (db, id, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
     logger.info(`${db.modelName} - options: ${tools.inspect(options)}`);
     //
-    let filter = { _id: options._id };
-    let query = db.findById(options._id);
+    let query = db.findById(id);
     return _unifiedFind(query, options, callback);
 };
 
