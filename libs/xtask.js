@@ -1,5 +1,6 @@
 /**
  * Created by Eric on 2021/11/10.
+ * Modifed by Eric on 2022/05/04
  */
 const assert = require('assert');
 const async = require('async');
@@ -34,8 +35,8 @@ const metricCollector = mntService.regMetrics({
 
 //
 class XTaskManager extends CommonModule {
-    constructor(options) {
-        super(options)
+    constructor(props) {
+        super(props)
         //
         this.tasks = {};
         this.register = (task) => {
@@ -72,19 +73,24 @@ const taskMng = new XTaskManager({
 
 // The interval task wrapper
 class XTask extends EventEmitter {
-    constructor(options) {
-        assert(options !== undefined);
-        super(options);
+    constructor(props) {
+        assert(props !== undefined);
+        super(props);
         // Class meta-info
         this._run = true;
         this._id = tools.uuidv4();
+        this._isAbstract = props.isAbstract !== undefined;
+        this._mutex = false;
+        this._hTask = null;
+
         // Member variables
-        this.alias = options.alias || 'XTask';
-        this.interval = options.interval || pubdefs.eInterval._5_SEC;
-        this.startup = options.startup !== undefined ? options.startup.toUpperCase() : 'AUTO';
-        this.cronExp = options.cronExp;
-        this.mutex = false;
-        this.hTask = null;
+        this.alias = props.alias || 'XTask';
+        this.interval = props.interval || pubdefs.eInterval._5_SEC;
+        this.startup = props.startup !== undefined ? props.startup.toUpperCase() : 'AUTO';
+        this.cronExp = props.cronExp;
+        this.immediateExec = props.immediateExec !== undefined;
+        this.startDelayMs = props.startDelayMs;
+
         // Methods
         this.realWork = (callback) => {
             return process.nextTick(callback);
@@ -101,20 +107,20 @@ class XTask extends EventEmitter {
                 logger.debug(`${this.alias}: stopped.`);
                 return null;
             }
-            if (this.mutex) {
+            if (this._mutex) {
                 logger.error(`${this.alias}: loop conflict!`);
                 return null;
             }
-            this.mutex = true;
+            this._mutex = true;
             this.beforeWork((err) => {
                 if (err) {
-                    this.mutex = false;
+                    this._mutex = false;
                     return null;
                 }
                 this.realWork(() => {
                     //logger.debug(this.alias, 'Finished.')
                     this.afterWork(() => {
-                        this.mutex = false;
+                        this._mutex = false;
                         return null;
                     });
                 });
@@ -131,19 +137,19 @@ class XTask extends EventEmitter {
             if (itv !== undefined) {
                 this.interval = itv;
             }
-            if (this.hTask === null) {
-                this.mutex = false;
-                this.hTask = this.startup === 'ONCE' ? setTimeout(this.doWork, this.interval) : setInterval(this.doWork, this.interval);
+            if (this._hTask === null) {
+                this._mutex = false;
+                this._hTask = this.startup === 'ONCE' ? setTimeout(this.doWork, this.interval) : setInterval(this.doWork, this.interval);
                 logger.info(`${this.alias}: started. - ${this.startup} - ${this.interval}`);
             } else {
                 logger.error(`${this.alias}: already exists.`);
             }
         }
         this.stop = () => {
-            if (this.hTask !== null) {
-                this.startup === 'ONCE' ? clearTimeout(this.hTask) : clearInterval(this.hTask);
-                this.hTask = null;
-                this.mutex = false;
+            if (this._hTask !== null) {
+                this.startup === 'ONCE' ? clearTimeout(this._hTask) : clearInterval(this._hTask);
+                this._hTask = null;
+                this._mutex = false;
                 logger.info(`${this.alias}: >>>>> Backend task <<<<< destroyed.`);
             }
         }
@@ -155,7 +161,7 @@ class XTask extends EventEmitter {
             let json = {
                 alias: this.alias,
                 interval: this.interval,
-                hTask: this.hTask,
+                hTask: this._hTask,
                 startup: this.startup
             };
             if (this.cronExp !== undefined) {
@@ -164,15 +170,13 @@ class XTask extends EventEmitter {
             return json;
         }
         // Startup script
-        (() => {
-            taskMng.register(this);
-            //
-            if (options.immediateExec) {
+        this._bootstrap = () => {
+            if (this.immediateExec) {
                 this.doWork();
             }
             if (this.startup === 'AUTO' || this.startup === 'ONCE') {
-                if (options.startDelayMs) {
-                    setTimeout(this.start.bind(this), options.startDelayMs);
+                if (this.startDelayMs) {
+                    setTimeout(this.start.bind(this), this.startDelayMs);
                 } else {
                     this.start();
                 }
@@ -180,7 +184,12 @@ class XTask extends EventEmitter {
                 logger.info(`${this.alias}: Schedule task with cron: ${this.cronExp}`);
                 schedule.scheduleJob(this.cronExp, this.doWork.bind(this));
             }
-        })();
+        }
+        // Register task
+        taskMng.register(this);
+        if (!this._isAbstract) {
+            this._bootstrap();
+        }
     }
 }
 
