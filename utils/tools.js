@@ -315,6 +315,10 @@ exports.parseParameter2 = function (args, validator, callback) {
     return callback(null, params);
 };
 
+exports.checkSign = function (req, res, next) { 
+    return next();
+};
+
 exports.getClientIp = function (req) {
     let ip = '0.0.0.0';
     let xff = req.headers['x-forwarded-for'];

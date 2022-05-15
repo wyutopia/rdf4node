@@ -9,7 +9,7 @@ const path = require('path');
 const {WinstonLogger} = require('./winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
 const jwt = require('./jwt');
-
+const tools = require('../../utils/tools');
 const appRoot = require('app-root-path');
 const routeDir = path.join(appRoot.path, 'routes');
 
@@ -79,7 +79,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
             if (toh === 'function') {
                 gRoutes.push({
                     path: path.join(pathPrefix, filename.split('.')[0].replace('-', ''), route.path),
-                    noauth: route.noauth || false,
+                    authType: route.authType,
                     method: route.method.toUpperCase(),
                     handler: route.handler
                 });
@@ -98,15 +98,12 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
         _loadRoutes();
         //
         gRoutes.forEach(route => {
-            logger.info(`Set system route: ${route.path} - ${route.method} - ${route.noauth}`);
-            if (route.method === 'GET') {
-                route.noauth? router.get(route.path, route.handler) : router.get(route.path, jwt.validateToken, route.handler);
-            } else if (route.method === 'POST') {
-                route.noauth? router.post(route.path, route.handler) : router.post(route.path, jwt.validateToken, route.handler);
-            } else if (route.method === 'USE') {
-                route.noauth? router.use(route.path, route.handler) : router.use(route.path, jwt.validateToken, route.handler);
+            logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType}`);
+            let method = (route.method || 'USE').toLowerCase();
+            if (route.authType) {
+                router.authType === 'jwt'? router[method](route.path, jwt.validateToken, route.handler) : router[method](route.path, tools.checkSign, route.handler);
             } else {
-                logger.error(`Illegal route with method = ${route.method}`);
+                router[method](route.path, router.handler);
             }
         });
     } catch (err) {
