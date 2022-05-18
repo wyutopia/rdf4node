@@ -103,7 +103,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
             if (route.authType) {
                 router.authType === 'jwt'? router[method](route.path, jwt.validateToken, route.handler) : router[method](route.path, tools.checkSign, route.handler);
             } else {
-                router[method](route.path, router.handler);
+                router[method](route.path, route.handler);
             }
         });
     } catch (err) {

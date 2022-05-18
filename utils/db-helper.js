@@ -1,5 +1,6 @@
 /**
- * Created by Eric 2021/11/15
+ * Created by Eric on 2021/11/15
+ * Upgraded by Eric on 2022/05/16
  */
 const assert = require('assert');
 //
@@ -165,7 +166,7 @@ function _updateOne(db, params, callback) {
 }
 exports.updateOne = _updateOne;
 
-exports.aggregate = (db, pipeline, callback) => {
+exports.aggregate = function (db, pipeline, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
     //
     logger.debug(`Aggregate ${db.modelName} with pipeline: ${tools.inspect(pipeline)}`);
@@ -191,7 +192,7 @@ exports.aggregate = (db, pipeline, callback) => {
     });
 };
 
-exports.create = (db, data, callback) => {
+exports.create = function (db, data, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
     //
     db.create(data).then(doc => {
@@ -206,11 +207,11 @@ exports.create = (db, data, callback) => {
     });
 };
 
-exports.remove = (db, options, callback) => {
+exports.remove = function (db, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
+    assert(options.filter !== undefined && Object.keys(options.filter).length > 0);
     //
-    let filter = options.filter || {};
-    db.remove(filter, (err, result) => {
+    db.remove(options.filter, (err, result) => {
         if (err) {
             let msg = `Delete ${db.modelName} error! - ${err.message}`;
             logger.error(msg);
@@ -223,7 +224,7 @@ exports.remove = (db, options, callback) => {
     });
 };
 
-exports.removeOne = (db, id, callback) => {
+exports.removeById = function (db, id, callback) {
     return _updateOne(db, {
         filter: {
             _id: id
@@ -235,4 +236,36 @@ exports.removeOne = (db, id, callback) => {
             }
         }
     }, callback);
+};
+
+exports.count = function (db, options, callback) {
+    assert(Object.getPrototypeOf(db).name === 'Model');
+    //
+    db.countDocuments(options.filter, (err, count) => {
+        if (err) {
+            logger.error(`${db.modelName}: count by ${tools.inspect(options.filter)} error! - ${err.message}`);
+            return callback({
+                code: eRetCodes.DB_QUERY_ERR, 
+                message: 'Count error!'
+            });
+        }
+        return callback(null, count);
+    });
+};
+
+exports.updateMany = function (db, options, callback) {
+    assert(Object.getPrototypeOf(db).name === 'Model');
+    //
+    let filter = options.filter || {};
+    let updates = options.updates || {};
+    db.updateMany(filter, updates, (err, result) => {
+        if (err) {
+            logger.error(`${db.modelName}: updateMany error! - ${err.message}`);
+            return callback({
+                code: eRetCodes.DB_UPDATE_ERR,
+                message: 'updateMany error!'
+            });
+        }
+        return callback(null, result);
+    });
 };
