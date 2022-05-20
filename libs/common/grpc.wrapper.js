@@ -187,7 +187,7 @@ function _onClientTtlTimeout(target) {
  * @param options = {file, pkgName, svcName}
  * @returns {*}
  */
-exports.getProtoDescriptor = (options) => {
+exports.getProtoDescriptor = function (options) {
     assert(options.file !== undefined);
     assert(options.pkgName !== undefined);
     assert(options.svcName !== undefined);

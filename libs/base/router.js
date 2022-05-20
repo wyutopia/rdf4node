@@ -18,7 +18,7 @@ const securityConf = config.security || {};
 /**
  * Middleware to Support CORS
  */
-router.all('*', function (req, res, next) {
+router.all('*', (req, res, next) => {
     res.header('Access-Control-Allow-Origin', securityConf.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
     res.header('Access-Control-Allow-Headers', securityConf.allowHeaders || 'Content-Type, Content-Length, Authorization, Accept, X-Requested-With, Rabbit-Token, Rabbit-Rand');
     res.header('Access-Control-Allow-Methods', securityConf.allowMethods || 'POST, GET, OPTIONS');
@@ -29,7 +29,7 @@ router.all('*', function (req, res, next) {
 });
 
 /* GET home page. */
-router.get('/', function (req, res, next) {
+router.get('/', (req, res, next) => {
     //TODO: Replace title with your own project name
     res.render('index', {title: 'the rappid-dev-framework!'});
 });

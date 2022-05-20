@@ -23,7 +23,7 @@
   * consul.catalog.service  methods
   */
  // List services
- exports.listServices = (callback) => {
+ exports.listServices = function (callback) {
     consul.catalog.service.list((err, result) => {
         if (err) {
             logger.error(`list services error! - ${err.code}#${err.message}`);
@@ -35,7 +35,7 @@
  }
 
  // List nodes of service
- exports.listServiceNodes = (serviceName, callback) => {
+ exports.listServiceNodes = function (serviceName, callback) {
     consul.catalog.service.nodes(serviceName, (err, result) => {
         if (err) {
             logger.error(`list nodes of service error! - ${err.code}#${err.message}`);
@@ -47,7 +47,7 @@
 }
 
  // Register
- exports.regService = (options, callback) => {
+ exports.regService = function (options, callback) {
      logger.info(`Register service: ${tools.inspect(options)}`);
      consul.agent.service.register(options, err => {
          if (err) {
@@ -59,7 +59,7 @@
  }
 
  // Deregister
- exports.deregService = (options, callback) => {
+ exports.deregService = function (options, callback) {
      logger.info(`De-register service: ${tools.inspect(options)}`);
      if (options.id === undefined) {
          return callback({
@@ -78,7 +78,7 @@
  }
 
  // Maintenance
- exports.maintainService = (options, callback) => {
+ exports.maintainService = function (options, callback) {
      if (options.id === undefined) {
          return callback({
              code: eRetCodes.OP_FAILED,
@@ -127,11 +127,11 @@
  /**
   * consul kv
   */
- exports.setKv = (key, val, callback) => {
+ exports.setKv = function (key, val, callback) {
      return consul.kv.set(key, val, callback);
  };
  
- exports.getKv = (key, callback) => {
+ exports.getKv = function (key, callback) {
      let options = {
          key: key,
          raw: true

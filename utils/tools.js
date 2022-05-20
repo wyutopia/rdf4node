@@ -20,7 +20,7 @@ function _inspect(obj) {
 }
 exports.inspect = _inspect;
 
-exports.execCli = (program, args, options, callback) => {
+exports.execCli = function (program, args, options, callback) {
     assert(program !== undefined);
     assert(args !== undefined);
     if (typeof options === 'function') {
@@ -72,7 +72,7 @@ exports.uuidv4 = function () {
     return uuidv4().replace(/-/g, '');
 };
 
-exports.safeGetJsonValue = (json, path) => {
+exports.safeGetJsonValue = function (json, path) {
     if (typeof json !== 'object' || typeof path !== 'string') {
         return null;
     }
@@ -148,7 +148,7 @@ exports.getSortedString = _getSortedString;
  * @param {*} callback 
  * @returns 
  */
-exports.defaultBodyParser = (body, callback) => {
+exports.defaultBodyParser = function (body, callback) {
     if (!body) {
         return callback();
     }
@@ -207,7 +207,7 @@ exports.invokeHttpRequest = function (options, callback) {
  * @param {*} callback 
  * @returns 
  */
-exports.parseParameters = (params, options, callback) => {
+exports.parseParameters = function (params, options, callback) {
     logger.info(`Input parameters: ${_inspect(params)}`);
     // Step 1: Preparing the input parameters
     if (typeof options === 'function') {

@@ -27,7 +27,7 @@
      }]
  });
  
- module.exports = exports = (req, res, next) => {
+ module.exports = exports = function (req, res, next) {
      res.on('finish', () => {
          let originalUrl = req.originalUrl || req.url;
          if (gIgnoredUrls.indexOf(originalUrl) === -1) {

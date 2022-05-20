@@ -100,11 +100,11 @@
  }
  exports.WinstonLogger = WinstonWrapper;
  
- exports.getLoggers = (callback) => {
+ exports.getLoggers = function (callback) {
      return callback(null, Object.keys(gLoggers));
  };
  
- exports.getTransporters = (name, callback) => {
+ exports.getTransporters = function (name, callback) {
      let logger = gLoggers[name];
      if (logger === undefined) {
          return callback({
@@ -119,7 +119,7 @@
      return callback(null, results);
  };
  
- exports.setLoggerLevel = (name, tp, level, callback) => {
+ exports.setLoggerLevel = function (name, tp, level, callback) {
      let logger = gLoggers[name];
      if (logger === undefined) {
          return callback({

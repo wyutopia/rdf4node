@@ -48,7 +48,7 @@ function _regGaugeAsync(name, help, labelNames, fnCollectAsync) {
     })
 }
 
-exports.regMetrics = (options) => {
+exports.regMetrics = function (options) {
     let collectors = {};
     let prefix = options.moduleName;
     options.metrics.forEach(metric => {
@@ -69,11 +69,11 @@ exports.regMetrics = (options) => {
 };
 
 //Exposed API for prometheus monitoring
-exports.getMetrics = async (req, res) => {
+exports.getMetrics = async function (req, res) {
     let metrics = await register.metrics();
     res.send(metrics);
 };
 
-exports.checkHealth = (req, res) => {
+exports.checkHealth = function (req, res) {
     res.sendStatus(200);
 };

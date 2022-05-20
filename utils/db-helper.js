@@ -48,7 +48,7 @@ function _unifiedFind(query, options, callback) {
 
 exports.findMany = function (db, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
-    logger.info(`${db.modelName} - options: ${tools.inspect(options)}`);
+    logger.debug(`${db.modelName} - options: ${tools.inspect(options)}`);
     //
     let query = db.find(options.filter || {});
     return _unifiedFind(query, options, callback);
@@ -56,7 +56,7 @@ exports.findMany = function (db, options, callback) {
 
 exports.findOne = function (db, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
-    logger.info(`${db.modelName} - options: ${tools.inspect(options)}`);
+    logger.debug(`${db.modelName} - options: ${tools.inspect(options)}`);
     //
     let query = db.findOne(options.filter || {});
     return _unifiedFind(query, options, callback);
@@ -64,7 +64,11 @@ exports.findOne = function (db, options, callback) {
 
 exports.findById = function (db, id, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
-    logger.info(`${db.modelName} - options: ${tools.inspect(options)}`);
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    logger.debug(`${db.modelName} - options: ${tools.inspect(options)}`);
     //
     let query = db.findById(id);
     return _unifiedFind(query, options, callback);
@@ -84,7 +88,7 @@ exports.findPartial = function (db, options, callback) {
     let pn = parseInt(options.page || '1');
     let filter = options.filter || {};
 
-    logger.info(`Query ${name} with filter: ${tools.inspect(filter)}`);
+    logger.debug(`Query ${name} with filter: ${tools.inspect(filter)}`);
     let countMethod = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
     db[countMethod](filter, (err, total) => {
         if (err) {
@@ -106,10 +110,13 @@ exports.findPartial = function (db, options, callback) {
         }
         let query = db.find(filter).skip((pn - 1) * ps).limit(ps);
         if (options.sort) {
-            query.sort();
+            query.sort(options.sort);
         }
         if (options.populate) {
-            query.populate();
+            query.populate(options.populate);
+        }
+        if (options.allowDiskUse) {
+            query.allowDiskUse(true);
         }
         return query.exec((err, docs) => {
             if (err) {
@@ -131,10 +138,10 @@ function _updateOne(db, params, callback) {
     //
     let filter = params.filter || {};
     let updates = params.updates || {};
-    let options = params.options || {};
+    let options = params.options || {new: true};
     if (Object.keys(updates).length === 0) {
         let msg = `Empty updates! - ${tools.inspect(updates)}`;
-        logger.info(msg);
+        logger.debug(msg);
         return callback({
             code: eRetCodes.OP_FAILED,
             message: msg
@@ -143,7 +150,7 @@ function _updateOne(db, params, callback) {
     if (options.new === undefined) {
         options.new = true;
     }
-    logger.info(`Update: ${db.modelName} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`)
+    logger.debug(`Update: ${db.modelName} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`)
     db.findOneAndUpdate(filter, updates, options, (err, doc) => {
         if (err) {
             let msg = `Update ${db.modelName} error! - ${err.message}`;

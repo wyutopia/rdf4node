@@ -200,7 +200,7 @@ const eMetricType = {
 };
 exports.eMetricType = eMetricType;
 
-exports.getUpdatableFields = (paths, excludes = ['_id', 'version', 'createAt', 'updateAt']) => {
+exports.getUpdatableFields = function (paths, excludes = ['_id', 'version', 'createAt', 'updateAt']) {
     let fields = Object.keys(paths);
     excludes.forEach( key => {
         let index = fields.indexOf(key);
@@ -210,3 +210,9 @@ exports.getUpdatableFields = (paths, excludes = ['_id', 'version', 'createAt', '
     });
     return fields;
 };
+
+const eRequestAuthType = {
+    JWT      : 'jwt',
+    AKSK     : 'aksk' 
+};
+exports.eRequestAuthType = eRequestAuthType;
