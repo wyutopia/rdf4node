@@ -137,7 +137,7 @@ const eAlarmSeverity = {
 };
 exports.eAlarmSeverity = eAlarmSeverity;
 
-let eAlarmCode = {
+const eAlarmCode = {
     // System alarm
     SERVICE_STARTUP                : 1000,
     QUERY_SIGNTASK_ERR             : 4000,
@@ -145,7 +145,6 @@ let eAlarmCode = {
     OUT_OF_SERVICE                 : 5000,
     GRACEFUL_EXIT                  : 9000
 };
-Object.freeze(eAlarmCode);
 exports.eAlarmCode = eAlarmCode;
 
 let eAlarmConfig = {

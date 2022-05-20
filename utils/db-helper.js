@@ -48,6 +48,10 @@ function _unifiedFind(query, options, callback) {
 
 exports.findMany = function (db, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
     logger.debug(`${db.modelName} - options: ${tools.inspect(options)}`);
     //
     let query = db.find(options.filter || {});
@@ -56,6 +60,10 @@ exports.findMany = function (db, options, callback) {
 
 exports.findOne = function (db, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
     logger.debug(`${db.modelName} - options: ${tools.inspect(options)}`);
     //
     let query = db.findOne(options.filter || {});
@@ -82,6 +90,10 @@ exports.findById = function (db, id, options, callback) {
  */
 exports.findPartial = function (db, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
     //
     let name = db.modelName;
     let ps = parseInt(options.pageSize || '10');
@@ -135,6 +147,10 @@ exports.findPartial = function (db, options, callback) {
 
 function _updateOne(db, params, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
+    if (typeof params === 'function') {
+        callback = params;
+        params = {};
+    }
     //
     let filter = params.filter || {};
     let updates = params.updates || {};
@@ -175,6 +191,10 @@ exports.updateOne = _updateOne;
 
 exports.aggregate = function (db, pipeline, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
+    if (typeof pipeline === 'function') {
+        callback = pipeline;
+        pipeline = [];
+    }
     //
     logger.debug(`Aggregate ${db.modelName} with pipeline: ${tools.inspect(pipeline)}`);
     return db.aggregate(pipeline).allowDiskUse(true).exec((err, results) => {
@@ -216,6 +236,10 @@ exports.create = function (db, data, callback) {
 
 exports.remove = function (db, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
     assert(options.filter !== undefined && Object.keys(options.filter).length > 0);
     //
     db.remove(options.filter, (err, result) => {
@@ -247,6 +271,12 @@ exports.removeById = function (db, id, callback) {
 
 exports.count = function (db, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
+    if (typeof options === 'function') {
+        callback = options;
+        options = {
+            filter: {}
+        };
+    }
     //
     db.countDocuments(options.filter, (err, count) => {
         if (err) {
@@ -262,6 +292,10 @@ exports.count = function (db, options, callback) {
 
 exports.updateMany = function (db, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }    
     //
     let filter = options.filter || {};
     let updates = options.updates || {};
