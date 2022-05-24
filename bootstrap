@@ -102,6 +102,12 @@ class TheApp extends EventEmitter {
         this._arch = _buildModuleArch();
         this._isMaster = false;
         // Implementing member methods
+        this.fetchServices = (callback) => {
+            return consulClient.listServices(callback);
+        }
+        this.fetchServiceNodes = (serviceName, callback) => {
+            return consulClient.listServiceNodes(serviceName, callback);
+        }
         this.getServiceName = () => {
             return appConf.name;
         }

@@ -29,7 +29,7 @@ function _unifiedFind(query, options, callback) {
     }
     return query.exec((err, result) => {
         if (err) {
-            let msg = `Query ${db.modelName} error! - ${err.message}`;
+            let msg = `Query error! - ${err.message}`;
             logger.error(msg);
             return callback({
                 code: eRetCodes.DB_QUERY_ERR,
@@ -39,7 +39,7 @@ function _unifiedFind(query, options, callback) {
         if (!result) {
             return callback({
                 code: eRetCodes.NOT_FOUND,
-                message: `Specified ${db.modelName} not exists! - ${tools.inspect(filter)}`
+                message: `Specified record not exists!`
             })
         }
         return callback(null, result);
