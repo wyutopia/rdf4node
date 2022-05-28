@@ -16,7 +16,11 @@ const ENCRYPT_KEY = 'abcd1234';
 const EXPIRES_IN = '120s';
 
 exports.genToken = function (seed) {
-    return jsonwebtoken.sign(seed, config.encryptKey || ENCRYPT_KEY, { expiresIn: config.expires || EXPIRES_IN })
+    let expiresIn = config.expires || EXPIRES_IN;
+    return {
+        token: jsonwebtoken.sign(seed, config.encryptKey || ENCRYPT_KEY, { expiresIn:  expiresIn}),
+        expiresIn: expiresIn
+    }
 };
 
 exports.validateToken = function (req, res, next) {
@@ -32,7 +36,7 @@ exports.validateToken = function (req, res, next) {
                 logger.error(`Verfiy JWT error! - ${err.message}`);
                 return res.sendRsp(eRetCodes.FORBIDDEN, 'Invalid JWT value!');
             }
-            req.token = token;
+            req['x-jwt'] = token;
             return next();
         });
     }

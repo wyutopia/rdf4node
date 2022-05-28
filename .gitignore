@@ -1,8 +1,8 @@
 # OS
 **/.DS_Store
 
+# Project
+.idea/
+node_modules/
+logs/
 dist/
-
-# Project 
-**/node_modules
-**/logs

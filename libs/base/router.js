@@ -101,7 +101,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
             logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType}`);
             let method = (route.method || 'USE').toLowerCase();
             if (route.authType) {
-                router.authType === 'jwt'? router[method](route.path, jwt.validateToken, route.handler) : router[method](route.path, tools.checkSign, route.handler);
+                route.authType === 'jwt'? router[method](route.path, jwt.validateToken, route.handler) : router[method](route.path, tools.checkSign, route.handler);
             } else {
                 router[method](route.path, route.handler);
             }

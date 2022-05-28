@@ -27,6 +27,12 @@ exports.netWrapper = require('./libs/common/net.wrapper');
 if (config.rateLimit) {
     exports.rateLimiter = require('./libs/base/ratelimit.wrapper');
 }
+if (config.security) {
+    if (config.security.jwt) {
+        exports.jwtWrapper = require('./libs/base/jwt');
+    }
+    //TODO: Add other security wrappers
+}
 if (config.mongodb) {
     exports.mongoose = require('./libs/common/mongoose.wrapper');
     exports.mongoSession = require('./libs/common/mongo-session.wrapper');
