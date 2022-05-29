@@ -23,15 +23,14 @@ module.exports = router;
 ### Consul
 #### Start container
 ```
-$docker run -id \
+docker run -id \
     -p 8300-8302:8300-8302/tcp \
     -p 8500:8500/tcp \
     -p 8301-8302:8301-8302/udp \
     -p 8600:8600/tcp \
     -p 8600:8600/udp \
-    -e CONSUL_BIND_INTERFACE=eth0 \
     --name=consul-dev consul
-$docker run -id --name=consul-dev -e CONSUL_BIND_INTERFACE=eth0 consul
+docker run -id --name=consul-dev -e CONSUL_BIND_INTERFACE=eth0 consul
 ```
 This runs a completely in-memory Consul Server agent with default bridge networking and no services exposed on the host, which is useful for development bu should not be used in production. For example, if that server is running at internal address 172.17.0.2, you can run a three node cluster for development by starting up two more instances and telling them to join the first node.
 ```

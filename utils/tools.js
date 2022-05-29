@@ -176,20 +176,29 @@ exports.invokeHttpRequest = function (options, callback) {
     } else {
         bodyParser = null;
     }
-    //logger.info('Options:', _inspect(options));
+    logger.info(`Invoke options: ${_inspect(options)}`);
     request(options, (err, rsp, body) => {
         if (err) {
             logger.error(err.code, err.message);
             return callback({
                 code: eRetCodes.INTERNAL_SERVER_ERR,
-                message: 'Http invoke error!'
+                message: `Http invoke error! - ${err.code}#${err.message}`
             });
         }
         if (rsp.statusCode !== eRetCodes.SUCCESS) {
-            logger.error('Http response status:', rsp.statusCode, rsp.statusMessage);
+            let msg = rsp.statusMessage;
+            if (!msg && rsp.body) {
+                try {
+                    msg = JSON.stringify(rsp.body);
+                }
+                catch (ex) {
+                    logger.error(ex.message);
+                }
+            }
+            logger.error(`Http response error! - ${rsp.statusCode} - ${msg}:`);
             return callback({
                 code: rsp.statusCode,
-                message: rsp.statusMessage
+                message: msg
             });
         }
         //logger.info('Body:', _inspect(body));
