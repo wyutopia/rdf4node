@@ -18,7 +18,8 @@ const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
 const tools = require('./utils/tools');
 //
 const appConf = config.app;
-const inetConf = config.inet;
+const apmConf = tools.safeGetJsonValue(config, 'inet.apm');
+
 let version = null;
 
 function _regService(callback) {
@@ -130,10 +131,15 @@ class TheApp extends EventEmitter {
                 options = {};
             }
             if (process.env.NODE_ENV !== 'production' && !options.alwaysSend) {
+                logger.debug(`Ignore fire alarm on development env.`);
+                return callback();
+            }
+            if (!apmConf) {
+                logger.warn(`APM server not configed!`);
                 return callback();
             }
             let req = {
-                url: `${inetConf.apm.baseUrl}/v1/alarm/raise`,
+                url: `${apmConf.baseUrl}/v1/alarm/raise`,
                 method: 'POST',
                 json: true,
                 body: {
