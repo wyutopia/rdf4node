@@ -279,6 +279,39 @@ exports.parseParameters = function (params, options, callback) {
     return callback(errMsg, args);
 };
 
+function _validateParameter(field, validator, argv) {
+    let errMsg = null;
+    if (validator.enum) {
+        let enumValues = _isTypeOfArray(validator.enum)? validator.enum : Object.values(validator.enum);
+        if (enumValues.indexOf(argv) === -1) {
+            errMsg = `${field} value not allowed! - Should be one of ${_inspect(enumValues)}`;
+        }
+    }
+    if (errMsg !== null) {
+        return errMsg;
+    }
+    switch(validator.type) {
+        case 'ObjectId':
+            if (!ObjectId.isValid(argv)) {
+                errMsg = `Invalid ObjectId value: ${field}!`;
+            }
+            break;
+        case 'Number':
+            if (Number.isNaN(argv)) {
+                errMsg = `Should be Number for ${field}!`;
+            }
+            break;
+        case 'String':
+            break;
+        case 'Boolean':
+            if (typeof argv !== 'boolean') {
+                errMsg = `Should be Boolean for ${field}`;
+            }
+            break;
+    }
+    return errMsg;
+}
+
 exports.parseParameter2 = function (args, validator, callback) {
     logger.info(`Parsing: ${_inspect(args)}, ${_inspect(validator)}`);
     if (typeof validator === 'function') {
@@ -286,9 +319,10 @@ exports.parseParameter2 = function (args, validator, callback) {
         validator = {};
     }
     let fields = Object.keys(validator);
-    if (fields.length === 0) {
+    if (fields.length === 0) {  // No validator provided or all arguments are validated
         return callback(null, args);
     }
+    // Only validated arguments will be parsed
     let params = {};
     let errMsg = null;
     for (let i = 0; i < fields.length; i++) {
@@ -303,15 +337,11 @@ exports.parseParameter2 = function (args, validator, callback) {
             }
             continue;
         }
-        // field exists...
-        if (v.type === 'ObjectId' && !ObjectId.isValid(argv)) {
-            errMsg = `Invalid ObjectId value: ${field}!`;
+        // Perform validation for exist field ...
+        errMsg = _validateParameter(field, v, argv);
+        if (errMsg !== null) {
             break;
-        }
-        if (v.type === 'Number' && Number.isNaN(argv)) {
-            errMsg = `Error parameter type - Number: ${field}!`
-            break;
-        }             
+        }         
         // Copy directly
         params[field] = argv;
     }

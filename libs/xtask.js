@@ -88,7 +88,7 @@ class XTask extends EventEmitter {
         this.interval = props.interval || pubdefs.eInterval._5_SEC;
         this.startup = props.startup !== undefined ? props.startup.toUpperCase() : 'AUTO';
         this.cronExp = props.cronExp;
-        this.immediateExec = props.immediateExec !== undefined;
+        this.immediateExec = props.immediateExec;
         this.startDelayMs = props.startDelayMs;
 
         // Methods
