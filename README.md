@@ -89,7 +89,7 @@ Then you can open web consol from http://127.0.0.1:15672
 ```
 docker pull redis:latest
 docker run -id --name redis-dev \
-    -p 6379:6379 \
+    -p 16379:6379 \
     redis --requirepass "Dev#2022"
 ```
 #### Connect with cli
@@ -131,4 +131,13 @@ https://www.npmjs.com/package/pg
 ### Login to registry to publish
 ```
 npm adduser --registry https://nexus.ice-deer.com/repository/npm-release
+```
+
+### InfluxDB
+```
+docker pull influxdb
+docker run -id -p 8086:8086 \
+    -e DOCKER_INFLUXDB_INIT_USERNAME=admin \
+    -e DOCKER_INFLUXDB_INIT_PASSWORD=Dev#2022
+    -name influxdb
 ```
