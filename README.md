@@ -88,9 +88,10 @@ Then you can open web consol from http://127.0.0.1:15672
 #### Start container
 ```
 docker pull redis:latest
-docker run -id --name redis-dev \
-    -p 16379:6379 \
+docker run -id -p 6379:6379 \
+    --name redis-dev \
     redis --requirepass "Dev#2022"
+
 ```
 #### Connect with cli
 ```

@@ -176,7 +176,7 @@ exports.invokeHttpRequest = function (options, callback) {
     } else {
         bodyParser = null;
     }
-    logger.info(`Invoke options: ${_inspect(options)}`);
+    //logger.debug(`Invoke options: ${_inspect(options)}`);
     request(options, (err, rsp, body) => {
         if (err) {
             logger.error(err.code, err.message);
