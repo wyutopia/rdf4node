@@ -161,6 +161,19 @@ exports.defaultBodyParser = function (body, callback) {
     return callback(null, body.data);
 }
 
+function _getFlowToken(options, callback) {
+    let fnFlowCtl = options.flowController;
+    if (typeof fnFlowCtl === 'function') {
+        delete options.flowController;
+    } else {
+        fnFlowCtl = null;
+    }
+    if (!fnFlowCtl) {
+        return callback(null, 1);
+    }
+    return fnFlowCtl.call(null, callback);
+}
+
 /**
  * The http request wrapper based on request@2.88.2
  * @param {*} options 
@@ -176,36 +189,42 @@ exports.invokeHttpRequest = function (options, callback) {
     } else {
         bodyParser = null;
     }
+
     //logger.debug(`Invoke options: ${_inspect(options)}`);
-    request(options, (err, rsp, body) => {
+    _getFlowToken(options, (err, token) => {
         if (err) {
-            logger.error(err.code, err.message);
-            return callback({
-                code: eRetCodes.INTERNAL_SERVER_ERR,
-                message: `Http invoke error! - ${err.code}#${err.message}`
-            });
+            return callback(err);
         }
-        if (rsp.statusCode !== eRetCodes.SUCCESS) {
-            let msg = rsp.statusMessage;
-            if (!msg && rsp.body) {
-                try {
-                    msg = JSON.stringify(rsp.body);
-                }
-                catch (ex) {
-                    logger.error(ex.message);
-                }
+        request(options, (err, rsp, body) => {
+            if (err) {
+                logger.error(err.code, err.message);
+                return callback({
+                    code: eRetCodes.INTERNAL_SERVER_ERR,
+                    message: `Http invoke error! - ${err.code}#${err.message}`
+                });
             }
-            logger.error(`Http response error! - ${rsp.statusCode} - ${msg}:`);
-            return callback({
-                code: rsp.statusCode,
-                message: msg
-            });
-        }
-        //logger.info('Body:', _inspect(body));
-        if (bodyParser) {
-            return bodyParser(body, callback);
-        }
-        return callback(null, body);
+            if (rsp.statusCode !== eRetCodes.SUCCESS) {
+                let msg = rsp.statusMessage;
+                if (!msg && rsp.body) {
+                    try {
+                        msg = JSON.stringify(rsp.body);
+                    }
+                    catch (ex) {
+                        logger.error(ex.message);
+                    }
+                }
+                logger.error(`Http response error! - ${rsp.statusCode} - ${msg}:`);
+                return callback({
+                    code: rsp.statusCode,
+                    message: msg
+                });
+            }
+            //logger.info('Body:', _inspect(body));
+            if (bodyParser) {
+                return bodyParser(body, callback);
+            }
+            return callback(null, body);
+        });
     });
 };
 

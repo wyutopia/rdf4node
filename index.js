@@ -38,6 +38,9 @@ if (config.mongodb) {
     exports.mongoSession = require('./libs/common/mongo-session.wrapper');
     exports.dbHelper = require('./utils/db-helper');
 }
+if (config.influxdb) {
+    exports.influxDbWrapper = require('./libs/common/influxdb.wrapper');
+}
 if (config.amq) {
     exports.amqpWrapper = require('./libs/common/ampq.wrapper');
     exports.rascalWrapper = require('./libs/common/rascal.wrapper');

@@ -140,5 +140,5 @@ docker pull influxdb
 docker run -id -p 8086:8086 \
     -e DOCKER_INFLUXDB_INIT_USERNAME=admin \
     -e DOCKER_INFLUXDB_INIT_PASSWORD=Dev#2022
-    -name influxdb
+    --name influxdb-dev influxdb
 ```
