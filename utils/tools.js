@@ -332,7 +332,7 @@ function _validateParameter(field, validator, argv) {
 }
 
 exports.parseParameter2 = function (args, validator, callback) {
-    logger.info(`Parsing: ${_inspect(args)}, ${_inspect(validator)}`);
+    logger.debug(`Parsing: ${_inspect(args)}`);
     if (typeof validator === 'function') {
         callback = options;
         validator = {};
