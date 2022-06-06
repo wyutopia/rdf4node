@@ -175,11 +175,7 @@ class XTask extends EventEmitter {
                 this.doWork();
             }
             if (this.startup === 'AUTO' || this.startup === 'ONCE') {
-                if (this.startDelayMs) {
-                    setTimeout(this.start.bind(this), this.startDelayMs);
-                } else {
-                    this.start();
-                }
+                this.start();
             } else if (this.startup === 'SCHEDULE' && this.cronExp !== undefined) {
                 logger.info(`${this.alias}: Schedule task with cron: ${this.cronExp}`);
                 schedule.scheduleJob(this.cronExp, this.doWork.bind(this));
@@ -188,7 +184,11 @@ class XTask extends EventEmitter {
         // Register task
         taskMng.register(this);
         if (!this._isAbstract) {
-            this._bootstrap();
+            if (this.startDelayMs) {
+                setTimeout(this._bootstrap.bind(this), this.startDelayMs);
+            } else {
+                this._bootstrap();
+            }
         }
     }
 }
