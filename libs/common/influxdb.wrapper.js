@@ -20,8 +20,10 @@ const MODULE_NAME = "INFLUXDB_CONN";
 class InfluxDbClient extends CommonObject {
     constructor(props) {
         super(props);
+        //
         this.name = props.name || tools.uuidv4();
         this.config = props.config; // config: {connection: {url, token}, org, bucket}
+        logger.debug(`${this.name}: influxDBClient config - ${tools.inspect(this.config)}`);
         // Declaring member variableds
         this._conn = null;
         this.state = eClientState.Null;
@@ -31,7 +33,7 @@ class InfluxDbClient extends CommonObject {
                 logger.error(`${this.name}[${this.state}]: not connected`);
             }
             logger.debug(`${this.name}[${this.state}]: write ${tools.inspect(point)}`);
-            _conn.writePoint(point);
+            this._conn.writePoint(point);
             //TODO: Increase send success
         }
         this.writePoints = (points) => {
@@ -59,7 +61,12 @@ class InfluxDbClient extends CommonObject {
         //
         (() => {
             this.state = eClientState.Init;
-            this._conn = new InfluxDB(this.config.connection).getWriteApi(this.config.org, this.config.bucket);
+            this._conn = new InfluxDB(this.config.connection).getWriteApi(
+                this.config.org,
+                this.config.bucket,
+                this.config.timeUnit || 'ns',
+                this.config.writeOptions || {flushInterval: 0}
+            );
             this.state = eClientState.Conn;
         })();
     }
@@ -70,12 +77,15 @@ class ClientFactory extends EventModule {
         super(props);
         //
         this._clients = {};
-        this.createClient = (name, options) => {
+        this.createClient = (name, config) => {
+            logger.debug(`${this.name}: create client with config - ${name}, ${tools.inspect(config)}`);
             if (this._clients[name] !== undefined) {
                 return this._clients[name];
             }
-            let props = Object.assign({name}, options);
-            this._clients[name] = new InfluxDbClient(props);
+            this._clients[name] = new InfluxDbClient({
+                name: name,
+                config: config
+            });
             return this._clients[name];
         }
         this.dispose = (callback) => {
@@ -90,4 +100,8 @@ class ClientFactory extends EventModule {
         theApp.regModule(this);
     }
 }
-exports.clientFactory = new ClientFactory({});
+exports.clientFactory = new ClientFactory({
+    name: 'InfluxDBClientFactory',
+    mandatory: false,
+    status: true
+});

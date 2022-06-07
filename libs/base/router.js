@@ -71,8 +71,9 @@ function _loadSubRoutes(pathPrefix, dir, subDir) {
 }
 
 function _loadRouteConfig(pathPrefix, dir, filename) {
+    let fullPathName = null;
     try {
-        let fullPathName = path.join(dir, filename);
+        fullPathName = path.join(dir, filename);
         let routes = require(fullPathName);
         routes.forEach(route => {
             let toh = typeof route.handler;
@@ -88,7 +89,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
             }
         });
     } catch (ex) {
-        logger.error(ex.message);
+        logger.error(`Loading ${fullPathName} error! - ${ex.message}`);
     }
 }
 
