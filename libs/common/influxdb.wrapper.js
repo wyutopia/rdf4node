@@ -2,9 +2,13 @@
  * Created by Eric on 2022/06/05
  */
 const async = require('async');
-const { InfluxDB, Point, HttpError } = require('@influxdata/influxdb-client');
+const { InfluxDB, Point, HttpError, FluxTableMetaData, flux, fluxDuration } = require('@influxdata/influxdb-client');
+const {DeleteAPI} = require('@influxdata/influxdb-client-apis');
 exports.Point = Point;
 exports.HttpError = HttpError;
+exports.FluxTableMetaData = FluxTableMetaData;
+exports.flux = flux;
+exports.fluxDuration = fluxDuration;
 //
 const pubdefs = require('../../include/sysdefs');
 const eRetCodes = require('../../include/retcodes');
@@ -26,23 +30,72 @@ class InfluxDbClient extends CommonObject {
         logger.debug(`${this.name}: influxDBClient config - ${tools.inspect(this.config)}`);
         // Declaring member variableds
         this._conn = null;
+        this._writeApi = null;
+        this._queryApi = null;
+        this._deleteApi = null;
         this.state = eClientState.Null;
         // Implementing methods
         this.writePoint = (point) => {
             if (this.state !== eClientState.Conn) {
                 logger.error(`${this.name}[${this.state}]: not connected`);
+                return null;
             }
             logger.debug(`${this.name}[${this.state}]: write ${tools.inspect(point)}`);
-            this._conn.writePoint(point);
-            //TODO: Increase send success
+            try {
+                this._writeApi.writePoint(point);
+                //TODO: Increase send success
+            } catch (ex) {
+                logger.debug(`${this.name}[${this.state}]: write point error! - ${ex.message}`);
+            }
         }
         this.writePoints = (points) => {
             if (this.state !== eClientState.Conn) {
                 logger.error(`${this.name}[${this.state}]: not connected`);
+                return null;
             }
-            logger.debug(`${this.name}[${this.state}]: write ${tools.inspect(point)}`);
-            _conn.writePoints(points);
-            //TODO: Increase send success
+            logger.debug(`${this.name}[${this.state}]: write ${tools.inspect(points)}`);
+            try {
+                this._writeApi.writePoint(points);
+                //TODO: Increase send success
+            } catch (ex) {
+                logger.debug(`${this.name}[${this.state}]: write point error! - ${ex.message}`);
+            }
+        }
+        this.collectRows = (fluxQuery, rowMapper, callback) => {
+            if (typeof rowMapper === 'function') {
+                callback = rowMapper;
+                rowMapper = null;
+            }
+            if (this._queryApi === null) {
+                let msg = `${this.name}: queryApi is NULL!`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.METHOD_NOT_ALLOWED,
+                    message: msg
+                });
+            }
+            this._queryApi.collectRows(fluxQuery, rowMapper).then(data => {
+                return callback(null, data);
+            }).catch(err => {
+                logger.error(`${this.name}: collectRows error! - ${tools.inspect(fluxQuery)} - ${err.message}`);
+                return callback(err);
+            });
+        }
+        this.queryRaw = (fluxQuery, callback) => {
+            if (this._queryApi === null) {
+                let msg = `${this.name}: queryApi is NULL!`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.METHOD_NOT_ALLOWED,
+                    message: msg
+                });
+            }
+            this._queryApi.queryRaw(fluxQuery).then(data => {
+                return callback(null, data);
+            }).catch(err => {
+                logger.error(`${this.name}: queryRaw error! - ${tools.inspect(fluxQuery)} - ${err.message}`);
+                return callback(err);
+            });
         }
         this.dispose = (callback) => {
             if (this.state !== eClientState.Conn) {
@@ -61,13 +114,20 @@ class InfluxDbClient extends CommonObject {
         //
         (() => {
             this.state = eClientState.Init;
-            this._conn = new InfluxDB(this.config.connection).getWriteApi(
-                this.config.org,
-                this.config.bucket,
-                this.config.timeUnit || 'ns',
-                this.config.writeOptions || {flushInterval: 0}
-            );
-            this.state = eClientState.Conn;
+            try {
+                this._conn = new InfluxDB(this.config.connection);
+                this._writeApi = this._conn.getWriteApi(
+                    this.config.org,
+                    this.config.bucket,
+                    this.config.precision || 'ns',
+                    this.config.writeOptions || { flushInterval: 10 }
+                );
+                this._queryApi = this._conn.getQueryApi(this.config.org);
+                this._deleteApi = new DeleteAPI(this._conn);
+                this.state = eClientState.Conn;
+            } catch (ex) {
+                logger.error(`${this.name}: Connect to server error! - ${ex.message}`);
+            }
         })();
     }
 }
@@ -103,5 +163,6 @@ class ClientFactory extends EventModule {
 exports.clientFactory = new ClientFactory({
     name: 'InfluxDBClientFactory',
     mandatory: false,
-    status: true
+    state: pubdefs.eModuleState.ACTIVE,
+    type: pubdefs.eModuleType.CONN
 });

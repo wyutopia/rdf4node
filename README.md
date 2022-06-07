@@ -137,8 +137,9 @@ npm adduser --registry https://nexus.ice-deer.com/repository/npm-release
 ### InfluxDB
 ```
 docker pull influxdb
-docker run -id -p 8086:8086 \
+docker run -id --name influxdb-dev \
+    -p 8086:8086 \
     -e DOCKER_INFLUXDB_INIT_USERNAME=admin \
-    -e DOCKER_INFLUXDB_INIT_PASSWORD=Dev#2022
-    --name influxdb-dev influxdb
+    -e DOCKER_INFLUXDB_INIT_PASSWORD=Dev#2022 \
+    influxdb --reporting-disabled
 ```
