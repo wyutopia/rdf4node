@@ -1,6 +1,6 @@
 {
     "name": "@icedeer/rdf4node",
-    "version": "0.7.13",
+    "version": "0.8.0-SNAPSHOT",
     "description": "A rapid develop framework for nodejs",
     "author": {
         "name": "Eric Wang",
@@ -20,6 +20,7 @@
         "app-root-path": "3.0.0",
         "async": "^3.2.3",
         "bluebird": "^3.7.2",
+        "clickhouse": "^2.5.0",
         "connect-mongodb-session": "^3.1.1",
         "connect-redis": "^6.1.3",
         "consul": "^0.40.0",

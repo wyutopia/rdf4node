@@ -151,3 +151,13 @@ docker run -id --name influxdb-dev \
     -e DOCKER_INFLUXDB_INIT_PASSWORD=Dev#2022 \
     influxdb --reporting-disabled
 ```
+
+### ClickHouse
+```
+docker pull clickhouse/clickhouse-server
+docker run -id --name clickhouse-dev \
+    -p 8123:8123 \
+    -p 9000:9000 \
+    --ulimit nofile=262144:262144 \
+    clickhouse/clickhouse-server
+```
