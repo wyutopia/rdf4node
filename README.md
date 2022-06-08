@@ -76,12 +76,20 @@ docker run -id --name rmq-dev \
     -e RABBITMQ_DEFAULT_PASS=Dev#2022 \
     rabbitmq
 ```
-#### Enable management plugin
+#### Enable management plugin and metrics collector
 ```
 docker exec -it rmq-dev /bin/bash
 // In the terminal of container
 # rabbitmq-plugins enable rabbitmq_management
+
+# cd /etc/rabbitmq/conf.d
+# echo management_agent.disable_metrics_collector = false > management_agent.disable_metrics_collector.conf
+# exit
+
+// In the host terminal
+docker restart rmq-dev
 ```
+
 Then you can open web consol from http://127.0.0.1:15672
 
 ### Redis

@@ -62,10 +62,6 @@ class InfluxDbClient extends CommonObject {
             }
         }
         this.collectRows = (fluxQuery, rowMapper, callback) => {
-            if (typeof rowMapper === 'function') {
-                callback = rowMapper;
-                rowMapper = null;
-            }
             if (this._queryApi === null) {
                 let msg = `${this.name}: queryApi is NULL!`;
                 logger.error(msg);
@@ -102,7 +98,7 @@ class InfluxDbClient extends CommonObject {
                 return callback();
             }
             this.state = eClientState.Closing;
-            this._conn.close().then(() => {
+            this._writeApi.close().then(() => {
                 logger.info(`${this.name}[${this.state}]: connection closed.`);
                 return callback();
             }).catch(ex => {
