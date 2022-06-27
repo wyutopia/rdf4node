@@ -62,7 +62,15 @@
     },
     "tedious": {
       "server": "127.0.0.1",
-      "options": {},
+      "options": {
+        "tdsVersion": "7_4",
+        "trustServerCertificate": true,
+        "encrypt": false,
+        "appName": "rdf4node",
+        "connectTimeout": 10000,
+        "requestTimeout": 8000,
+        "database": "db_name"
+      },
       "authentication": {
         "type": "default",
         "options": {
