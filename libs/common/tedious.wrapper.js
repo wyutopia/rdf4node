@@ -11,7 +11,7 @@ const tools = require('../../utils/tools');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
 
-const logger = WinstonLogger(process.env.SRV_ROLE || 'redis');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'tedious');
 
 const MODULE_NAME = "TDS_CONN";
 

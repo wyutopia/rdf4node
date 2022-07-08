@@ -43,7 +43,7 @@ function _assembleRealConfig(rawConf) {
         host: rawConf.host || '127.0.0.1',
         port: rawConf.port || 6379,
         reconnectStrategy: (retries) => {
-            if (this.state === pubdefs.eClientState.Closing || retries > this.maxRetryTimes) {
+            if (this.state === eClientState.Closing || retries > this.maxRetryTimes) {
                 logger.error(`${this.name}: Max retry times (${this.maxRetryTimes}) exceeded.`);
                 return new Error('Closing or Max retry times exceed.');
             }

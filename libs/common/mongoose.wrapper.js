@@ -51,6 +51,13 @@ theApp.regModule({
         let host = config.host || `${config.ip}:${config.port}`;
         let connStr = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}` 
                         + `@${host}/${config.db}?authSource=${config.authSource || config.db}`;
+        if (config.replicaSet !== undefined) {
+            connStr += `&replicaSet=${config.replicaSet}`;
+        }
+        if (config.readPref !== undefined) {
+            connStr += `&readPreference=${config.readPref}`;
+        }
+        logger.info(`>>>>>> Connection string: ${connStr}`);
         const result = await mongoose.connect(connStr, options);
         if (result) {
             conn = mongoose.connection;
