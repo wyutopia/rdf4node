@@ -41,6 +41,19 @@ theApp.regModule({
     }
 });
 
+function _getConnParams(config) {
+    let params = [];
+    let keys = Object.keys(config.parameters);
+    if (keys.indexOf('authSource') === -1) { // authSource not exists!
+        params.push(`authSource=${config.authSource || config.db}`);
+    }
+    keys.forEach(key => {
+        params.push(`${key}=${config.parameters[key]}`);
+    });
+
+    return params.join('&');
+}
+
 (async () => {
     try {
         const options = {
@@ -49,14 +62,9 @@ theApp.regModule({
         };
         logger.info('Connect to MongoDb......');
         let host = config.host || `${config.ip}:${config.port}`;
+        let connParams = _getConnParams(config);
         let connStr = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}` 
-                        + `@${host}/${config.db}?authSource=${config.authSource || config.db}`;
-        if (config.replicaSet !== undefined) {
-            connStr += `&replicaSet=${config.replicaSet}`;
-        }
-        if (config.readPref !== undefined) {
-            connStr += `&readPreference=${config.readPref}`;
-        }
+                        + `@${host}/${config.db}?${connParams}`;
         logger.info(`>>>>>> Connection string: ${connStr}`);
         const result = await mongoose.connect(connStr, options);
         if (result) {
