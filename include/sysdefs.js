@@ -136,6 +136,36 @@ const eAlarmSeverity = {
     CLEARED       : 0         // GREEN     : log
 };
 exports.eAlarmSeverity = eAlarmSeverity;
+exports.getAlarmSeverityString = function(s) {
+    let str = 'Unknown';
+    switch(s) {
+        case 0:
+            str = 'CLEAR';
+            break;
+        case 1:
+            str = 'WARNING';
+            break;
+        case 2:
+            str = 'MINOR';
+            break;
+        case 3:
+            str = 'MAJOR';
+            break;
+        case 4:
+            str = 'CRITICAL';
+            break;
+        case 5:
+            str = 'FATAL';
+            break;
+    }
+    return str;
+};
+
+const eAlarmStatus = {
+    ACTIVE        : 'ACT',
+    CLEAR         : 'CLR'
+};
+exports.eAlarmStatus = eAlarmStatus;
 
 const eAlarmCode = {
     // System alarm
