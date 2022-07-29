@@ -161,3 +161,32 @@ docker run -id --name clickhouse-dev \
     --ulimit nofile=262144:262144 \
     clickhouse/clickhouse-server
 ```
+
+### elasticsearch
+#### Pull the Elasticsearch Docker image
+```
+docker pull docker.elastic.co/elasticsearch/elasticsearch:8.3.3
+```
+#### Start a single-node cluster with Docker
+1. Create a new docker network for Elasticsearch and Kibana
+```
+docker network create elastic
+```
+2. Start Elasticsearch in Docker.
+https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html?baymax=rec&rogue=pop-1&elektra=guide
+```
+docker run -it --name es-dev \
+    --net elastic \
+    -p 9200:9200 -p 9300:9300 \
+    docker.elastic.co/elasticsearch/elasticsearch:8.3.3
+```
+3. Copy the generated password and enrollment token and save them in a secure location.
+If you need to reset the password for the elastic user or other built-in users, run the 
+elasticsearch-reset-password tool.
+```
+docker exec -it es-dev /usr/share/elasticsearch/bin/elasticsearch-reset-password
+```
+4. Copy the http-ca.crt security certificate from your Docker container to your local machine.
+```
+docker cp es-dev:/usr/share/elasticsearch/config/certs/http_ca.crt .
+```

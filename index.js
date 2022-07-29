@@ -63,3 +63,6 @@ if (config.redis) {
 if (config.tedious) {
     exports.tdsWrapper = require('./libs/common/tedious.wrapper');
 }
+if (config.elastic) {
+    exports.elasticWrapper = require('./libs/common/es.wrapper');
+}
