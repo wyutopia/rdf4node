@@ -4,11 +4,12 @@
  const async = require('async');
  const mysql = require('mysql2');
  //
- const pubdefs = require('../../include/sysdefs');
  const theApp = require('../../bootstrap');
- const {EventModule} = require('../event-module');
+ const pubdefs = require('../../include/sysdefs');
+ const eRetCodes = require('../../include/retcodes');
+ const {EventEmitter, EventModule, eConnectionState: eState} = require('../../include/components');
  const tools = require('../../utils/tools');
- 
+ const {mysql: config} = require('../base.config');
  const {WinstonLogger} = require('../base/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'mysql2');
  
@@ -18,199 +19,364 @@
  /*********************************************
   * Set monitor metrics
   *********************************************/
- const eMetricsName = {
-     connTotal: 'connection_total',
-     connActive: 'connection_active',
-     queryAttempt: 'query_attempt',
-     querySuccess: 'query_success',
-     queryFailed: 'query_failed'
- };
+const eMetricsName = {
+    poolActive: 'pool_active',
+    connTotal: 'conn_total',
+    connRefused: 'conn_refused',
+    connActive: 'conn_active',
+    queryAttempt: 'query_attempt',
+    querySuccess: 'query_succ',
+    queryFailure: 'query_fail'
+};
+
+const metricsCollector = mntService.regMetrics({
+    moduleName: MODULE_NAME,
+    metrics: [{
+        name: eMetricsName.poolActive,
+        type: pubdefs.eMetricType.GAUGE
+    }, {
+        name: eMetricsName.connTotal,
+        type: pubdefs.eMetricType.COUNTER
+    }, {
+        name: eMetricsName.connRefused,
+        type: pubdefs.eMetricType.COUNTER
+    }, {
+        name: eMetricsName.connActive,
+        type: pubdefs.eMetricType.GAUGE
+    }, {
+        name: eMetricsName.queryAttempt,
+        type: pubdefs.eMetricType.COUNTER
+    }, {
+        name: eMetricsName.querySuccess,
+        type: pubdefs.eMetricType.COUNTER
+    }, {
+        name: eMetricsName.queryFailure,
+        type: pubdefs.eMetricType.COUNTER
+    }]
+});
  
- const metricsCollector = mntService.regMetrics({
-     moduleName: MODULE_NAME,
-     metrics: [{
-         name: eMetricsName.connTotal,
-         type: pubdefs.eMetricType.COUNTER
-     }, {
-         name: eMetricsName.connActive,
-         type: pubdefs.eMetricType.GAUGE
-     }, {
-         name: eMetricsName.queryAttempt,
-         type: pubdefs.eMetricType.COUNTER
-     }, {
-         name: eMetricsName.querySuccess,
-         type: pubdefs.eMetricType.COUNTER
-     }, {
-         name: eMetricsName.queryFailed,
-         type: pubdefs.eMetricType.COUNTER
-     }]
- });
- 
- const eStatus = {
-     INIT            : 'init',
-     CONN_WAIT       : 'conn_wait',
-     CONNECTED       : 'connected',
-     CLOSE_PENDING   : 'close_pending'
- }
- function oops () {}
- 
- function onTtlTimeout(callback) {
-     logger.debug(__file, __line, this.id, this.refCount, 'Ttl timeout...');
-     if (this.refCount > 0) { // Restart ttl timer
-         this.tm = setTimeout(onTtlTimeout.bind(this, oops), this.ttl);
-         return callback();
-     }
-     this.parent.emit('end', this.id);
-     this.tm = null;
-     _closeConnection.call(this, () => {
-         this.parent.emit('close', this.id);
-         return callback();
-     });
- }
- 
- class MySqlConnection {
-     constructor(parent, id, options) {
-         this.id = id;
-         this.parent = parent;
-         this.connection = mysql.createConnection(options);
-         this.refCount = 1;
-         this.ttl = options.ttl || pubdefs.eInterval._1_MIN;
-         this.tm = null;
-         this.status = eStatus.INIT;
-         //
-         this.end = (callback) => {
-             this.refCount--;
-             if (callback) {
-                 callback();
-             }
-         }
-         this.connect = (callback) => {
-             if (this.status !== eStatus.INIT) {  // Already connected
-                 return callback();
-             }
-             this.status = eStatus.CONN_WAIT;
-             return this.connection.connect((err) => {
-                 if (err) {
-                     this.end();
-                     this.tatus = eStatus.INIT;
-                 } else {
-                     this.status = eStatus.CONNECTED;
-                 }
-                 return callback(err);
-             });
-         }
-         this.query = (stmt, callback) => {
-             metricsCollector[eMetricsName.queryAttempt].inc(1);
-             return this.connection.query(stmt, (err, rows) => {
-                 if (err) {
-                     metricsCollector[eMetricsName.queryFailed].inc(1);
-                     this.end();
-                 } else {
-                     metricsCollector[eMetricsName.querySuccess].inc(1);
-                 }
-                 return callback(err, rows);
-             });
-         };
-         //
-         (() => {
-             // Start TTL timer
-             this.tm = setTimeout(onTtlTimeout.bind(this, oops), this.ttl);
-         })();
-     }
- }
- 
- function _incRefCount() {
-     this.refCount++;
-     clearTimeout(this.tm);
-     this.tm = setTimeout(onTtlTimeout.bind(this, oops), this.ttl);
- }
- 
- function _closeConnection(callback) {
-     try {
-         this.status = eStatus.CLOSE_PENDING;
-         this.connection.destroy();
-     } catch (err) {
-         logger.error(__file, __line, this.id, err.message);
-     }
-     this.status = eStatus.INIT;
-     metricsCollector[eMetricsName.connActive].dec(1);
-     return callback();
- }
- 
- // The class
- class MysqlWrapper extends EventModule {
-     constructor(options) {
-         super(options);
-         //
-         this._clients = {};
-         this._closePendings = {};
-         // Implementing methods
-         /**
-          * @param options = {db = {host, port, user, password, database, charset}, ttl}
-          */
-         this.createConnection = (options) => {
-             if (this.state !== pubdefs.eModuleState.ACTIVE) {
-                 return null;
-             }
-             let key = tools.genSign(`${options.host}:${options.port}:${options.database}`);
-             let client = this._clients[key];
-             if (client !== undefined) { // Connection exists
-                 _incRefCount.call(client);
-             } else {
-                 // Create new
-                 client = new MySqlConnection(this, key, options);
-                 this._clients[key] = client;
-                 metricsCollector[eMetricsName.connTotal].inc(1);
-                 metricsCollector[eMetricsName.connActive].inc(1);
-             }
-             return client;
-         }
-         this.dispose = (callback) => {
-             logger.info(__file, __line, this.name, 'Perform clean-up ...');
-             if (this.state !== pubdefs.eModuleState.ACTIVE) {
-                 logger.warn(__file, __line, this.name, 'method re-entry!');
-                 return callback();
-             }
-             this.state = pubdefs.eModuleState.STOP_PENDING;
-             let keys = Object.keys(this._clients);
-             logger.info(__file, __line, this.name, `Close ${keys.length} mysql connections...`);
-             // Step 1: Stop all timers
-             keys.forEach(key => {
-                 clearTimeout(this._clients[key].tm);
-             });
-             // Step 2: End all connections
-             async.eachLimit(keys, 6, (key, next) => {
-                 let client = this._clients[key];
-                 _closeConnection.call(client, next);
-             }, () => {
-                 this.state = pubdefs.eModuleState.INIT;
-                 logger.info(__file, __line, this.name, 'All connection closed.');
-                 return callback();
-             });
-         }
-         //
-         this.on('end', (id) => {
-             if (this.state === pubdefs.eModuleState.ACTIVE) {
-                 this._closePendings[id] = this._clients[id];
-                 delete this._clients[id];
-             }
-         });
-         this.on('close', (id) => {
-             if (this.state === pubdefs.eModuleState.ACTIVE) {
-                 delete this._closePendings[id];
-             }
-         });
-         // Register module
-         (() => {
-             theApp.regModule(this);
-         })();
-     }
- }
+// The connection class
+class MySqlConnection {
+    constructor(props) {
+        this._id = props.id;
+        this._parent = props.parent;
+        this._state = eState.Closed;
+        this._lastError = null;
+        this._ttlTimer = null;
+        this._conn = mysql.createConnection(props.dbConf);
+        if (this._conn) {
+            this._conn.on('error', err => {
+                let msg = `[${this._id}]: Connection error! - ${err.code}#${err.message} - state#${this._state}`;
+                logger.error(msg);
+                this._lastError = {
+                    code: eRetCodes.DB_QUERY_ERR,
+                    message: msg
+                };
+                if (this._state === eState.Conn) {
+                    this._parent.emit('conn_closed', this._id);
+                }
+                this._state = eState.PClosing;
+            });
+        }
+        this.query = (stmt, callback) => {
+            logger.debug(`MySqlConn[${this._id}]: query() called. - ${stmt}`);
+            if (this._state !== eState.Closed && this._state !== eState.Conn) {
+                let msg = `MySqlConn[${this._id}]: Query is not allowed in state#${this._state}!`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.METHOD_NOT_ALLOWED,
+                    message: msg
+                });
+            }
+            this._state = eState.Querying;
+            this._lastError = null;
+            metricsCollector[eMetricsName.queryAttempt].inc(1);
+            return this._conn.query(stmt, (err, rows) => {
+                if (this._state !== eState.Querying) {  // In case connection error occurred.
+                    return callback(this._lastError || {
+                        code: eRetCodes.DB_QUERY_ERR,
+                        message: `Connection error while querying! - state#${this._state}`
+                    });
+                }
+                if (err) {
+                    let msg = `MySqlConn[${this._id}]: Query error! - ${err.syscall} - ${err.errno}#${err.code}`;
+                    logger.error(msg);
+                    this._lastError = err;
+                    if (err.code === 'ECONNREFUSED') {
+                        metricsCollector[eMetricsName.connRefused].inc(1);
+                        this._state = eState.Closed;
+                    } else {
+                        this._state = eState.ClosePending;
+                    }
+                    metricsCollector[eMetricsName.queryFailure].inc(1);
+                } else {
+                    metricsCollector[eMetricsName.querySuccess].inc(1);
+                    this._state = eState.Conn;
+                }
+                return callback(this._lastError, rows);
+            });
+        };
+        this.end = (callback) => {
+            logger.debug(`MySqlConn[${this._id}]: Querying end. - state#${this._state}`);
+            this._parent.emit('query_end', this._id, this._state);
+            // Remove connection from BUSY queue
+            if (callback) {
+                callback();
+            }
+        };
+        this.dispose = (callback) => {
+            logger.debug(`MySqlConn[${this._id}]: Dispose connection called. - state#${this._state}`);
+            this.clearTtlTimer();
+            if (this._state === eState.Closed || this._state === eState.Closing) { // Already in closing status
+                return callback();
+            }
+            this._state = eState.Closing;
+            try {
+                this._conn.end((err) => {
+                    if (err) {
+                        logger.error(`MySqlConn[${this._id}]: End connection error! - ${err.code}#${err.message}`);
+                    }
+                    this._state = eState.Closed;
+                });
+            } catch (ex) {
+                logger.error(`MySqlConn[${this._id}]: Closing connection exception! - ${ex.message}.`);
+            } finally {
+                logger.debug(`MySqlConn[${this._id}]: Connection disposed.`);
+                if (callback) {
+                    callback();
+                }
+            }
+        };
+        this.clearTtlTimer = () => {
+            if (this._ttlTimer !== null) {
+                clearTimeout(this._ttlTimer);
+                this._ttlTimer = null;
+            }
+        }
+        this.startTtlTimer = (itv = pubdefs.eInterval._1_MIN) => {
+            if (this._ttlTimer === null) {
+                this._ttlTimer = setTimeout(() => {
+                    this._ttlTimer = null;
+                    this._parent.emit('ttl_timeout', this._id, this._state);
+                }, itv);
+            }
+        }
+    }
+}
+
+function _removeQueueElement (arr, cid) {
+    let index = arr.indexOf(cid);
+    if (index !== -1) {
+        arr.splice(index, 1);
+    }
+}
+
+function _updateLastActiveTime () {
+    this._lastActiveTime = new Date();
+}
+class MySqlConnectionPool extends EventEmitter{
+    /**
+     * @param props = {id, connectionLimit, reuse, ttl, dbConf = {host, port, database, user, password, charset}}
+     */
+    constructor(props) {
+        super(props);
+        //
+        this._name = "MySqlConnPool";
+        this._id = props.id;
+        this._parent = props.parent;
+        this._poolTtl = props.poolTtl;
+        this._lastActiveTime = new Date();
+        //
+        this._connectionLimit = props.connectionLimit;
+        this._reuse = props.reuse;
+        this._ttl = props.ttl;
+        this._dbConf = props.dbConf;
+        //
+        this._connRepo = {};  // The connection repositories
+        this._idle = [];  // The idle queue
+        this._busy = [];  // The busy queue
+        this._pending = []; // The close-pending queue
+        //
+        this.alias = `${this._name}[${this._id}]`;
+        // Implementing member methods
+        this.alloc = () => {
+            _updateLastActiveTime.call(this);
+            logger.debug(`${this.alias}: Allocate connection...`);
+            let conn = null;
+            if (this._idle.length > 0) { // Reuse exist IDLE connection
+                let cid = this._idle.shift();
+                conn = this._connRepo[cid];
+                conn.clearTtlTimer();
+                this._busy.push(cid);
+            } else if (Object.keys(this._connRepo).length < this._connectionLimit) {
+                let cid = uuidv4();
+                conn = new MySqlConnection({
+                    id: cid,
+                    parent: this,
+                    dbConf: this._dbConf,
+                    ttl: this._ttl
+                });
+                this._connRepo[cid] = conn;
+                this._busy.push(cid);
+                //
+                metricsCollector[eMetricsName.connTotal].inc(1);
+                metricsCollector[eMetricsName.connActive].inc(1);
+            }
+            if (conn) {
+                logger.debug(`${this.alias}: connection #${conn._id} allocated.`);
+            } else {
+                logger.error(`${this.alias}: connection limit exceed.`);
+                // TODO: fire alarm
+            }
+            return conn;
+        };
+        this.dispose = (callback) => {
+            let keys = Object.keys(this._connRepo);
+            logger.info(`${this.alias}: Start disposing ${keys.length} connections ...`);
+            async.eachLimit(keys, 4, (cid, next) => {
+                let conn = this._connRepo[cid];
+                return conn.dispose(next);
+            }, () => {
+                logger.info(`${this.alias}: Total ${keys.length} connections disposed.`);
+                return callback();
+            })
+        };
+        this.on('conn_closed', id => {
+            _updateLastActiveTime.call(this);
+            logger.info(`${this.alias}: On conn_closed - ${id}`);
+            let index = this._idle.indexOf(id);
+            if (index !== -1) { // Move from Idle to Pending
+                logger.info(`${this.alias}: Move ${id} from Idle to Pending`);
+                let conn = this._connRepo[id];
+                conn.clearTtlTimer();
+                this._idle.splice(index, 1);
+                this._pending.push(id);
+                conn.startTtlTimer(0);
+            }
+        });
+        this.on('ttl_timeout', (id, connState) => {
+            _updateLastActiveTime.call(this);
+            logger.info(`${this.alias}: On ttl_timeout - ${id} - ${connState}`);
+            logger.debug(`${this.alias}: Before - t(${Object.keys(this._connRepo).length}) - i(${this._idle.length}) - b(${this._busy.length}) - p(${this._pending.length})`);
+            if (this._reuse && connState === eState.Conn) {
+                _removeQueueElement(this._idle, id);
+            } else {
+                _removeQueueElement(this._pending, id);
+            }
+            let conn = this._connRepo[id];
+            if (!conn) {
+                logger.error(`${this.alias}: Specified connection not exists! - ${id}`);
+                return;
+            }
+            conn.dispose(() => {
+                delete this._connRepo[id];
+                metricsCollector[eMetricsName.connActive].dec(1);
+                logger.info(`${this.alias}: After - t(${Object.keys(this._connRepo).length}) - i(${this._idle.length}) - b(${this._busy.length}) - p(${this._pending.length})`);
+            });
+        });
+        this.on('query_end', (id, connState) => {
+            _updateLastActiveTime.call(this);
+            logger.info(`${this.alias}: On connection #${id} end with state#${tools.inspect(connState)}`);
+            let conn = this._connRepo[id];
+            if (conn) {
+                _removeQueueElement(this._busy, id);
+                if (this._reuse && connState === eState.Conn) {
+                    this._idle.push(id);
+                    conn.startTtlTimer(this._ttl);
+                } else {
+                    this._pending.push(id);
+                    conn.startTtlTimer(0); // Trigger timeout immediately
+                }
+            } else {
+                logger.error(`[${this.alias}]: connection #${id} not found in busy queue.`);
+            }
+        });
+        (() => {
+            this._ttlTimer = setInterval(() => {
+                let dur = new Date() - this._lastActiveTime;
+                if (dur > this._poolTtl && Object.keys(this._connRepo).length === 0) {
+                    logger.info(`${this.alias}: idle time - ${dur}`);
+                    clearInterval(this._ttlTimer);
+                    this._parent.emit('pool_inact', this._id);
+                }
+            }, pubdefs.eInterval._10_SEC);
+        })();
+    }
+}
+
+// The class
+class MysqlWrapper extends EventModule {
+    constructor(props) {
+        logger.info(`Create MySqlWrapper with props: ${tools.inspect(props)}`);
+        super(props);
+        //
+        this._pools = {};
+        this._config = props.config || {};
+        // Implementing methods
+        /**
+         * @param dbConf = {host, port, database, user, password, charset, ttl}
+         */
+        this.createConnection = (dbConf) => {
+            let conn = null;
+            if (this.state !== pubdefs.eModuleState.ACTIVE) {
+                return conn;
+            }
+            let poolId = tools.genSign(`${dbConf.host}:${dbConf.port}:${dbConf.database}`);
+            let pool = this._pools[poolId];
+            if (pool === undefined) {
+                let options = {
+                    id: poolId,
+                    parent: this,
+                    poolTtl: this._config.poolTtl || pubdefs.eInterval._2_MIN,
+                    //
+                    connectionLimit: this._config.connectionLimit || 10,
+                    reuse: this._config.reuse !== undefined? this._config.reuse : false,
+                    ttl: this._config.ttl || pubdefs.eInterval._1_MIN,
+                    //
+                    dbConf: dbConf
+                };
+                logger.debug(`New connection-pool with options: ${tools.inspect(options)}`);
+                pool = new MySqlConnectionPool(options);
+                this._pools[poolId] = pool;
+                metricsCollector[eMetricsName.poolActive].inc(1);
+            }
+            conn = pool.alloc();
+            return conn;
+        }
+        this.on('pool_inact', id => {
+            logger.debug(`${this.name}: On pool_inact - remove inactive pool - ${id}`);
+            delete this._pools[id];
+            metricsCollector[eMetricsName.poolActive].dec(1);
+        });
+        this.dispose = (callback) => {
+            logger.info(this.name, 'perform cleaning ...');
+            if (this.state !== pubdefs.eModuleState.ACTIVE) {
+                logger.warn(this.name, 'method re-entry!');
+                return callback();
+            }
+            this.state = pubdefs.eModuleState.STOP_PENDING;
+            let keys = Object.keys(this._pools);
+            async.eachLimit(keys, 4, (key, next) => {
+                let pool = this._pools[key];
+                return pool.dispose(next);
+            }, () => {
+                this.state = pubdefs.eModuleState.INIT;
+                logger.info(this.name, 'All connection closed.');
+                return callback();
+            });
+        }
+        // Register module
+        (() => {
+            theApp.regModule(this);
+        })();
+    }
+}
  
  const mysqlWrapper = new MysqlWrapper({
      name: MODULE_NAME,
      type: pubdefs.eModuleType.CONN,
      mandatory: true,
-     state: pubdefs.eModuleState.ACTIVE
+     state: pubdefs.eModuleState.ACTIVE,
+     config: config
  });
  module.exports = exports = mysqlWrapper;

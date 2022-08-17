@@ -67,11 +67,14 @@ exports.EventModule = EventModule;
 const eClientState = {
     Null: 'null',
     Init: 'init',
-    Conn: 'conn',
+    Conn: 'connected',
     ConnErr: 'connerr',
-    PClosing: 'pclose',
+    Querying: 'querying',
+    PClosing: 'pclosed',
+    ClosePending: 'closepending',
     Closing: 'closing',
-    Pending: 'pending'
+    Pending: 'pending',
+    Closed: 'closed'
 };
 exports.eClientState = eClientState;
 exports.eConnectionState = eClientState;
