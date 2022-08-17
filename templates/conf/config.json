@@ -78,6 +78,13 @@
           "password": "Dev#2022"
         }
       }
+    },
+    "mysql": {
+      "userWrapper": true,
+      "poolTtl": 60000,
+      "connLimit": 10,
+      "connReuse": false,
+      "connTtl": 15000
     }
   }
   

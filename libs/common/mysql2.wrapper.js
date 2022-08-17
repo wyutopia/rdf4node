@@ -187,9 +187,9 @@ class MySqlConnectionPool extends EventEmitter{
         this._poolTtl = props.poolTtl;
         this._lastActiveTime = new Date();
         //
-        this._connectionLimit = props.connectionLimit;
-        this._reuse = props.reuse;
-        this._ttl = props.ttl;
+        this._connectionLimit = props.connLimit;
+        this._reuse = props.connReuse;
+        this._ttl = props.connTtl;
         this._dbConf = props.dbConf;
         //
         this._connRepo = {};  // The connection repositories
@@ -327,13 +327,12 @@ class MysqlWrapper extends EventModule {
                 let options = {
                     id: poolId,
                     parent: this,
+                    dbConf: dbConf,
+                    //
                     poolTtl: this._config.poolTtl || pubdefs.eInterval._2_MIN,
-                    //
-                    connectionLimit: this._config.connectionLimit || 10,
-                    reuse: this._config.reuse !== undefined? this._config.reuse : false,
-                    ttl: this._config.ttl || pubdefs.eInterval._1_MIN,
-                    //
-                    dbConf: dbConf
+                    connLimit: this._config.connLimit || 10,
+                    connReuse: this._config.connReuse !== undefined? this._config.connReuse : false,
+                    connTtl: this._config.connTtl || pubdefs.eInterval._1_MIN,
                 };
                 logger.debug(`New connection-pool with options: ${tools.inspect(options)}`);
                 pool = new MySqlConnectionPool(options);
