@@ -13,11 +13,11 @@
         "registry": "http://nexus.ice-deer.com:38081/repository/npm-release"
     },
     "dependencies": {
-        "@elastic/elasticsearch": "^8.2.1",
-        "@grpc/grpc-js": "^1.6.7",
-        "@grpc/proto-loader": "^0.6.12",
-        "@influxdata/influxdb-client": "^1.26.0",
-        "@influxdata/influxdb-client-apis": "^1.26.0",
+        "@elastic/elasticsearch": "^8.4.0",
+        "@grpc/grpc-js": "^1.7.0",
+        "@grpc/proto-loader": "^0.7.2",
+        "@influxdata/influxdb-client": "^1.29.0",
+        "@influxdata/influxdb-client-apis": "^1.29.0",
         "app-root-path": "3.0.0",
         "async": "^3.2.3",
         "bluebird": "^3.7.2",
