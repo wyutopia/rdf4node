@@ -43,7 +43,7 @@ theApp.regModule({
 
 function _getConnParams(config) {
     let params = [];
-    let keys = Object.keys(config.parameters);
+    let keys = Object.keys(config.parameters || {});
     if (keys.indexOf('authSource') === -1) { // authSource not exists!
         params.push(`authSource=${config.authSource || config.db}`);
     }
