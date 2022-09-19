@@ -50,7 +50,7 @@ docker run -id --name mongo-dev \
     -p 27017:27017 \
     -e MONGO_INITDB_ROOT_USERNAME=admin \
     -e MONGO_INITDB_ROOT_PASSWORD=Dev#2022 \
-    -v /Users/wangye/DataRepos/mongodb:/data/db \
+    -v /Users/$(whoami)/DataRepos/mongodb:/data/db \
     mongo --wiredTigerCacheSizeGB 1.5
 ```
 #### Prepare collection
