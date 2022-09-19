@@ -43,13 +43,14 @@ $ docker exec -t consul-dev consul members
 ```
 
 ### MongoDB
-#### Start container
+#### Start dev container with local data store
 ```
 docker pull mongo
 docker run -id --name mongo-dev \
     -p 27017:27017 \
     -e MONGO_INITDB_ROOT_USERNAME=admin \
     -e MONGO_INITDB_ROOT_PASSWORD=Dev#2022 \
+    -v /Users/wangye/DataRepos/mongodb:/data/db \
     mongo --wiredTigerCacheSizeGB 1.5
 ```
 #### Prepare collection
@@ -63,6 +64,15 @@ rdf4> db.createUser({ \
     pwd: 'Dev#2022' \
     roles: [{role: 'dbOwner', db: 'rdf4}] \
   })
+```
+#### Dump and restore all databases
+```
+mongodump --host=<HOST_IP> --port=<HOST_PORT>  \
+          --authenticationDatabase=<AUTH_SOURCE> -u admin -p Dev#2022 \
+          --out=<BACKUP_DIR>
+mongorestore --host=<> --port=<> \
+             --authenticationDatabase=<AUTH_SOURCE> -u admin -p Dev#2022 \
+             --nsInclude=<DATABASE>.<COLLECTION> <BACKUP_DIR> --drop
 ```
 ### RabbitMQ
 #### Start container
