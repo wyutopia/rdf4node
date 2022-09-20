@@ -65,7 +65,7 @@ function _getConnParams(config) {
         let connParams = _getConnParams(config);
         let connStr = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}` 
                         + `@${host}/${config.db || ''}?${connParams}`;
-        logger.info(`>>>>>> Connection string: ${connStr}`);
+        logger.debug(`>>>>>> Connection string: ${connStr}`);
         const result = await mongoose.connect(connStr, options);
         if (result) {
             conn = mongoose.connection;
