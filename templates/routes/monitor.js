@@ -7,10 +7,12 @@
    {
      path: 'metrics',
      method: 'get',
+     noauth: true,
      handler: monitor.getMetrics
    }, {
      path: 'health',
      method: 'get',
+     noauth: true,
      handler: monitor.checkHealth
    }
  ];

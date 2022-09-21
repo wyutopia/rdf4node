@@ -99,7 +99,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
         _loadRoutes();
         //
         gRoutes.forEach(route => {
-            logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType}`);
+            logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType || 'na'}`);
             let method = (route.method || 'USE').toLowerCase();
             if (route.authType) {
                 route.authType === 'jwt'? router[method](route.path, jwt.validateToken, route.handler) : router[method](route.path, tools.checkSign, route.handler);
