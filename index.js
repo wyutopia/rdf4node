@@ -42,7 +42,7 @@ if (config.influxdb) {
     exports.influxDbWrapper = require('./libs/common/influxdb.wrapper');
 }
 if (config.amq) {
-    exports.amqpWrapper = require('./libs/common/ampq.wrapper');
+    //exports.amqpWrapper = require('./libs/common/ampq.wrapper');
     exports.rascalWrapper = require('./libs/common/rascal.wrapper');
 }
 if (config.mysql2) {

@@ -1,90 +1,98 @@
 {
-    "app": {
-      "name": "RapidDevFramework4Node.Core",
-      "alias": "rdf4node",
-      "registry": "rdf-core",
-      "tags": ["Rapid", "Development", "Framework", "Linux", "Alpine", "node", "amd64"],
-      "port": 3000
+  "app": {
+    "name": "RapidDevFramework4Node.Core",
+    "alias": "rdf4node",
+    "registry": "rdf-core",
+    "tags": [
+      "Rapid",
+      "Development",
+      "Framework",
+      "Linux",
+      "Alpine",
+      "node",
+      "amd64"
+    ],
+    "port": 3000
+  },
+  "security": {
+    "allowOrigin": "*"
+  },
+  "httpMonitor": true,
+  "consul": {
+    "host": "127.0.0.1",
+    "port": 8500
+  },
+  "rateLimit": {
+    "options": {
+      "windowMs": 60000,
+      "max": 100,
+      "expireTimeMs": 900000,
+      "standardHeaders": true
     },
-    "security": {
-      "allowOrigin": "*"
+    "store": "mongo"
+  },
+  "inet": {
+    "apm": {
+      "baseUrl": "http://127.0.0.1"
     },
-    "consul": {
-        "host": "127.0.0.1",
-        "port": 8500
-    },
-    "rateLimit": {
-        "options": {
-          "windowMs": 60000,
-          "max": 100,
-          "expireTimeMs": 900000,
-          "standardHeaders": true
-        },
-        "store": "mongo"
-    },
-    "inet": {
-        "apm": {
-          "baseUrl": "http://127.0.0.1"
-        },
-        "maxHopCount": 3
-    },
-    "mongodb": {
-      "ip": "127.0.0.1",
-      "port": 27017,
-      "user": "dbo",
-      "pwd": "Dev#2021",
-      "db": "rdf",
-      "authSource": "rdf"
-    },
-    "redis": {
-      "host": "127.0.0.1",
-      "port": 6379,
-      "password": "123456"
-    },
-    "amq": {
-      "vhost": "rdf",
-      "connection": {
-        "slashes": true,
-        "protocol": "amqp",
-        "hostname": "127.0.0.1",
-        "user": "admin",
-        "password": "Dev#2021",
-        "port": 5672,
-        "options": {
-          "heartbeat": 4
-        }
-      }
-    },
-    "auth": {
-      "ip": false,
-      "token": true,
-      "secret": "secret123456"
-    },
-    "tedious": {
-      "server": "127.0.0.1",
+    "maxHopCount": 3
+  },
+  "mongodb": {
+    "ip": "127.0.0.1",
+    "port": 27017,
+    "user": "dbo",
+    "pwd": "Dev#2021",
+    "db": "rdf",
+    "authSource": "rdf"
+  },
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "password": "123456"
+  },
+  "amq": {
+    "vhost": "rdf",
+    "connection": {
+      "slashes": true,
+      "protocol": "amqp",
+      "hostname": "127.0.0.1",
+      "user": "admin",
+      "password": "Dev#2021",
+      "port": 5672,
       "options": {
-        "tdsVersion": "7_4",
-        "trustServerCertificate": true,
-        "encrypt": false,
-        "appName": "rdf4node",
-        "connectTimeout": 10000,
-        "requestTimeout": 8000,
-        "database": "db_name"
-      },
-      "authentication": {
-        "type": "default",
-        "options": {
-          "username": "sa",
-          "password": "Dev#2022"
-        }
+        "heartbeat": 4
       }
-    },
-    "mysql": {
-      "userWrapper": true,
-      "poolTtl": 60000,
-      "connLimit": 10,
-      "connReuse": false,
-      "connTtl": 15000
     }
+  },
+  "auth": {
+    "ip": false,
+    "token": true,
+    "secret": "secret123456"
+  },
+  "tedious": {
+    "server": "127.0.0.1",
+    "options": {
+      "tdsVersion": "7_4",
+      "trustServerCertificate": true,
+      "encrypt": false,
+      "appName": "rdf4node",
+      "connectTimeout": 10000,
+      "requestTimeout": 8000,
+      "database": "db_name"
+    },
+    "authentication": {
+      "type": "default",
+      "options": {
+        "username": "sa",
+        "password": "Dev#2022"
+      }
+    }
+  },
+  "mysql": {
+    "userWrapper": true,
+    "poolTtl": 60000,
+    "connLimit": 10,
+    "connReuse": false,
+    "connTtl": 15000
   }
-  
+}
