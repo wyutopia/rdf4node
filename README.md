@@ -74,6 +74,10 @@ mongorestore --host=<> --port=<> \
              --authenticationDatabase=<AUTH_SOURCE> -u admin -p Dev#2022 \
              --nsInclude=<DATABASE>.<COLLECTION> <BACKUP_DIR> --drop
 ```
+#### Download MongoDB Shell and MongoDB Database Tools
+* https://www.mongodb.com/try/download/database-tools2
+* https://www.mongodb.com/try/download/shell2
+
 ### RabbitMQ
 #### Start container
 ```

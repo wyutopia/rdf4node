@@ -80,7 +80,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
             if (toh === 'function') {
                 gRoutes.push({
                     path: path.join(pathPrefix, filename.split('.')[0].replace('-', ''), route.path),
-                    authType: route.authType,
+                    authType: route.authType || 'jwt',
                     method: route.method.toUpperCase(),
                     handler: route.handler
                 });
@@ -101,10 +101,10 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
         gRoutes.forEach(route => {
             logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType || 'na'}`);
             let method = (route.method || 'USE').toLowerCase();
-            if (route.authType) {
-                route.authType === 'jwt'? router[method](route.path, jwt.validateToken, route.handler) : router[method](route.path, tools.checkSign, route.handler);
-            } else {
+            if (route.authType === 'none') {
                 router[method](route.path, route.handler);
+            } else {
+                route.authType === 'jwt'? router[method](route.path, jwt.validateToken, route.handler) : router[method](route.path, tools.checkSign, route.handler);
             }
         });
     } catch (err) {

@@ -245,6 +245,7 @@ exports.getUpdatableFields = function (paths, excludes = ['_id', 'version', 'cre
 };
 
 const eRequestAuthType = {
+    NONE     : 'none',
     JWT      : 'jwt',
     AKSK     : 'aksk' 
 };
