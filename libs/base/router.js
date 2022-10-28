@@ -99,7 +99,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
         _loadRoutes();
         //
         gRoutes.forEach(route => {
-            logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType || 'na'}`);
+            logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType}`);
             let method = (route.method || 'USE').toLowerCase();
             if (route.authType === 'none') {
                 router[method](route.path, route.handler);
