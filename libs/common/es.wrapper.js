@@ -8,13 +8,12 @@ const theApp = require('../../bootstrap');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
 
-
 const MODULE_NAME = "es";
 
 exports.buildConfig = function (options) {
     let config = {};
     // Add node
-    config.node = opitons.node || 'https://localhost:9200';
+    config.node = options.node || 'https://localhost:9200';
     config.auth = options.auth || {
         username: 'elastic',
         password: 'password'
@@ -25,7 +24,7 @@ exports.buildConfig = function (options) {
     if (options.caFilePath) {
         options.tls = {
             ca: fs.readFileSync(options.caFilePath),
-            rejectUnauthorized: fase
+            rejectUnauthorized: false
         }
     }
     return config;

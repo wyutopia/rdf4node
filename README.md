@@ -179,28 +179,55 @@ docker run -id --name clickhouse-dev \
 ### elasticsearch
 #### Pull the Elasticsearch Docker image
 ```
-docker pull docker.elastic.co/elasticsearch/elasticsearch:8.3.3
+docker pull docker.elastic.co/elasticsearch/elasticsearch:8.5.0
 ```
 #### Start a single-node cluster with Docker
-1. Create a new docker network for Elasticsearch and Kibana
+1.Create a new docker network for Elasticsearch and Kibana
 ```
 docker network create elastic
 ```
-2. Start Elasticsearch in Docker.
+2.Start Elasticsearch in Docker.
 https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html?baymax=rec&rogue=pop-1&elektra=guide
 ```
-docker run -it --name es-dev \
+docker run -id --name es-dev \
     --net elastic \
-    -p 9200:9200 -p 9300:9300 \
-    docker.elastic.co/elasticsearch/elasticsearch:8.3.3
+    -p 9200:9200 \
+    -p 9300:9300 \
+    -e "discovery.type=single-node" \
+    docker.elastic.co/elasticsearch/elasticsearch:8.5.0
 ```
-3. Copy the generated password and enrollment token and save them in a secure location.
-If you need to reset the password for the elastic user or other built-in users, run the 
+3.Copy the generated password and enrollment token and save them in a secure location.
+<br>If you need to reset the password for the elastic user or other built-in users, run the 
 elasticsearch-reset-password tool.
 ```
-docker exec -it es-dev /usr/share/elasticsearch/bin/elasticsearch-reset-password
+docker exec -it es-dev /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic
 ```
-4. Copy the http-ca.crt security certificate from your Docker container to your local machine.
+4.Copy the http-ca.crt security certificate from your Docker container to your local machine.
 ```
 docker cp es-dev:/usr/share/elasticsearch/config/certs/http_ca.crt .
+```
+5.Open a new terminal and verify that you can connect to your Elasticsearch cluster by making
+an authenticated call, using the http_ca.crt file that you copied from your Docker container.
+Enter the password for the elastic user when prompted.
+```
+curl --cacert http_ca.crt -u elastic https://localhost:9200
+--- Following is the output infomration ---
+Enter host password for user 'elastic':
+{
+  "name" : "ae0c86d11961",
+  "cluster_name" : "docker-cluster",
+  "cluster_uuid" : "ttgKPshrTqOMRnu4d_zr9w",
+  "version" : {
+    "number" : "8.5.0",
+    "build_flavor" : "default",
+    "build_type" : "docker",
+    "build_hash" : "c94b4700cda13820dad5aa74fae6db185ca5c304",
+    "build_date" : "2022-10-24T16:54:16.433628434Z",
+    "build_snapshot" : false,
+    "lucene_version" : "9.4.1",
+    "minimum_wire_compatibility_version" : "7.17.0",
+    "minimum_index_compatibility_version" : "7.0.0"
+  },
+  "tagline" : "You Know, for Search"
+}
 ```
