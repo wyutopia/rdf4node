@@ -204,14 +204,9 @@ exports.invokeHttpRequest = function (options, callback) {
                 });
             }
             if (rsp.statusCode !== eRetCodes.SUCCESS) {
-                let msg = rsp.statusMessage;
-                if (!msg && rsp.body) {
-                    try {
-                        msg = JSON.stringify(rsp.body);
-                    }
-                    catch (ex) {
-                        logger.error(ex.message);
-                    }
+                let msg = rsp.body || rsp.statusMessage || 'Server error!';
+                if (typeof msg !== 'string') {
+                    msg = _inspect(msg);
                 }
                 logger.error(`Http response error! - ${rsp.statusCode} - ${msg}:`);
                 return callback({

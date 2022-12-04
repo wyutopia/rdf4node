@@ -30,15 +30,15 @@
      constructor(name) {
          this._logger = winston.createLogger({
              level: logLevel,
-             format: combine(
-                 timestamp(),
-                 xFormat
-             ),
              exitOnError: false, // Continue after logging an uncaughtException
              transports: [
                  new winston.transports.Console({
                      level: logLevel,
-                     timestamp: true
+                     timestamp: true,
+                     format: combine(
+                        timestamp(),
+                        xFormat
+                    )
                  }),
                  new winston.transports.File({
                      name: 'info-log',
