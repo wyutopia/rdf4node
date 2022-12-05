@@ -1,0 +1,15 @@
+{
+    "apps": [
+      {
+        "name": "rdf4node.prd",
+        "script": "./bin/www",
+        "env": {
+          "SRV_ROLE": "rdf4node",
+          "PROC_ROLE": "master"
+        },
+        "log_file": "/dev/null",
+        "out_file": "/dev/null"
+      }
+    ]
+  }
+  

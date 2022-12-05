@@ -1,6 +1,9 @@
 # OS
 **/.DS_Store
 
-# Project 
-**/node_modules
-**/logs
+# Project
+.idea/
+node_modules/
+logs/
+dist/
+**/*.tgz

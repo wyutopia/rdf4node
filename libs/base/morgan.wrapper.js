@@ -1,11 +1,11 @@
 /**
- * Created by eric on 2021/11/09.
+ * Created by Eric on 2021/11/09.
  */
  const appRootPath = require('app-root-path');
  const fs = require('fs');
  const path = require('path');
  const morgan = require('morgan');
- const tools = require('../utils/tools');
+ const tools = require('../../utils/tools');
  
  morgan.token('xforwarded', function(req, res){
      return tools.getClientIp(req);

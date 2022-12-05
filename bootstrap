@@ -1,30 +1,41 @@
+#!/usr/bin/env node
+/**
+ * Created by Eric on 2021/11/10
+ */
 const assert = require('assert');
 const async = require('async');
 const EventEmitter = require('events');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const {WinstonLogger} = require('./libs/winston.wrapper');
+// project libs
+const pubdefs = require('./include/sysdefs');
+const eRetCodes = require('./include/retcodes');
+const config = require('./libs/base/config');
+const consulClient = (config.consul? require('./libs/base/consul.wrapper') : null);
+const {WinstonLogger} = require('./libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
-const eRetCodes = require('./common/retcodes');
-const pubdefs = require('./pubdefs');
-const tools = require('./tools');
-const consulClient = require('./libs/consul.wrapper');
-// Project configuration
-const config = require('../utils/config');
-const serviceConf = config.service;
-const inetConf = config.inet;
+const tools = require('./utils/tools');
+//
+const appConf = config.app;
+const apmConf = tools.safeGetJsonValue(config, 'inet.apm');
+
 let version = null;
+let consulSignIn = false;
 
 function _regService(callback) {
+    if (consulClient === null) {
+        logger.warn(`>>>>>> Consul not configged! -ignore register service.`);
+        return callback();
+    }
     let localIp = tools.getLocalIp()[0];
-    let port = process.env.PORT || serviceConf.port || 3000;
+    let port = process.env.PORT || appConf.port || 3000;
     consulClient.regService({
-        name: serviceConf.registry,
+        name: appConf.registry,
         id: this._id,
-        tags: serviceConf.tags,
+        tags: appConf.tags,
         address: localIp,
-        port: port,
+        port: parseInt(port, 10),
         check: {
             http: `http://${localIp}:${port}/monitor/health`,
             interval: '15s'
@@ -34,13 +45,22 @@ function _regService(callback) {
             logger.error('Register to consul error!');
         } else {
             logger.info('Register to consul succeed.');
+            consulSignIn = true;
         }
         return callback();
     });
 }
 
 function _deregService(callback) {
+    if (consulClient === null) {
+        logger.warn(`>>>>>> Consul not configged! - ignore de-register service.`);
+        return callback();
+    }
     logger.info('Try to de-register from consul...');
+    if (!consulSignIn) {
+        logger.error('Not registered!');
+        return callback();
+    }
     consulClient.deregService({
         id: this._id
     }, (err) => {
@@ -69,25 +89,40 @@ function _raiseGracefulExitAlarm(callback) {
     return this.fireAlarm(options, callback);
 }
 
+function _buildModuleArch() {
+    let arch = {};
+    Object.keys(pubdefs.eModuleType).forEach(layer => {
+        arch[layer.toLowerCase()] = [];
+    });
+    return arch;
+}
+
 // The application class
 class TheApp extends EventEmitter {
     constructor(config) {
         super();
         // Declaring member variables
-        this._id = `${serviceConf.registry}_${process.env.DEPLOY === 'native'? tools.uuidv4() : os.hostname()}`;
+        this._id = `${appConf.registry}_${process.env.DEPLOY === pubdefs.eDeployMode.NATIVE? tools.uuidv4() : os.hostname()}`;
         this._config = Object.assign(config, {pushAlarm: true});
         this._state = pubdefs.eModuleState.INIT;
         this._modules = {};
+        this._arch = _buildModuleArch();
         this._isMaster = false;
         // Implementing member methods
+        this.fetchServices = (callback) => {
+            return consulClient.listServices(callback);
+        }
+        this.fetchServiceNodes = (serviceName, callback) => {
+            return consulClient.listServiceNodes(serviceName, callback);
+        }
         this.getServiceName = () => {
-            return serviceConf.name;
+            return appConf.name;
         }
         this.getServiceAlias = () => {
-            return serviceConf.alias;
+            return appConf.alias;
         }
         this.getRegistry = () => {
-            return serviceConf.registry;
+            return appConf.registry;
         }
         this.getInstance = () => {
             return this._id;
@@ -96,23 +131,33 @@ class TheApp extends EventEmitter {
             this._state = s;
         }
         // Fire alarm
-        this.fireAlarm = (args, callback) => {
-            if (process.env.NODE_ENV !== 'production') {
+        this.fireAlarm = (args, options, callback) => {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            }
+            if (process.env.NODE_ENV !== 'production' && !options.alwaysSend) {
+                logger.debug(`Ignore fire alarm on development env.`);
                 return callback();
             }
-            let options = {
-                url: `${inetConf.apm.baseUrl}/v1/alarm/raise`,
+            if (!apmConf) {
+                logger.warn(`APM server not configed!`);
+                return callback();
+            }
+            let req = {
+                url: `${apmConf.baseUrl}/v1/alarm/raise`,
                 method: 'POST',
                 json: true,
                 body: {
-                    service: this.getServiceAlias(),
+                    service: args.service || this.getServiceAlias(),
                     instance: this._id,
                     eventId: args.eventId,
                     content: args.content
                 }
             };
-            logger.debug(__file, __line, 'Alarm options:', tools.inspect(options));
-            tools.invokeHttpRequest(options, tools.defaultBodyParser, (err, body) => {
+            logger.debug(`Alarm options: ${tools.inspect(req)}`);
+            req.bodyParser = tools.defaultBodyParser;
+            tools.invokeHttpRequest(req, (err, body) => {
                 if (err) {
                     return callback(err);
                 }
@@ -124,11 +169,14 @@ class TheApp extends EventEmitter {
          * @param mod
          */
         this.regModule = (mod) => {
-            logger.info('New module registry:', mod.name, mod.mandatory, mod.status);
+            logger.info(`New module registry: ${mod.name} - ${mod.mandatory} - ${mod.state}`);
             if (this._modules[mod.name] !== undefined) {
-                logger.error(`Conflict! ${mod.name} already registered.`)
+                logger.error(`>>>>>> Conflict! ${mod.name} already exists.`)
             } else {
                 this._modules[mod.name] = mod;
+                // Add to clean up chain
+                let layer = mod.type || pubdefs.eModuleType.OBJ;
+                this._arch[layer].push(mod);
             }
         }
         this.setModuleState = (name, s) => {
@@ -138,7 +186,7 @@ class TheApp extends EventEmitter {
                 this._modules[name].state = s;
                 logger.info(name, s);
             } else {
-                logger.error('Unrecognized module name:', name);
+                logger.error(`Unrecognized module name: ${name}`);
             }
         }
         this.getModuleState = (name) => {
@@ -149,7 +197,7 @@ class TheApp extends EventEmitter {
             let keys = Object.keys(this._modules);
             for (let i = 0; i < keys.length; i++) {
                 let key = keys[i];
-                if (this._modules[key].mandatory === true &&  this._modules[key].state === pubdefs.eModuleState.ACTIVE) {
+                if (this._modules[key].mandatory === true && this._modules[key].state !== pubdefs.eModuleState.ACTIVE) {
                     active = false;
                     break;
                 }
@@ -159,19 +207,21 @@ class TheApp extends EventEmitter {
         this.gracefulExit = () => {
             logger.info('>>>>>> Perform system clean-up before exit <<<<<<');
             _raiseGracefulExitAlarm.call(this, () => {
-                let keys = Object.keys(this._modules);
-                async.each(keys, (key, next) => {
-                    let m = this._modules[key];
-                    if (typeof m.dispose !== 'function') {
-                        return process.nextTick(next);
-                    }
-                    m.dispose(err => {
-                        if (err) {
-                            logger.error(err.code, err.message);
+                logger.info(`>>>>>> Stop all modules ...`);
+                let layers = Object.keys(this._arch);
+                async.eachSeries(layers, (layer, callback) => {
+                    logger.info(`>>>>>>>> ${layer}: Clean up modules ...`);
+                    async.eachLimit(this._arch[layer], 4, (m, next) => {
+                        if (typeof m.dispose !== 'function') {
+                            return process.nextTick(next);
                         }
-                        return next();
+                        return m.dispose(next);
+                    }, () => {
+                        logger.info(`>>>>>>>> ${layer}: all modules disposed.`);
+                        return callback();
                     });
                 }, () => {
+                    logger.info('>>>>>> All modules disposed.');
                     _deregService.call(this, () => {
                         return process.exit(0);
                     });

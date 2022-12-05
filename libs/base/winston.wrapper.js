@@ -1,6 +1,6 @@
 /**
  * Caution: Only for winston v3
- * Created by eric on 2021/09/28.
+ * Created by Eric on 2021/09/28.
  */
  const appRootPath = require('app-root-path');
  const fs = require('fs');
@@ -9,7 +9,7 @@
  require('winston-daily-rotate-file');
  const { combine, timestamp, label, printf } = winston.format;
  
- const logLevel = process.env.NODE_ENV === 'development'? 'debug' : 'info';
+ const logLevel = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'development'? 'debug' : 'info');
  const logDir = process.env.LOG_DIR || path.join(appRootPath.path, 'logs');
  console.log('>>>>>> Log parameters:', logDir, logLevel);
  
@@ -30,15 +30,15 @@
      constructor(name) {
          this._logger = winston.createLogger({
              level: logLevel,
-             format: combine(
-                 timestamp(),
-                 xFormat
-             ),
              exitOnError: false, // Continue after logging an uncaughtException
              transports: [
                  new winston.transports.Console({
                      level: logLevel,
-                     timestamp: true
+                     timestamp: true,
+                     format: combine(
+                        timestamp(),
+                        xFormat
+                    )
                  }),
                  new winston.transports.File({
                      name: 'info-log',
@@ -100,11 +100,11 @@
  }
  exports.WinstonLogger = WinstonWrapper;
  
- exports.getLoggers = (callback) => {
+ exports.getLoggers = function (callback) {
      return callback(null, Object.keys(gLoggers));
  };
  
- exports.getTransporters = (name, callback) => {
+ exports.getTransporters = function (name, callback) {
      let logger = gLoggers[name];
      if (logger === undefined) {
          return callback({
@@ -119,7 +119,7 @@
      return callback(null, results);
  };
  
- exports.setLoggerLevel = (name, tp, level, callback) => {
+ exports.setLoggerLevel = function (name, tp, level, callback) {
      let logger = gLoggers[name];
      if (logger === undefined) {
          return callback({

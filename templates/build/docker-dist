@@ -1,0 +1,143 @@
+#!/usr/bin/env node
+/**
+ * Created by Eric on 2021/01/27
+ */
+ const async = require('async');
+ const assert = require('assert');
+ const appRootPath = require('app-root-path');
+ const fs = require('fs');
+ const path = require('path');
+ const moment = require('moment');
+ const spawn = require('child_process').spawn;
+ const util = require('util');
+ //
+ let MAIN_VERSION = '0.0.0';
+ const IMAGE_NAME = 'rdf4node';
+ const REGISTRY = 'some-registry/rdf4node/';
+ 
+ function _inspect (obj) {
+     return util.inspect(obj, {depth: null});
+ }
+ 
+ function execCli(program, args, options, callback) {
+     assert(program !== undefined);
+     assert(args !== undefined);
+     if (typeof options === 'function') {
+         callback = options;
+         options = {};
+     }
+     assert(typeof callback === 'function');
+     //
+     console.log(`Execute command: ${program} - ${_inspect(args)} - ${_inspect(options)}`);
+     try {
+         let result = options.multi === true? [] : null;
+         let proc = spawn(program, args);
+         proc.on('error', (err) => {
+             console.error('Execute command error!', err);
+         });
+         proc.stdout.on('data', (data) => {
+             if (data) {
+                 let info = data.toString().trim();
+                 if (options.multi === true) {
+                     result.push(info);
+                 } else if (result === null) {
+                     result = info;
+                 } // Discard result
+             }
+         });
+         proc.on('close', (code, signal) => {
+             console.log(`Stdout: ${_inspect(result)}`);
+             console.log(`Process exit. ${code} - ${signal}`);
+             if (code === 0) {
+                 return callback(null, result);
+             }
+             return callback({
+                 code: 500,
+                 message: 'Execute error or abort!'
+             });
+         });
+     } catch (ex) {
+         return callback(ex);
+     }
+ }
+ 
+ function _getProgramVersion() {
+     let pkgFile = path.join(appRootPath.path, 'package.json');
+     return JSON.parse(fs.readFileSync(pkgFile).toString()).version;
+ }
+ 
+ function updateVersion(callback) {
+     let error = null;
+     try {
+         MAIN_VERSION = _getProgramVersion();
+         const verFile = path.join(appRootPath.path, 'conf/version.json');
+         let rawData = fs.readFileSync(verFile).toString();
+         let verData = JSON.parse(rawData.toString());
+         verData.version = MAIN_VERSION;
+         verData.build = moment().format('YYYYMMDDHHmmssSSS');
+         console.log(`New version: ${_inspect(verData)}`);
+         fs.writeFileSync(verFile, JSON.stringify(verData));
+     } catch (ex) {
+         console.log(ex);
+         error = ex;
+     }
+     //
+     if (error) {
+         return callback(error);
+     }
+     async.series([
+         execCli.bind(null, 'git', ['add', '.', '-v']),
+         execCli.bind(null, 'git', ['commit', '-m', 'Update version.'])
+     ], (err) => {
+         return callback(err);
+     });
+ }
+ 
+ function getLatestGitCommitHash(callback) {
+     let program = 'git';
+     let args = ['log', '-1', '--format=%h', '--abbrev=8'];
+     let options = {
+         multi: false
+     };
+     execCli(program, args, options, (err, commitHash) => {
+         if (err) {
+             return callback(err);
+         }
+         console.log(`Latest commit hash: ${commitHash}`);
+         return callback(null, commitHash);
+     });
+ }
+ 
+ function buildDockerImage(commitHash, callback) {
+     let tag = `${MAIN_VERSION}-${commitHash}`;
+     let program = 'docker';
+     let args = ['build', '-t', `${REGISTRY}${IMAGE_NAME}:${tag}`, '.'];
+     execCli(program, args, {multi: true}, (err) => {
+         if (err) {
+             console.error(`Build docker image error! - ${_inspect(err)}`);
+         } else {
+             console.log('Build docker image succeed.');
+         }
+         return callback(err, tag);
+     });
+ }
+ 
+ async.waterfall([
+     // Step 1:
+     updateVersion,
+     // Step 2:
+     getLatestGitCommitHash,
+     // Step 3:
+     buildDockerImage
+ ], (err, tag) => {
+     if (err) {
+         return console.error(`Build error! - ${_inspect(err)}`);
+     }
+     execCli('git', ['tag', `"${tag}"`], (err) => {
+         if (err) {
+             return console.error(`Tag error! - ${err}`);
+         }
+         return console.log(`Push image to docker-registry:  docker image push ${REGISTRY}${IMAGE_NAME}:${tag}`);
+     });
+ });
+ 

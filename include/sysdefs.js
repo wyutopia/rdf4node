@@ -35,14 +35,18 @@
     });
 })();
 
-
-let eSysMode = {
+const eSysMode = {
     OFFLINE    : "offline",
     MAINTAIN   : "maintain",
     ONLINE     : "online"
 };
-Object.freeze(eSysMode);
 exports.eSysMode = eSysMode;
+
+const eDeployMode = {
+    NATIVE     : 'native',
+    K8S        : 'k8s'
+};
+exports.eDeployMode = eDeployMode;
 
 const eModuleState = {
     INIT         : 'init',
@@ -53,6 +57,18 @@ const eModuleState = {
 exports.eModuleState = eModuleState;
 exports.isValidModuleState = (s) => {
     return Object.values(eModuleState).indexOf(s) > -1;
+};
+
+const eModuleType = {
+    OBJ          : 'obj',
+    TASK         : 'task',
+    APP          : 'app',
+    CONN         : 'conn',
+    OSEXT        : 'osext'
+};
+exports.eModuleType = eModuleType;
+exports.isValidModuleType = (s) => {
+    return Object.values(eModuleType).indexOf(s) > -1;
 };
 
 const eStatus = {
@@ -87,6 +103,7 @@ const eInterval = {
     _1_MIN       : 60 * 1000,
     _2_MIN       : 2 * 60 * 1000,
     _3_MIN       : 3 * 60 * 1000,
+    _4_MIN       : 4 * 60 * 1000,
     _5_MIN       : 5 * 60 * 1000,
     _6_MIN       : 6 * 60 * 1000,
     _8_MIN       : 8 * 60 * 1000,
@@ -94,6 +111,7 @@ const eInterval = {
     _15_MIN      : 15 * 60 * 1000,
     _20_MIN      : 20 * 60 * 1000,
     _30_MIN      : 30 * 60 * 1000,
+    _50_MIN      : 50 * 60 * 1000,
     _90_MIN      : 90 * 60 * 1000,
     _1_HOUR      : 3600 * 1000,
     _2_HOUR      : 2 * 3600 * 1000,
@@ -107,7 +125,9 @@ const eInterval = {
     _2_DAY       : 48 * 3600 * 1000,
     _3_DAY       : 72 * 3600 * 1000,
     _5_DAY       : 5 * 24 * 3600 * 1000,
-    _7_DAY       : 7 * 24 * 3600 * 1000
+    _7_DAY       : 7 * 24 * 3600 * 1000,
+    _14_DAY      : 14 * 24 * 3600 * 1000,
+    _31_DAY      : 31 * 24 * 3600 * 1000
 };
 exports.eInterval = eInterval;
 
@@ -120,8 +140,38 @@ const eAlarmSeverity = {
     CLEARED       : 0         // GREEN     : log
 };
 exports.eAlarmSeverity = eAlarmSeverity;
+exports.getAlarmSeverityString = function(s) {
+    let str = 'Unknown';
+    switch(s) {
+        case 0:
+            str = 'CLEAR';
+            break;
+        case 1:
+            str = 'WARNING';
+            break;
+        case 2:
+            str = 'MINOR';
+            break;
+        case 3:
+            str = 'MAJOR';
+            break;
+        case 4:
+            str = 'CRITICAL';
+            break;
+        case 5:
+            str = 'FATAL';
+            break;
+    }
+    return str;
+};
 
-let eAlarmCode = {
+const eAlarmStatus = {
+    ACTIVE        : 'ACT',
+    CLEAR         : 'CLR'
+};
+exports.eAlarmStatus = eAlarmStatus;
+
+const eAlarmCode = {
     // System alarm
     SERVICE_STARTUP                : 1000,
     QUERY_SIGNTASK_ERR             : 4000,
@@ -129,7 +179,6 @@ let eAlarmCode = {
     OUT_OF_SERVICE                 : 5000,
     GRACEFUL_EXIT                  : 9000
 };
-Object.freeze(eAlarmCode);
 exports.eAlarmCode = eAlarmCode;
 
 let eAlarmConfig = {
@@ -184,7 +233,7 @@ const eMetricType = {
 };
 exports.eMetricType = eMetricType;
 
-exports.getUpdatableFields = (paths, excludes = ['_id', 'version', 'createAt', 'updateAt']) => {
+exports.getUpdatableFields = function (paths, excludes = ['_id', 'version', 'createAt', 'updateAt']) {
     let fields = Object.keys(paths);
     excludes.forEach( key => {
         let index = fields.indexOf(key);
@@ -194,3 +243,10 @@ exports.getUpdatableFields = (paths, excludes = ['_id', 'version', 'createAt', '
     });
     return fields;
 };
+
+const eRequestAuthType = {
+    NONE     : 'none',
+    JWT      : 'jwt',
+    AKSK     : 'aksk' 
+};
+exports.eRequestAuthType = eRequestAuthType;

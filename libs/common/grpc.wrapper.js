@@ -1,5 +1,5 @@
 /**
- * Create by eric 2021/11/10
+ * Created by Eric 2021/11/10
  */
 // Global modules
 const assert = require('assert');
@@ -7,16 +7,15 @@ const async = require('async');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 // Project modules
-const {WinstonLogger} = require('./winston.wrapper');
+const pubdefs = require("../../include/sysdefs");
+const theApp = require("../../bootstrap");
+const {grpc: config} =  require('../base/config');
+const mntService = require('../base/prom.wrapper');
+const {WinstonLogger} = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'grpc');
-const tools = require('../utils/tools');
-const theApp = require("../bootstrap");
-const pubdefs = require("../common/pubdefs");
-const {grpc: config} =  require('../common/config');
-const mntService = require('../../services/monitor');
-const {publications} = require("rascal/lib/config/baseline");
+const tools = require('../../utils/tools');
 
-const MODULE_NAME_PREFIX = 'GRPC';
+const MODULE_NAME_PREFIX = 'GRPC_PD';
 /*********************************************
  * Set monitor metrics
  *********************************************/
@@ -188,7 +187,7 @@ function _onClientTtlTimeout(target) {
  * @param options = {file, pkgName, svcName}
  * @returns {*}
  */
-exports.getProtoDescriptor = (options) => {
+exports.getProtoDescriptor = function (options) {
     assert(options.file !== undefined);
     assert(options.pkgName !== undefined);
     assert(options.svcName !== undefined);

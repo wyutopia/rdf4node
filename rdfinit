@@ -1,0 +1,81 @@
+#!/bin/bash
+PROJ_ROOT_DIR=$(pwd)
+PROJ_NAME=$(basename ${PROJ_ROOT_DIR})
+TEMP_DIR=${PROJ_ROOT_DIR}/node_modules/@icedeer/rdf4node/templates
+
+echo "<<< Initializing project ...>>>"
+# Step 1: Modify app root 
+cp "${TEMP_DIR}/build/Dockerfile" .
+sed -i "" "s/\=rdf4node/\=${PROJ_NAME}/g" Dockerfile
+
+cp "${TEMP_DIR}/build/.dockerignore" .
+cp "${TEMP_DIR}/build/standalone.json" .
+sed -i "" "s/rdf4node/${PROJ_NAME}/g" standalone.json
+
+# Modify app.js
+cp -f "${TEMP_DIR}/app.js" .
+sed -i "" "s/rdf4node-app/${PROJ_NAME}-app/g" ./app.js
+echo "Project root modified."
+
+# Step 2: Upgrade bin folder
+cd bin
+cp "${TEMP_DIR}/build/docker-dist" .
+sed -i "" "s/rdf4node/${PROJ_NAME}/g" docker-dist
+cp "${TEMP_DIR}/bin/www" .
+sed -i "" "s/rdf4node:/${PROJ_NAME}:/g" www
+cd ..
+echo "Folder bin upgraded."
+
+# Step 3: Add common folder
+mkdir -p common
+cd common
+cp "${TEMP_DIR}/common/pubdefs.js" .
+cd ..
+echo "Folder common created."
+
+# Step 4: Add conf folder
+mkdir -p conf
+cd conf
+cp "${TEMP_DIR}/conf/conf-dev.json" ./conf-dev.json
+sed -i "" "s/rdf4node/${PROJ_NAME}/g" conf-dev.json
+cp ./conf-dev.json ./conf-pro.json
+
+cp "${TEMP_DIR}/conf/config.json.template" ./conf-pro.json.template
+cp "${TEMP_DIR}/conf/version.json" ./version.json
+sed -i "" "s/rdf4node/${PROJ_NAME}/g" version.json
+
+cd ..
+echo "Folder conf created."
+
+# Step 5: Add models folder
+mkdir -p models
+cd models
+cd ..
+echo "Folder models created."
+
+# Step 6: Add controllers folder
+mkdir -p controllers
+cd controllers
+cp "${TEMP_DIR}/controllers/example.js" .
+cd ..
+echo "Folder controllers created."
+
+# Step 7: Add services folder
+mkdir -p services
+cd services
+cd ..
+echo "Folder services created."
+
+# Step 8: Modify routes
+cd routes
+rm -f users.js
+cp -f "${TEMP_DIR}/routes/index.js" .
+mkdir -p v1
+cd v1
+cp "${TEMP_DIR}/routes/v1/example.js" .
+cp "${TEMP_DIR}/routes/v1/logdir.js" .
+cd ..
+cd ..
+echo "Folder routes modified."
+
+echo "<<< Congratulations!!! >>>"
