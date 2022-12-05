@@ -1,8 +1,8 @@
 {
   "app": {
-    "name": "RapidDevFramework4Node.Core",
+    "name": "rdf4node",
     "alias": "rdf4node",
-    "registry": "rdf-core",
+    "registry": "rdf4node",
     "tags": [
       "Rapid",
       "Development",

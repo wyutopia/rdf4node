@@ -12,7 +12,7 @@ const httpLogger = MorganWrapper(process.env.SRV_ROLE);
 const logger = WinstonLogger(process.env.SRV_ROLE);
 
 let app = express();
-logger.info(`Insight.BFF service start running in ${app.get('env')} env.`);
+logger.info(`rdf4node-app start running in ${app.get('env')} env.`);
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));

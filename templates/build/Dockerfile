@@ -1,4 +1,4 @@
-FROM node:16-alpine
+FROM node:18-alpine
 # Set aliyun-mirror
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 # Set Timezone
@@ -13,9 +13,10 @@ WORKDIR /usr/src/app
 # Install app dependencies
 # A wildcard is used to ensure both package.json AND package-lock.json are copied
 # where avaiable (npm@5+)
-COPY package*.json ./
+COPY package*.json .
 
-RUN npm config set registry https://registry.npm.taobao.org
+RUN npm config set registry=https://registry.npmmirror.com
+RUN npm config set @icedeer:registry=http://nexus.ice-deer.com:38081/repository/npm/
 RUN npm install pm2 -g
 RUN npm install
 # If you are building your code for production

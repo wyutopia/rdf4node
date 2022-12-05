@@ -1,24 +1,16 @@
-## Initilaztion
-### Setup project manually
-#### Create new project with express cli
+## Create project
+### New project with express
 ```
-express --view ejs <project-name>
+sudo npm -g install express-generator
+express --view=ejs demo
 ```
-#### Copy files inside templates into project folders
-* Modify nodejs-example/conf/config.json as you need
-#### Replace \<project-root-dir\>/routes/index.js with following code snippet
+### Install rdf4node lib and run init script
 ```
-// routes/index.js
-const router = require('@icedeer/rdf4node/libs/base/router');
-module.exports = router;
+cd demp
+npm install
+npm install @icedeer/rdf4node --save
+./node_modules/@icedeer/rdf4node/rdfinit
 ```
-
-## Build docker iamge
-* Copy Dockerfile, .dockerignore and standalone.json from templates/build into root directory of the host project
-* Modify those files according to your project settings
-* Copy docker-dist from templates/build into <project-root-dir>/bin/ and modify it as you needed
-* Add "docker-dist": "node ./bin/docker-dist" into scripts in <project-root-dir>/package.json
-
 ## Start development env.
 ### Consul
 #### Start container
