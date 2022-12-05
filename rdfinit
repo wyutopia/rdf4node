@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set TEMP_DIR=./node_modules/rdf4node/templates
+
+echo Project initializing...
+
+# Step 1: Add bin directory
+echo >>>>>> Step 1: Add docker-dist script into bin directory
+cd bin 
+
+# Step 1: Add common folder
+mkdir -p common
+cd common
+cp $TEMP_DIR/common/pubdefs.js .
+echo common created.
+cd ..
+
+# Step 2: Add conf folder
+mkdir -p conf
+cd conf
+cp $TEMP_DIR/conf/config.json ./conf-dev.json
+cp $TEMP_DIR/conf/version.json ./version.json
+echo conf created.
+cd ..
+
+# Step 3: Add controllers folder
+
+# Step 4: Add services folder
