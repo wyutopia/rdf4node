@@ -4,6 +4,7 @@
 let assert = require('assert');
 let mongoose = require('mongoose');
 mongoose.Promise = require('bluebird');
+mongoose.set('strictQuery', true);
 const pubdefs = require('../../include/sysdefs');
 const theApp = require('../../bootstrap');
 const {mongodb: config} = require('../base/config');
