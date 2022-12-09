@@ -59,8 +59,7 @@ function _getConnParams(config) {
     try {
         const options = {
             useUnifiedTopology: true,
-            useNewUrlParser: true,
-            strictQuery: true
+            useNewUrlParser: true
         };
         logger.info('Connect to MongoDb......');
         let host = config.host || `${config.ip}:${config.port}`;
