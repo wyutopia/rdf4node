@@ -203,7 +203,7 @@ exports.invokeHttpRequest = function (options, callback) {
                     message: `Http invoke error! - ${err.code}#${err.message}`
                 });
             }
-            if (rsp.statusCode !== eRetCodes.SUCCESS) {
+            if ([eRetCodes.SUCCESS, eRetCodes.CREATED].indexOf(rsp.statusCode) === -1) {
                 let msg = rsp.body || rsp.statusMessage || 'Server error!';
                 if (typeof msg !== 'string') {
                     msg = _inspect(msg);
