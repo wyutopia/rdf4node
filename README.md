@@ -6,7 +6,7 @@ express --view=ejs demo
 ```
 ### Install rdf4node lib and run init script
 ```
-cd demp
+cd demo
 npm install
 npm install @icedeer/rdf4node --save
 ./node_modules/@icedeer/rdf4node/rdfinit
