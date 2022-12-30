@@ -1,28 +1,39 @@
 #!/bin/bash
+OS_NAME=$(uname)
+BACK_FILE=
+if [ $OS_NAME == "Darwin" ]; then
+    BACK_FILE=".bak"
+fi
+echo "Current os: $OS_NAME, Back file: $BACK_FILE"
 PROJ_ROOT_DIR=$(pwd)
 PROJ_NAME=$(basename ${PROJ_ROOT_DIR})
 TEMP_DIR=${PROJ_ROOT_DIR}/node_modules/@icedeer/rdf4node/templates
 
-echo "<<< Initializing project ...>>>"
+echo "<<< Initializing project >>>"
 # Step 1: Modify app root 
 cp "${TEMP_DIR}/build/Dockerfile" .
-sed -i "" "s/\=rdf4node/\=${PROJ_NAME}/g" Dockerfile
+sed -i $BACK_FILE "s/\=rdf4node/\=${PROJ_NAME}/g" Dockerfile
 
 cp "${TEMP_DIR}/build/.dockerignore" .
 cp "${TEMP_DIR}/build/standalone.json" .
-sed -i "" "s/rdf4node/${PROJ_NAME}/g" standalone.json
+sed -i $BACK_FILE "s/rdf4node/${PROJ_NAME}/g" standalone.json
 
 # Modify app.js
 cp -f "${TEMP_DIR}/app.js" .
-sed -i "" "s/rdf4node-app/${PROJ_NAME}-app/g" ./app.js
+sed -i $BACK_FILE "s/rdf4node-app/${PROJ_NAME}-app/g" app.js
+
+rm -f *.bak
 echo "Project root modified."
 
 # Step 2: Upgrade bin folder
 cd bin
 cp "${TEMP_DIR}/build/docker-dist" .
-sed -i "" "s/rdf4node/${PROJ_NAME}/g" docker-dist
+sed -i $BACK_FILE "s/rdf4node/${PROJ_NAME}/g" docker-dist
+
 cp "${TEMP_DIR}/bin/www" .
-sed -i "" "s/rdf4node:/${PROJ_NAME}:/g" www
+sed -i $BACK_FILE "s/rdf4node:/${PROJ_NAME}:/g" www
+
+rm -f *.bak
 cd ..
 echo "Folder bin upgraded."
 
@@ -37,13 +48,14 @@ echo "Folder common created."
 mkdir -p conf
 cd conf
 cp "${TEMP_DIR}/conf/conf-dev.json" ./conf-dev.json
-sed -i "" "s/rdf4node/${PROJ_NAME}/g" conf-dev.json
-cp ./conf-dev.json ./conf-pro.json
+sed -i $BACK_FILE "s/rdf4node/${PROJ_NAME}/g" conf-dev.json
 
+cp ./conf-dev.json ./conf-pro.json
 cp "${TEMP_DIR}/conf/config.json.template" ./conf-pro.json.template
 cp "${TEMP_DIR}/conf/version.json" ./version.json
-sed -i "" "s/rdf4node/${PROJ_NAME}/g" version.json
+sed -i $BACK_FILE "s/rdf4node/${PROJ_NAME}/g" version.json
 
+rm -f *.bak
 cd ..
 echo "Folder conf created."
 

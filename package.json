@@ -1,6 +1,6 @@
 {
     "name": "@icedeer/rdf4node",
-    "version": "0.11.2",
+    "version": "0.11.18",
     "description": "A rapid develop framework for nodejs",
     "author": {
         "name": "Eric Wang",
@@ -31,7 +31,7 @@
         "jsonwebtoken": "^8.5.1",
         "ldap-authentication": "^2.3.2",
         "moment": "^2.29.4",
-        "mongoose": "^6.7.5",
+        "mongoose": "^6.8.0",
         "morgan": "^1.10.0",
         "mysql2": "^2.3.3",
         "node-schedule": "2.1.0",

@@ -159,6 +159,7 @@ docker run -id --name influxdb-dev \
 ```
 
 ### ClickHouse
+#### From Docker Image
 ```
 docker pull clickhouse/clickhouse-server
 docker run -id --name clickhouse-dev \
@@ -167,7 +168,15 @@ docker run -id --name clickhouse-dev \
     --ulimit nofile=262144:262144 \
     clickhouse/clickhouse-server
 ```
+#### From RPM Packages
+```
+sudo yum install -y yum-utils
+sudo yum-config-manager --add-repo https://packages.clickhouse.com/rpm/clickhouse.repo
+sudo yum install -y clickhouse-server clickhouse-client
 
+sudo /etc/init.d/clickhouse-server start
+clickhouse-client # or "clickhouse-client --password" if you set up a password.
+```
 ### elasticsearch
 #### Pull the Elasticsearch Docker image
 ```
