@@ -1,6 +1,6 @@
 {
     "name": "@icedeer/rdf4node",
-    "version": "0.12.2",
+    "version": "0.12.3",
     "description": "A rapid develop framework for nodejs",
     "author": {
         "name": "Eric Wang",
@@ -37,7 +37,7 @@
         "node-schedule": "2.1.0",
         "pg": "^8.8.0",
         "prom-client": "^14.1.0",
-        "rascal": "^16.1.2",
+        "rascal": "^16.2.0",
         "rate-limit-mongo": "^2.3.2",
         "redis": "^4.5.1",
         "request": "^2.88.2",
