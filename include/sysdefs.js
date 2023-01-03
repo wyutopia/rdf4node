@@ -72,12 +72,13 @@ exports.isValidModuleType = (s) => {
 };
 
 const eStatus = {
-    UNREG     : -1,
-    ACTIVE    : 0,
-    SUSPEND   : 1,
+    UNREG       : -1,
+    ACTIVE      : 0,
+    ACT_PENDING : 1,
     // set 2 - 8 as abnormal state for account
-    EXPIRED   : 2,
-    DELETED   : 9
+    EXPIRED     : 7,
+    SUSPEND     : 8,
+    DELETED     : 9
 };
 exports.eStatus = eStatus;
 exports.isValidStatus = (s) => {

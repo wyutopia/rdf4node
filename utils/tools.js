@@ -293,6 +293,39 @@ exports.parseParameters = function (params, options, callback) {
     return callback(errMsg, args);
 };
 
+function _validateString (field, validator, argv) {
+    let errMsg = null;
+    if (validator.minLen !== undefined) {
+        if (argv.length <= validator.minLen) {
+            errMsg = `Length of ${field} should great than ${validator.minLen} !`;
+        }
+    }
+    if (!errMsg && validator.maxLen !== undefined) {
+        if (argv.length > validator.maxLen) {
+            errMsg = `Length of ${field} should less than ${validator.maxLen} !`;
+        }
+    }
+    return errMsg;
+}
+
+function _validateNumber (field, validator, argv) {
+    let errMsg = null;
+    if (Number.isNaN(argv)) {
+        errMsg = `Should be Number for ${field}!`;
+    }
+    if (!errMsg && validator.min !== undefined) {
+        if (argv < validator.min) {
+            errMsg = `${field} should great than ${validator.min} !`;
+        }
+    }
+    if (!errMsg && validator.max !== undefined) {
+        if (argv > validator.max) {
+            errMsg = `${field} should less than ${validator.max} !`;
+        }
+    }
+    return errMsg;
+}
+
 function _validateParameter(field, validator, argv) {
     let errMsg = null;
     if (validator.enum) {
@@ -311,11 +344,10 @@ function _validateParameter(field, validator, argv) {
             }
             break;
         case 'Number':
-            if (Number.isNaN(argv)) {
-                errMsg = `Should be Number for ${field}!`;
-            }
+            errMsg = _validateNumber(field, validator, argv);
             break;
         case 'String':
+            errMsg = _validateString(field, validator, argv);
             break;
         case 'Boolean':
             if (typeof argv !== 'boolean') {
