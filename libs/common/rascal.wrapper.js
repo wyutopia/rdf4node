@@ -16,8 +16,8 @@ const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
 const MODULE_NAME = 'AMQP_CONN';
 
 class RascalClientMangager extends EventModule {
-    constructor(options) {
-        super(options);
+    constructor(props) {
+        super(props);
         //
         this._clients = {};
         // Implementing member methods
@@ -76,16 +76,19 @@ function onMessage(content = {}) {
 }
 
 class RascalClient {
-    constructor(options) {
+    constructor(props) {
         // Declaring member variables
-        this.parent = options.parent;
-        this.id = options.id || tools.uuidv4();
-        this.name = this.name = options.name || `rascalClient#${this.id}`;
+        this.parent = props.parent;
+        this.id = props.id || tools.uuidv4();
+        this.name = props.name || `rascalClient#${this.id}`;
         this.broker = null;
         this.state = eClientState.Null;
         this.pubKeys = [];
         //
-        this.onMessage = (options.onMessage ? options.onMessage : onMessage).bind(this);
+        this.onMessageImpl = typeof props.onMessage === 'function'? props.onMessage : onMessage;
+        this.onMessage = evt => {
+            setImmediate(this.onMessageImpl.bind(this, evt));
+        };
 
         // Implementing methods
         this.dispose = (callback) => {
@@ -148,7 +151,7 @@ class RascalClient {
 
         //
         (() => {
-            let config = options.config;
+            let config = props.config;
             let realCfg = assembleTotalConfig(config);
             logger.info(`${this.name}: Create new RacalClient with ${tools.inspect(realCfg)}`);
             this.state = eClientState.Init;
@@ -192,23 +195,25 @@ class RascalClient {
                                         content: null
                                     };
                                     // Parsing content to JSON
-                                    if (message.fields.properties.contentType === 'text/plain') {
+                                    if (message.properties.contentType === 'text/plain') {
                                         try {
                                             evt.content = JSON.parse(content);
                                         } catch (ex) {
                                             logger.error(`${self.name}[${self.state}]: Parsing content error! - ${ex.message} - ${content}`);
                                         }
-                                    } else if (message.fields.properties.contentType === 'application/json') {
+                                    } else if (message.properties.contentType === 'application/json') {
                                         evt.content = content
                                     } else {
                                         logger.error(`${self.name}[${self.state}]: Unrecognized contentType! Should be text/plain or application/json`);
                                     }
+                                    // Handle message
+                                    self.onMessage(evt);
                                     // if (evt) {
                                     //     if (evt.uuid && evt.msg) {
                                     //         if (evt.body === undefined) {
                                     //             evt.body = {};
                                     //         }
-                                    //         self.onMessage(evt);
+                                    //
                                     //     } else {
                                     //         logger.error(`${self.name}[${self.state}]: Bad message format! uuid or msg missing`)
                                     //     }
