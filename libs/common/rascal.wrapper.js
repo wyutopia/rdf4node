@@ -186,22 +186,33 @@ class RascalClient {
                                 }
                                 sub.on('message', (message, content, ackOrNack) => {
                                     logger.debug(`${self.name}[${self.state}]: Content= ${tools.inspect(content)}`);
-                                    let evt = null;
-                                    try {
-                                        evt = JSON.parse(typeof content === 'string' ? content : content.toString());
-                                    } catch (ex) {
-                                        logger.error(`${self.name}[${self.state}]: Parsing content error! - ${ex.message}. Content= ${tools.inspect(content)}`);
-                                    }
-                                    if (evt) {
-                                        if (evt.uuid && evt.msg) {
-                                            if (evt.body === undefined) {
-                                                evt.body = {};
-                                            }
-                                            self.onMessage(evt);
-                                        } else {
-                                            logger.error(`${self.name}[${self.state}]: Bad message format! uuid or msg missing`)
+                                    let evt = {
+                                        msgId: message.properties.messageId,
+                                        routingKey: message.fields.routingKey,
+                                        content: null
+                                    };
+                                    // Parsing content to JSON
+                                    if (message.fields.properties.contentType === 'text/plain') {
+                                        try {
+                                            evt.content = JSON.parse(content);
+                                        } catch (ex) {
+                                            logger.error(`${self.name}[${self.state}]: Parsing content error! - ${ex.message} - ${content}`);
                                         }
+                                    } else if (message.fields.properties.contentType === 'application/json') {
+                                        evt.content = content
+                                    } else {
+                                        logger.error(`${self.name}[${self.state}]: Unrecognized contentType! Should be text/plain or application/json`);
                                     }
+                                    // if (evt) {
+                                    //     if (evt.uuid && evt.msg) {
+                                    //         if (evt.body === undefined) {
+                                    //             evt.body = {};
+                                    //         }
+                                    //         self.onMessage(evt);
+                                    //     } else {
+                                    //         logger.error(`${self.name}[${self.state}]: Bad message format! uuid or msg missing`)
+                                    //     }
+                                    // }
                                     ackOrNack();
                                 }).on('error', (err) => {
                                     logger.error(`${self.name}[${self.state}]: Handle message error! - ${err.code}#${err.message}`);
