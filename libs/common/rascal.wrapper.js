@@ -191,7 +191,7 @@ class RascalClient {
                                     logger.debug(`${self.name}[${self.state}]: Content= ${tools.inspect(content)}`);
                                     let evt = {
                                         msgId: message.properties.messageId,
-                                        routingKey: message.fields.routingKey,
+                                        primitive: message.fields.routingKey,
                                         content: null
                                     };
                                     // Parsing content to JSON
