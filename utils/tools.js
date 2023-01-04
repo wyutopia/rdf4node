@@ -358,12 +358,39 @@ function _validateParameter(field, validator, argv) {
     return errMsg;
 }
 
+/**
+ * Transfer all optional parameters array to validator fields
+ * @param {} validator 
+ * @returns 
+ */
+function _unifyValidator(validator) {
+    if (_isTypeOfArray(validator.mandatory)) {
+        // Append mandatory fields
+        validator.mandatory.forEach(key => {
+            if (validator[key] === undefined) {
+                validator[key] = {
+                    required: true
+                };
+            }
+        });
+    }
+    if (_isTypeOfArray(validator.optional)) {
+        // Append optional fields
+        validator.optional.forEach(key => {
+            if (validator[key] === undefined) {
+                validator[key] = {};
+            }
+        });
+    }
+}
+
 exports.parseParameter2 = function (args, validator, callback) {
     logger.debug(`Parsing: ${_inspect(args)}`);
     if (typeof validator === 'function') {
         callback = options;
         validator = {};
     }
+    _unifyValidator(validator);
     let fields = Object.keys(validator);
     if (fields.length === 0) {  // No validator provided or all arguments are validated
         return callback(null, args);
@@ -480,17 +507,20 @@ exports.sha1Sign = function() {
     return crypto.createHash('sha1').update(seed).digest('hex');
 };
 
-exports.isEmail = function(email) {
+function _isEmail (email) {
     let re = new RegExp(/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
     return re.test(email);
-};
+}
+exports.isEmail = _isEmail;
 
-exports.isMobile = function(mobile) {
+function _isMobile(mobile) {
     let r = new RegExp(/^1[3-9][0-9]\d{8}$/);
     return r.test(mobile);
-};
+}
+exports.isMobile = _isMobile;
 
-exports.isIpAddr = function(ip) {
+function _isIpAddr (ip) {
     let re = new RegExp(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/);
     return re.test(ip);
-};
+}
+exports.isIpAddr = _isIpAddr;

@@ -120,16 +120,25 @@ exports.findPartial = function (db, options, callback) {
             results.values = [];
             return callback(null, results);
         }
+        // Assemble query promise
         let query = db.find(filter).skip((pn - 1) * ps).limit(ps);
-        if (options.sort) {
-            query.sort(options.sort);
-        }
-        if (options.populate) {
-            query.populate(options.populate);
-        }
-        if (options.allowDiskUse) {
-            query.allowDiskUse(true);
-        }
+        ['select', 'sort', 'populate', 'allowDiskUse'].forEach(method => {
+            if (options[method]) {
+                query[method](options[method]);
+            }
+        });
+        // if (options.select) {
+        //     query.select(options.select);
+        // }
+        // if (options.sort) {
+        //     query.sort(options.sort);
+        // }
+        // if (options.populate) {
+        //     query.populate(options.populate);
+        // }
+        // if (options.allowDiskUse) {
+        //     query.allowDiskUse(true);
+        // }
         return query.exec((err, docs) => {
             if (err) {
                 let msg = `Query ${name} error! - ${err.message}`;
