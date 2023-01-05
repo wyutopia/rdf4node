@@ -387,7 +387,7 @@ function _unifyValidator(validator) {
 exports.parseParameter2 = function (args, validator, callback) {
     logger.debug(`Parsing: ${_inspect(args)}`);
     if (typeof validator === 'function') {
-        callback = options;
+        callback = validator;
         validator = {};
     }
     _unifyValidator(validator);
