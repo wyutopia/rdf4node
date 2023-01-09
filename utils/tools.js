@@ -296,7 +296,7 @@ exports.parseParameters = function (params, options, callback) {
 function _validateString (field, validator, argv) {
     let errMsg = null;
     if (validator.minLen !== undefined) {
-        if (argv.length <= validator.minLen) {
+        if (argv.length < validator.minLen) {
             errMsg = `Length of ${field} should great than ${validator.minLen} !`;
         }
     }
