@@ -144,9 +144,9 @@ exports.getSortedString = _getSortedString;
 
 /**
  * The default parser for RESTful API's response body
- * @param {*} body 
- * @param {*} callback 
- * @returns 
+ * @param {*} body
+ * @param {*} callback
+ * @returns
  */
 exports.defaultBodyParser = function (body, callback) {
     if (!body) {
@@ -176,8 +176,8 @@ function _getFlowToken(options, callback) {
 
 /**
  * The http request wrapper based on request@2.88.2
- * @param {*} options 
- * @param {*} callback 
+ * @param {*} options
+ * @param {*} callback
  */
 exports.invokeHttpRequest = function (options, callback) {
     if (options.timeout === undefined) {
@@ -225,10 +225,10 @@ exports.invokeHttpRequest = function (options, callback) {
 
 /**
  * The parameter parser for http request
- * @param {json object} params 
- * @param {mandatory, optional} options 
- * @param {*} callback 
- * @returns 
+ * @param {json object} params
+ * @param {mandatory, optional} options
+ * @param {*} callback
+ * @returns
  */
 exports.parseParameters = function (params, options, callback) {
     logger.info(`Input parameters: ${_inspect(params)}`);
@@ -308,6 +308,39 @@ function _validateString (field, validator, argv) {
     return errMsg;
 }
 
+const typeExtractReg = new RegExp("String|Number|ObjectId");
+function _validateTypedArray(field, validator, args) {
+    let errMsg = null;
+    if (!Array.isArray(args)) {
+        errMsg = `${field} should be array!`;
+    }
+    let t = typeExtractReg.exec(validator.type)[0];
+    for (let i = 0; i < args.length; i++) {
+        let argv = args[i];
+        switch(t) {
+            case 'String':
+                if (typeof argv !== 'string') {
+                    errMsg = `type of #${i} in ${field} should be ${t}`;
+                }
+                break;
+            case 'ObjectId':
+                if(!ObjectId.isValid(argv)) {
+                    errMsg = `type of #${i} in ${field} should be ${t}`;
+                }
+                break;
+            case 'Number':
+                if (Number.isNaN(argv)) {
+                    errMsg = `type of #${i} in ${field} should be ${t}`;
+                }
+                break;
+        }
+        if (errMsg) {
+            break;
+        }
+    }
+    return errMsg
+}
+
 function _validateNumber (field, validator, argv) {
     let errMsg = null;
     if (Number.isNaN(argv)) {
@@ -326,13 +359,21 @@ function _validateNumber (field, validator, argv) {
     return errMsg;
 }
 
+const typedArrayReg = new RegExp("^Array\<(String|Number|ObjectId)\>$");
 function _validateParameter(field, validator, argv) {
+    //logger.debug(`Perform validation: ${field} - ${_inspect(validator)} - ${_inspect(argv)}`);
     let errMsg = null;
     if (validator.enum) {
         let enumValues = _isTypeOfArray(validator.enum)? validator.enum : Object.values(validator.enum);
         if (enumValues.indexOf(argv) === -1) {
             errMsg = `${field} value not allowed! - Should be one of ${_inspect(enumValues)}`;
         }
+    }
+    if (errMsg !== null) {
+        return errMsg;
+    }
+    if (typedArrayReg.test(validator.type)) {
+        errMsg = _validateTypedArray(field, validator, argv);
     }
     if (errMsg !== null) {
         return errMsg;
@@ -360,8 +401,8 @@ function _validateParameter(field, validator, argv) {
 
 /**
  * Transfer all optional parameters array to validator fields
- * @param {} validator 
- * @returns 
+ * @param {} validator
+ * @returns
  */
 function _unifyValidator(validator) {
     if (_isTypeOfArray(validator.mandatory)) {
@@ -388,9 +429,9 @@ function _extractProps (args, propNames) {
     let props = {};
     let keys = Array.isArray(propNames)? propNames : Object.keys(propNames);
     keys.forEach(key => {
-       if (args[key]) {
-           props[key] = args[key];
-       }
+        if (args[key]) {
+            props[key] = args[key];
+        }
     });
     return props;
 }
@@ -404,6 +445,7 @@ exports.parseParameter2 = function (args, validator, callback) {
     }
     _unifyValidator(validator);
     let fields = Object.keys(validator);
+    //logger.debug(`Validator fields: ${_inspect(fields)}`);
     if (fields.length === 0) {  // No validator provided or all arguments are validated
         return callback(null, args);
     }
@@ -420,13 +462,13 @@ exports.parseParameter2 = function (args, validator, callback) {
                 errMsg = `Missing parameter(s): ${field}!`;
                 break;
             }
-            continue;
+            continue;  // Ignore optional parameter
         }
         // Perform validation for exist field ...
         errMsg = _validateParameter(field, v, argv);
         if (errMsg !== null) {
             break;
-        }         
+        }
         // Copy directly
         params[field] = argv;
     }
@@ -439,7 +481,7 @@ exports.parseParameter2 = function (args, validator, callback) {
     return callback(null, params);
 };
 
-exports.checkSign = function (req, res, next) { 
+exports.checkSign = function (req, res, next) {
     return next();
 };
 
