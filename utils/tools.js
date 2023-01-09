@@ -384,6 +384,18 @@ function _unifyValidator(validator) {
     }
 }
 
+function _extractProps (args, propNames) {
+    let props = {};
+    let keys = Array.isArray(propNames)? propNames : Object.keys(propNames);
+    keys.forEach(key => {
+       if (args[key]) {
+           props[key] = args[key];
+       }
+    });
+    return props;
+}
+exports.extractProps = _extractProps;
+
 exports.parseParameter2 = function (args, validator, callback) {
     logger.debug(`Parsing: ${_inspect(args)}`);
     if (typeof validator === 'function') {
