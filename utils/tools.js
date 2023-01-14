@@ -308,13 +308,13 @@ function _validateString (field, validator, argv) {
     return errMsg;
 }
 
-const typeExtractReg = new RegExp("String|Number|ObjectId");
+const typeExtractRe = new RegExp("String|Number|ObjectId");
 function _validateTypedArray(field, validator, args) {
     let errMsg = null;
     if (!Array.isArray(args)) {
         errMsg = `${field} should be array!`;
     }
-    let t = typeExtractReg.exec(validator.type)[0];
+    let t = typeExtractRe.exec(validator.type)[0];
     for (let i = 0; i < args.length; i++) {
         let argv = args[i];
         switch(t) {
@@ -341,6 +341,38 @@ function _validateTypedArray(field, validator, args) {
     return errMsg
 }
 
+function _validateTypedList (field, validator, args) {
+    let errMsg = null;
+    let params = [];
+    let rawString = typeof args === 'string'? args : args.toString();
+    let strArr = rawString.split(',');
+    let t = typeExtractRe.exec(validator.type)[0];
+    for (let i=0; i<strArr.length; i++) {
+        let item = strArr[i];
+        switch(t) {
+            case 'ObjectId':
+                if(!ObjectId.isValid(item)) {
+                    errMsg = `type of #${i} in ${field} should be ${t}`;
+                }              
+                break;
+            case 'Number':
+                if (Number.isNaN(item)) {
+                    errMsg = `type of #${i} in ${field} should be ${t}`;
+                }
+                break;
+        }
+        if (!errMsg) {
+            params.push(item);
+        } else {
+            break;
+        }
+    }
+    if (!errMsg) {
+        args = params;
+    }
+    return errMsg;
+}
+
 function _validateNumber (field, validator, argv) {
     let errMsg = null;
     if (Number.isNaN(argv)) {
@@ -359,7 +391,8 @@ function _validateNumber (field, validator, argv) {
     return errMsg;
 }
 
-const typedArrayReg = new RegExp("^Array\<(String|Number|ObjectId)\>$");
+const typedArrayRe = new RegExp("^Array\<(String|Number|ObjectId)\>$");
+const typedListRe = new RegExp("^List\<(String|Number|ObjectId)\>$");
 function _validateParameter(field, validator, argv) {
     //logger.debug(`Perform validation: ${field} - ${_inspect(validator)} - ${_inspect(argv)}`);
     let errMsg = null;
@@ -372,8 +405,11 @@ function _validateParameter(field, validator, argv) {
     if (errMsg !== null) {
         return errMsg;
     }
-    if (typedArrayReg.test(validator.type)) {
+    if (typedArrayRe.test(validator.type)) {
         errMsg = _validateTypedArray(field, validator, argv);
+    }
+    if (typedListRe.test(validator.type)) {
+        errMsg = _validateTypedList(field, validator, argv);
     }
     if (errMsg !== null) {
         return errMsg;

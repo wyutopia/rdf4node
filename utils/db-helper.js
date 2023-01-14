@@ -175,8 +175,12 @@ function _updateOne(db, params, callback) {
     if (options.new === undefined) {
         options.new = true;
     }
-    logger.debug(`Update: ${db.modelName} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`)
-    db.findOneAndUpdate(filter, updates, options, (err, doc) => {
+    logger.debug(`Update: ${db.modelName} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`);
+    let query = db.findOneAndUpdate(filter, updates, options);
+    if (params.populate) {
+        query.populate(params.populate);
+    }
+    query.exec((err, doc) => {
         if (err) {
             let msg = `Update ${db.modelName} error! - ${err.message}`;
             logger.error(msg);
