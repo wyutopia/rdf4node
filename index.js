@@ -5,6 +5,7 @@ exports.theApp = require('./bootstrap');
 
 // Definitions
 exports.eRetCodes = require('./include/retcodes.js');
+exports.components = require('./include/components');
 
 // base libs
 exports.XTask = require('./libs/xtask');

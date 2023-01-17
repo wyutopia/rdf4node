@@ -8,50 +8,51 @@ const eRetCodes = require('../include/retcodes');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'components');
 
-function objectInit(options) {
-    this.id = options.id || tools.uuidv4();
-    this.name = options.name || 'Normal';
-    this.type = options.type || pubdefs.eModuleType.OBJ;
+function objectInit(props) {
+    this.id = props.id || tools.uuidv4();
+    this.name = props.name || 'Normal';
+    this.type = props.type || pubdefs.eModuleType.OBJ;
 }
 
-function moduleInit(options) {
+function moduleInit(props) {
     //
     this.mandatory = true;
-    this.state = options.state || pubdefs.eModuleState.INIT;
+    this.state = props.state || pubdefs.eModuleState.INIT;
     this.isActive = () => {
         return this.state === pubdefs.eModuleState.ACTIVE;
     }
 }
 
 class CommonObject {
-    constructor(options) {
-        objectInit.call(this, options);
-        //
+    constructor(props) {
+        objectInit.call(this, props);
+        // Additional properties go here ...
     }
 }
 exports.CommonObject = CommonObject;
 
 class CommonModule extends CommonObject {
-    constructor(options) {
-        super(options);
-        moduleInit.call(this, options);
-        //
+    constructor(props) {
+        super(props);
+        moduleInit.call(this, props);
+        // Additional properties go here ...
     }
 }
 exports.CommonModule = CommonModule;
 
 class EventObject extends EventEmitter {
-    constructor(options) {
-        super(options);
-        objectInit.call(this, options);
+    constructor(props) {
+        super(props);
+        objectInit.call(this, props);
+        // Additional properties go here ...
     }
 }
 exports.EventObject = EventObject;
 
 class EventModule extends EventObject {
-    constructor(options) {
-        super(options);
-        moduleInit.call(this, options);
+    constructor(props) {
+        super(props);
+        moduleInit.call(this, props);
         //
         this._msgProc = (msg, ackOrNack) => {
             //TODO: Handle msg
