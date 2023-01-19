@@ -76,8 +76,9 @@ const eStatus = {
     ACTIVE      : 0,
     ACT_PENDING : 1,
     // set 2 - 8 as abnormal state for account
-    EXPIRED     : 7,
-    SUSPEND     : 8,
+    EXPIRED     : 6,
+    SUSPEND     : 7,
+    DEL_PENDING : 8,
     DELETED     : 9
 };
 exports.eStatus = eStatus;
