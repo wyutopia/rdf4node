@@ -96,9 +96,9 @@ exports.findPartial = function (db, options, callback) {
     }
     //
     let name = db.modelName;
-    let ps = parseInt(options.pageSize || '10');
-    let pn = parseInt(options.page || '1');
     let filter = options.filter || {};
+    let ps = parseInt(filter.pageSize || '10');
+    let pn = parseInt(filter.page || '1');
 
     logger.debug(`Query ${name} with filter: ${tools.inspect(filter)}`);
     let countMethod = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
@@ -127,18 +127,6 @@ exports.findPartial = function (db, options, callback) {
                 query[method](options[method]);
             }
         });
-        // if (options.select) {
-        //     query.select(options.select);
-        // }
-        // if (options.sort) {
-        //     query.sort(options.sort);
-        // }
-        // if (options.populate) {
-        //     query.populate(options.populate);
-        // }
-        // if (options.allowDiskUse) {
-        //     query.allowDiskUse(true);
-        // }
         return query.exec((err, docs) => {
             if (err) {
                 let msg = `Query ${name} error! - ${err.message}`;
@@ -152,6 +140,15 @@ exports.findPartial = function (db, options, callback) {
             return callback(null, results);
         });
     });
+};
+
+exports.paginationOpt = {
+    pageSize: {
+        type: 'Number'
+    },
+    page: {
+        type: 'Number'
+    }
 };
 
 function _updateOne(db, params, callback) {

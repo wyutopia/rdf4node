@@ -5,6 +5,8 @@ const EventEmitter = require('events');
 const tools = require('../utils/tools');
 const pubdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
+const sysEvents = require('./sys-events');
+const icp = require('../libs/base/icp');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'components');
 
@@ -61,6 +63,13 @@ class EventModule extends EventObject {
         this.on('message', (msg, ackOrNack) => {
             setImmediate(this._msgProc.bind(this, msg, ackOrNack));
         });
+        // Perform initiliazing codes...
+        (() => {
+            icp.register(this.name, this);
+            // Subscribe events
+            let allEvents = Object.values(sysEvents).concat(props.subEvents || []);
+            icp.subscribe(allEvents, this.name);
+        })();
     }
 }
 exports.EventModule = EventModule;

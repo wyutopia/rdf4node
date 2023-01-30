@@ -18,6 +18,7 @@ exports.expressWrapper = require('./libs/base/express.wrapper');
 exports.MorganWrapper = require('./libs/base/morgan.wrapper');
 exports.winstonWrapper = require('./libs/base/winston.wrapper');
 exports.monitor = require('./libs/base/prom.wrapper');
+exports.icp = require('./libs/base/icp');
 
 // utilities
 exports.tools = require('./utils/tools');

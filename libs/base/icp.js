@@ -26,7 +26,6 @@ class IcpRequest extends CommonObject {
         //
         this.host = options.host;
         this.sender = options.sender || {};
-        this.
         this.hopCount = 0;
         //
         (() => {
@@ -34,7 +33,7 @@ class IcpRequest extends CommonObject {
         })();
     }
 }
-exports.IcpRequest = IcpRequest;
+// exports.IcpRequest = IcpRequest;
 
 function _invalidateParams(options, callback) {
     let ast = options !== undefined && options.host !== undefined && options.host.mid !== undefined;
@@ -56,35 +55,91 @@ function _invokeRemote(options, callback) {
 
 }
 
+function _setConfig (conf) {
+    return {
+        internal: conf.internal === undefined? false : conf.internal,
+        persistent: conf.persistent === undefined? false : conf.persistent
+    }
+}
+
 class InterCommPlatform extends CommonModule {
-    constructor(options) {
-        super(options);
-        // Delcaring member variables here ...
-        // Implementing member methods
-        this.execute = (options, callback) => {
-            options.hopCount = (options.hopCount || 0)++;
-            if (options.hopCount > config.maxHopCount) {
-                let msg = 'Exceed max hop count!'
-                logger.error(`${this.name}: Request - ${tools.inspect(options)} - ${msg}`);
-                return callback({
-                    code: eRetCodes.METHOD_NOT_ALLOWED,
-                    message: msg
-                })
-            }
-            _invalidateParams.call(this, options, (err) => {
-                if (err) {
-                    return callback(err);
+    constructor(props) {
+        super(props);
+        // Set configurations
+        this._config = _setConfig(props.conf || {});
+        // Declaring member variables
+        this._registries = {};
+        this._subscribers = {};        
+        // Implementing methods
+        this.register = (moduleName, instRef, callback) => {
+            let err = null;
+            if (this._registries[moduleName] === undefined) {
+                this._registries[moduleName] = {
+                    name: moduleName,
+                    status: pubdefs.eStatus.ACTIVE,
+                    instRef: instRef
                 }
-                _getLocalHandler(options, (err, handler) => {
-                    if (err) {
-                        return callback(err);
-                    }
-                    if (handler) {
-                        return handler(options, callback);
-                    }
-                    return _invokeRemote.call(options, callback);
-                });
+            } else {
+                err = {
+                    code: eRetCodes.CONFLICT,
+                    message: 'ModuleName exists!'
+                }
+            }
+            if (typeof callback === 'function') {
+                return callback(err);
+            }
+            return err;
+        };
+        this.pause = (moduleName, callback) => {
+            // TODO: Stop publish and consume events
+        };
+        this.resume = (moduleName) => {
+            // TODO: Resume publish and consume events
+        };
+        this.subscribe = (eventCodes, moduleName, callback) => {
+            let err = null;
+            eventCodes.forEach(code => {
+                if (this._subscribers[code] === undefined) {
+                    this._subscribers[code] = [];
+                }
+                if (this._subscribers[code].indexOf(moduleName) === -1) {
+                    this._subscribers[code].push(moduleName);
+                }
             });
+            //
+            if (typeof callback === 'function') {
+                return callback(err);
+            }
+            return err;
+        };
+        this.publish = (event, callback) => {
+            let err = null;
+            //
+            let subscribers = this._subscribers[event.code];
+            subscribers.forEach(moduleName => {
+                let registry = this._registries[moduleName];
+                if (!registry || registry.status !== pubdefs.eStatus.ACTIVE) {
+                    logger.info(`Ignore non-active module! - ${moduleName}`);
+                    return;
+                }
+                try {
+                    registry.instRef.emit('message', event);
+                } catch (ex) {
+                    logger.error(`Emit app-event error for module: ${moduleName} - ${tools.inspect(ex)}`);
+                }
+            });
+            //
+            if (typeof callback === 'function') {
+                return callback(err);
+            }
+            return err;
         }
     }
 } 
+module.exports = exports = new InterCommPlatform({
+    name: '_sysIcpSvc',
+    conf: {
+        internal: true,              // Using internal communication
+        persistent: false            // No persistence
+    }
+});
