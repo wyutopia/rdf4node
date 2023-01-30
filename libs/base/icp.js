@@ -112,7 +112,11 @@ class InterCommPlatform extends CommonModule {
             }
             return err;
         };
-        this.publish = (event, callback) => {
+        this.publish = (event, options, callback) => {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            }
             let err = null;
             //
             let subscribers = this._subscribers[event.code];

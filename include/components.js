@@ -56,10 +56,19 @@ class EventModule extends EventObject {
         super(props);
         moduleInit.call(this, props);
         //
+        this.pubEvent = (event, options, callback) => {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {
+                    routingKey: event.code
+                }
+            }
+            return icp.publish(event, callback);
+        };
         this._msgProc = (msg, ackOrNack) => {
             //TODO: Handle msg
             return ackOrNack();
-        }
+        };
         this.on('message', (msg, ackOrNack) => {
             setImmediate(this._msgProc.bind(this, msg, ackOrNack));
         });
