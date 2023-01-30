@@ -1,6 +1,9 @@
 /**
  * Created by Eric on 2023/01/30
  */
+const tools = require('../utils/tools');
+const pubdefs = require('./sysdefs');
+
 function _objectInit(props) {
     this.id = props.id || tools.uuidv4();
     this.name = props.name || `Untitled-${this.id}`;
