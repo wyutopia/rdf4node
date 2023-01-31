@@ -119,18 +119,20 @@ class InterCommPlatform extends CommonModule {
             let err = null;
             //
             let subscribers = this._subscribers[event.code];
-            subscribers.forEach(moduleName => {
-                let registry = this._registries[moduleName];
-                if (!registry || registry.status !== pubdefs.eStatus.ACTIVE) {
-                    logger.info(`Ignore non-active module! - ${moduleName}`);
-                    return;
-                }
-                try {
-                    registry.instRef.emit('message', event);
-                } catch (ex) {
-                    logger.error(`Emit app-event error for module: ${moduleName} - ${tools.inspect(ex)}`);
-                }
-            });
+            if (tools.isTypeOfArray(subscribers)) {
+                subscribers.forEach(moduleName => {
+                    let registry = this._registries[moduleName];
+                    if (!registry || registry.status !== pubdefs.eStatus.ACTIVE) {
+                        logger.info(`Ignore non-active module! - ${moduleName}`);
+                        return;
+                    }
+                    try {
+                        registry.instRef.emit('message', event);
+                    } catch (ex) {
+                        logger.error(`Emit app-event error for module: ${moduleName} - ${tools.inspect(ex)}`);
+                    }
+                });
+            } // Discard event if no subscribers
             //
             if (typeof callback === 'function') {
                 return callback(err);

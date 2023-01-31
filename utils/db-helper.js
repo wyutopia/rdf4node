@@ -244,17 +244,36 @@ exports.create = function (db, data, callback) {
     });
 };
 
+// exports.remove = function (db, options, callback) {
+//     assert(Object.getPrototypeOf(db).name === 'Model');
+//     if (typeof options === 'function') {
+//         callback = options;
+//         options = {};
+//     }
+//     assert(options.filter !== undefined && Object.keys(options.filter).length > 0);
+//     //
+//     db.remove(options.filter, (err, result) => {
+//         if (err) {
+//             let msg = `Delete ${db.modelName} error! - ${err.message}`;
+//             logger.error(msg);
+//             return callback({
+//                 code: eRetCodes.DB_DELETE_ERR,
+//                 message: msg
+//             });
+//         }
+//         return callback(null, result);
+//     });
+// };
+
 exports.remove = function (db, options, callback) {
     assert(Object.getPrototypeOf(db).name === 'Model');
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
-    }
-    assert(options.filter !== undefined && Object.keys(options.filter).length > 0);
-    //
-    db.remove(options.filter, (err, result) => {
+    assert(options !== undefined && options.filter !== undefined && Object.keys(options.filter).length > 0);
+    assert(typeof callback === 'function');
+
+    let methodName = options.multi === true? 'deleteOne' : 'deleteMany';
+    db[methodName](options.filter, (err, result) => {
         if (err) {
-            let msg = `Delete ${db.modelName} error! - ${err.message}`;
+            let msg = `Delete ${db.modeName} error! - ${err.code}#${err.message}`;
             logger.error(msg);
             return callback({
                 code: eRetCodes.DB_DELETE_ERR,

@@ -85,7 +85,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
                     handler: route.handler
                 });
             } else {
-                logger.error(`Invalid controller method! - ${route.path} - ${toh}`);
+                logger.error(`Invalid controller method! - ${filename} - ${route.path} - ${toh}`);
             }
         });
     } catch (ex) {
