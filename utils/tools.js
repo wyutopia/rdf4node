@@ -509,7 +509,11 @@ exports.parseParameter2 = function (args, validator, callback) {
             break;
         }
         // Copy directly
-        params[field] = argv;
+        if (v.transKey) {
+            params[v.transKey] = argv;
+        } else {
+            params[field] = argv;
+        }
     }
     if (errMsg) {
         return callback({
