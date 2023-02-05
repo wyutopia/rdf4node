@@ -75,11 +75,87 @@ function _$allowDelete(id, callback) {
  * @private
  */
 function _$parsePatch(jsonPatch) {
-    return {}
+    let updates = {};
+    if (tools.isTypeOfArray(jsonPatch)) {
+        jsonPatch.forEach(item => {
+            let key = item.path.replace('/', '.').slice(1);
+            switch(item.op) {
+                case 'add':
+                    if (updates.$set === undefined) {
+                        updates.$set = {};
+                    }
+                    updates.$set[key] = item.value;
+                    break;
+                case 'push':
+                    if (updates.$push === undefined) {
+                        updates.$push = {};
+                    }
+                    updates.$push[key] = item.value;
+                    break;
+                case 'addToSet':
+                    if (updates.$addToSet === undefined) {
+                        updates.$addToSet = {};
+                    }
+                    updates.$addToSet[key] = item.value;
+                case 'remove':
+                    updates.$unset = {};
+                    updates.$unset[key] = 1;
+                    break;
+                case 'replace':
+                    break;
+                case 'copy':
+                    break;
+                case 'move':
+                    break;
+                case 'test':
+                    break;
+            }
+        });
+    }
+    return updates
 }
 
-function _$transQueryFilter(origFilter) {
-    return origFilter;
+function _$transQueryFilter (filter) {
+    return filter;
+}
+
+function _$transDeleteFilter (filter) {
+    // Do nothering...
+}
+
+function _emitEvents(options, callback) {
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    let method = options.method;
+    if (method === undefined) {
+        return callback();
+    }
+    let domainEvent = this._domainEvents[method];
+    if (domainEvent === undefined) {
+        return callback();
+    }
+    let evt = Object.assign({
+        headers: {
+            source: this.name
+        },
+        body: options.data
+    }, domainEvent.success);
+    this.pubEvent(evt, err => {
+        if (err) {
+            logger.error(`Publish event: ${tools.inspect(evt)} error! - ${err.code}#${err.message}`);
+        }
+        return callback();
+    });
+}
+
+function _packDeleteFilter(args) {
+    let filter = {
+        _id: args.id
+    };
+    this._transDeleteFilter(filter);
+    return filter;
 }
 
 class ControllerBase extends EventModule {
@@ -89,6 +165,7 @@ class ControllerBase extends EventModule {
         this._model = props.model || null;
         this._searchKeys = props.searchKeys || {};
         this._propKeys = props.propKeys || {};
+        this._mandatoryAddKeys = props.mandatoryAddKeys || [];
         this._mutableKeys = props.mutableKeys || this._propKeys;
         this._populateKeys = props.populateKeys || [];
         // Declaring private overridable methods
@@ -96,7 +173,9 @@ class ControllerBase extends EventModule {
         this._allowDelete = props.allowDelete || _$allowDelete;
         this._parsePatch = props.parsePatch || _$parsePatch;
         this._transQueryFilter = props.transQueryFilter || _$transQueryFilter;
-
+        this._transDeleteFilter = props.transDeleteFilter || _$transDeleteFilter;
+        // Register event publishers
+        this._domainEvents = props.domainEvents || {};
         // Implementing basic CRUD methods
         this.listAll = (req, res) => {
             let validator = Object.assign({}, dbHelper.paginationOpt, this._searchKeys);
@@ -113,7 +192,12 @@ class ControllerBase extends EventModule {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    return res.sendSuccess(results);
+                    _emitEvents.call(this, {
+                        method: 'listAll',
+                        data: results
+                    }, () => {
+                        return res.sendSuccess(results);
+                    });
                 });
             });
         };
@@ -138,7 +222,37 @@ class ControllerBase extends EventModule {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    return res.sendSuccess(docs)
+                    _emitEvents.call(this, {
+                        method: 'listByProject',
+                        data: docs
+                    }, () => {
+                        return res.sendSuccess(docs);
+                    });
+                });
+            });
+        };
+        this.addOne = (req, res) => {
+            let validator = Object.assign({}, this._propKeys);
+            this._mandatoryAddKeys.forEach( key => {
+                if (validator[key]) {
+                    validator[key].required = true;
+                }
+            });
+            tools.parseParameter2(req.body, validator, (err, args) => {
+                if (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
+                //
+                dbHelper.create(this._model, args, (err, doc) => {
+                    if (err) {
+                        return res.sendRsp(err.code, err.message);
+                    }
+                    _emitEvents.call(this, {
+                        method: 'addOne',
+                        data: doc
+                    }, () => {
+                        return res.sendSuccess(doc);
+                    });
                 });
             });
         };
@@ -192,10 +306,13 @@ class ControllerBase extends EventModule {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    // TODO: Publish event if configed
-                    // this.pubEvent(...)
-                    return res.sendSuccess(doc);
-                })
+                    _emitEvents.call(this, {
+                        method: 'updateOne',
+                        data: doc
+                    }, () => {
+                        return res.sendSuccess(doc);
+                    });
+                });
             });
         };
         this.deleteOne = (req, res) => {
@@ -213,14 +330,19 @@ class ControllerBase extends EventModule {
                         return res.sendRsp(eRetCodes.METHOD_NOT_ALLOWED, reason);
                     }
                     //
+                    let filter = _packDeleteFilter.call(this, args);
                     dbHelper.remove(this._model, {
-                        filter: {_id: args.id}
+                        filter: filter
                     }, (err, result) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        // TODO: Publish event if configed
-                        return res.sendSuccess();
+                        _emitEvents.call(this, {
+                            method: 'deleteOne',
+                            data: filter
+                        }, () => {
+                            return res.sendSuccess();
+                        });
                     });
                 });
             });
@@ -251,8 +373,12 @@ class ControllerBase extends EventModule {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    //TODO: Publish event if configed
-                    return res.sendSuccess(doc);
+                    _emitEvents.call(this, {
+                        method: 'patchOne',
+                        data: doc
+                    }, () => {
+                        return res.sendSuccess(doc);
+                    });
                 });
             });
         };
