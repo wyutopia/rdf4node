@@ -115,11 +115,11 @@ function _$parsePatch(jsonPatch) {
     return updates
 }
 
-function _$transQueryFilter (filter) {
+function _$extQueryFilter (filter) {
     return filter;
 }
 
-function _$transDeleteFilter (filter) {
+function _$extDeleteFilter (filter) {
     // Do nothering...
 }
 
@@ -154,7 +154,7 @@ function _packDeleteFilter(args) {
     let filter = {
         _id: args.id
     };
-    this._transDeleteFilter(filter);
+    this._extDeleteFilter(filter);
     return filter;
 }
 
@@ -169,11 +169,11 @@ class ControllerBase extends EventModule {
         this._mutableKeys = props.mutableKeys || this._propKeys;
         this._populateKeys = props.populateKeys || [];
         // Declaring private overridable methods
-        this._extUpdates = props.extUpdates || _$extUpdates;
         this._allowDelete = props.allowDelete || _$allowDelete;
         this._parsePatch = props.parsePatch || _$parsePatch;
-        this._transQueryFilter = props.transQueryFilter || _$transQueryFilter;
-        this._transDeleteFilter = props.transDeleteFilter || _$transDeleteFilter;
+        this._extUpdates = props.extUpdates || _$extUpdates;
+        this._extQueryFilter = props.extQueryFilter || _$extQueryFilter;
+        this._extDeleteFilter = props.extDeleteFilter || _$extDeleteFilter;
         // Register event publishers
         this._domainEvents = props.domainEvents || {};
         // Implementing basic CRUD methods
@@ -183,7 +183,7 @@ class ControllerBase extends EventModule {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
-                let filter = this._transQueryFilter(args);
+                let filter = this._extQueryFilter(args);
                 //
                 dbHelper.findPartial(this._model, {
                     filter: filter,
