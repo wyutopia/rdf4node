@@ -266,3 +266,24 @@ const eCacheType = {
     MEMCACHE      : 'memcache'
 };
 exports.eCacheType = eCacheType;
+
+const eClientState = {
+    Null: 'null',
+    Init: 'init',
+    Conn: 'connected',
+    ConnErr: 'connerr',
+    Querying: 'querying',
+    PClosing: 'pclosed',
+    ClosePending: 'closepending',
+    Closing: 'closing',
+    Pending: 'pending',
+    Closed: 'closed'
+};
+exports.eClientState = eClientState;
+exports.eConnectionState = eClientState;
+
+const eServerState = {
+    Null: 'null',
+    Init: 'init'
+};
+exports.eServerState = eServerState;
