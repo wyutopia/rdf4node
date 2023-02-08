@@ -252,3 +252,17 @@ const eRequestAuthType = {
     AKSK     : 'aksk' 
 };
 exports.eRequestAuthType = eRequestAuthType;
+
+
+const eDbType = {
+    MONGO         : 'mongo',
+    MYSQL         : 'mysql',
+    SQLSERVER     : 'sqlsrv'
+};
+exports.eDbType = eDbType;
+
+const eCacheType = {
+    REDIS         : 'redis',
+    MEMCACHE      : 'memcache'
+};
+exports.eCacheType = eCacheType;
