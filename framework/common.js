@@ -42,41 +42,8 @@ exports.CommonModule = CommonModule;
 class EventObject extends EventEmitter {
     constructor(props) {
         super(props);
-        objectInit.call(this, props);
+        _objectInit.call(this, props);
         // Additional properties go here ...
     }
 }
 exports.EventObject = EventObject;
-
-class EventModule extends EventObject {
-    constructor(props) {
-        super(props);
-        moduleInit.call(this, props);
-        //
-        this.pubEvent = (event, options, callback) => {
-            if (typeof options === 'function') {
-                callback = options;
-                options = {
-                    routingKey: event.code
-                }
-            }
-            return icp.publish(event, callback);
-        };
-        this._msgProc = (msg, ackOrNack) => {
-            //TODO: Handle msg
-            return ackOrNack();
-        };
-        this.on('message', (msg, ackOrNack) => {
-            //setImmediate(this._msgProc.bind(this, msg, ackOrNack));
-            setTimeout(this._msgProc.bind(this, msg, ackOrNack), 10);
-        });
-        // Perform initiliazing codes...
-        (() => {
-            icp.register(this.name, this);
-            // Subscribe events
-            let allEvents = Object.values(sysEvents).concat(props.subEvents || []);
-            icp.subscribe(allEvents, this.name);
-        })();
-    }
-}
-exports.EventModule = EventModule;

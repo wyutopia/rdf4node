@@ -3,13 +3,47 @@
  */
 //
 const assert = require('assert');
-// Project libs
+// Platform includes
 const pubdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
+const {EventObject, moduleInit} = require('../include/common');
 const tools = require('../utils/tools');
 // framework libs
-const {EventModule} = require('./common');
 const {repoFactory, paginationKeys} = require('./repository');
+
+class EventModule extends EventObject {
+    constructor(props) {
+        super(props);
+        moduleInit.call(this, props);
+        //
+        this.pubEvent = (event, options, callback) => {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {
+                    routingKey: event.code
+                }
+            }
+            return icp.publish(event, callback);
+        };
+        this._msgProc = (msg, ackOrNack) => {
+            //TODO: Handle msg
+            return ackOrNack();
+        };
+        this.on('message', (msg, ackOrNack) => {
+            //setImmediate(this._msgProc.bind(this, msg, ackOrNack));
+            setTimeout(this._msgProc.bind(this, msg, ackOrNack), 5);
+        });
+        // Perform initiliazing codes...
+        (() => {
+            icp.register(this.name, this);
+            // Subscribe events
+            let allEvents = Object.values(sysEvents).concat(props.subEvents || []);
+            icp.subscribe(allEvents, this.name);
+        })();
+    }
+}
+exports.EventModule = EventModule;
+
 
 function _$extUpdates (setData) {
     return {
@@ -219,7 +253,7 @@ class ControllerBase extends EventModule {
             });
         };
         this.addOne = (req, res) => {
-            let validator = Object.assign({}, this._propKeys);
+            let validator = tools.deepAssign({}, this._propKeys);
             this._mandatoryAddKeys.forEach( key => {
                 if (validator[key]) {
                     validator[key].required = true;
@@ -291,7 +325,7 @@ class ControllerBase extends EventModule {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let setData = Object.assign({}, args);
+                    let setData = tools.deepAssign({}, args);
                     delete setData.id;
                     if (Object.keys(setData).length === 0) {
                         return res.sendRsp(eRetCodes.ACCEPTED, 'Empty updates!');

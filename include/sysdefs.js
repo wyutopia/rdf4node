@@ -48,6 +48,14 @@ const eDeployMode = {
 };
 exports.eDeployMode = eDeployMode;
 
+const eFrameworkModules = {
+    REGISTRY                : '_registry_',
+    ICP                     : '_icp_',
+    DATASOURCE_FACTORY      : '_datasource_factory_',
+    REPOSITORY_FACTORY      : '_repository_factory_'
+};
+exports.eFrameworkModules = eFrameworkModules;
+
 const eModuleState = {
     INIT         : 'init',
     ACTIVE       : 'active',

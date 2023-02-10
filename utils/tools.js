@@ -621,3 +621,14 @@ function _isIpAddr (ip) {
     return re.test(ip);
 }
 exports.isIpAddr = _isIpAddr;
+
+function _deepAssign () {
+    let target = arguments[0];
+    for (i = 1; i < arguments.length; i++) {
+        Object.keys(arguments[i]).forEach(key => {
+            target[key] = JSON.parse(JSON.stringify(arguments[i][key]));
+        });
+    }
+    return target;
+}
+exports.deepAssign = _deepAssign;

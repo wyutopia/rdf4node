@@ -1,12 +1,13 @@
 /**
  * Created by Eric on 2023/02/08
  */
-const mongoose = require('mongose');
+const mongoose = require('mongoose');
 //
 const sysConf = require('./config');
-const pubdefs = require('../include/sysdefs');
+const sysdefs = require('../include/sysdefs');
+const _MODULE_NAME = sysdefs.eFrameworkModules.DATASOURCEFACTORY;
+const {EventModule, EventObject} = require('../include/common');
 const tools = require('../utils/tools');
-const {EventModule, EventObject} = require('./common');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'ds');
 
@@ -19,7 +20,6 @@ function _parseConnParams(config) {
     keys.forEach(key => {
         params.push(`${key}=${config.parameters[key]}`);
     });
-
     return params.join('&');
 }
 
@@ -62,10 +62,10 @@ class DataSource extends EventObject {
         //
         (() => {
             switch(this._conf.type) {
-                case pubdefs.eDbType.MONGO:
+                case sysdefs.eDbType.MONGO:
                     _initMongoConnection.call(this, this._conf.config);
                     break;
-                case pubdefs.eDbType.MYSQL:
+                case sysdefs.eDbType.MYSQL:
                     _initMySqlConnection.call(this, this._conf.config);
                     break;
                 default:
