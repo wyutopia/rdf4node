@@ -3,7 +3,7 @@
  */
 const EventEmitter = require('events');
 const tools = require('../utils/tools');
-const pubdefs = require('./sysdefs');
+const pubdefs = require('../include/sysdefs');
 
 function _objectInit(props) {
     this.id = props.id || tools.uuidv4();

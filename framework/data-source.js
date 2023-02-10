@@ -5,8 +5,6 @@ const mongoose = require('mongose');
 //
 const sysConf = require('./config');
 const pubdefs = require('../include/sysdefs');
-const eConnState = pubdefe.eConnectionState;
-const sysEvents = require('../include/sys-events');
 const tools = require('../utils/tools');
 const {EventModule, EventObject} = require('./common');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');

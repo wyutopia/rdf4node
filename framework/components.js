@@ -4,7 +4,7 @@
 //
 const assert = require('assert');
 // Project libs
-const pubdefs = require('../inclue/sysdefs');
+const pubdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
 const tools = require('../utils/tools');
 // framework libs
@@ -137,6 +137,7 @@ class ControllerBase extends EventModule {
         super(props);
         // Init private members
         this._modelName = props.modelName || 'test';
+        this._modelSchema = props.modelSchema || {};
         this._dsName = props.dsName || 'default';
         //
         this._searchKeys = props.searchKeys || {};
