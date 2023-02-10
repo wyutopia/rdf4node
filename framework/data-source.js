@@ -25,7 +25,7 @@ function _parseConnParams(config) {
     return params.join('&');
 }
 
-function _createMongoConnection(config) {
+function _initMongoConnection(config) {
     const options = {
         useUnifiedTopology: true,
         useNewUrlParser: true
@@ -39,7 +39,7 @@ function _createMongoConnection(config) {
     this.isConnected = true;
 }
 
-function _createMySqlConnection() {
+function _initMySqlConnection(config) {
 
 }
 
@@ -48,18 +48,29 @@ class DataSource extends EventObject {
     constructor(props) {
         super(props);
         // Declaring member variables
+        this.conf = props.conf || {};
         this.isConnected = false;
-        this._conn = null;
-        this._conf = props.conf || {};
+        this._models = {};
         // Implenting event handlers
+        this.getModel = (modelName, modelSchema) => {
+            if (!this.isConnected) {
+                return null;
+            }
+            if (this._models[modelName] === undefined) {
+                this._models[modelName] = this._conn.model(modelName, modelSchema);
+            }
+            return this._models[modelName];
+        };
         //
         (() => {
             switch(this._conf.type) {
                 case pubdefs.eDbType.MONGO:
-                    _createMongoConnection.call(this, this._conf.config);
+                    _initMongoConnection.call(this, this._conf.config);
                     break;
                 case pubdefs.eDbType.MYSQL:
-                    _createMySqlConnection.call(this)
+                    _initMySqlConnection.call(this, this._conf.config);
+                    break;
+                default:
                     break;
             }
         })();
@@ -94,6 +105,13 @@ class DataSourceFactory extends EventModule {
                     conf: dsConf[dsName]
                 });
             });
+            //
+            if (this._ds['default'] === undefined) {
+                this._ds['default'] = new DataSource({
+                    name: 'default',
+                    conf: {}
+                })
+            }
         })();
     }
 }

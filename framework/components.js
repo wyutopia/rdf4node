@@ -1,9 +1,15 @@
 /**
  * Created by Eric on 2023/02/07
  */
+//
+const assert = require('assert');
+// Project libs
+const pubdefs = require('../inclue/sysdefs');
+const eRetCodes = require('../include/retcodes');
 const tools = require('../utils/tools');
-const pubdefs = require('./sysdefs');
+// framework libs
 const {EventModule} = require('./common');
+const {repoFactory, paginationKeys} = require('./repository');
 
 function _$extUpdates (setData) {
     return {
@@ -106,11 +112,33 @@ function _packDeleteFilter(args) {
     return filter;
 }
 
+function _getRepository (options, callback) {
+    assert(options !== undefined);
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    let modelName = options.modelName || this._modelName;
+    let dsName = options.dsName || this._dsName;
+    let repo = repoFactory.getRepo(modelName, dsName);
+    if (!repo) {
+        let msg = `Repository not exists! - ${this._modelName} - ${this._dsName}`;
+        logger.error(msg);
+        return callback({
+            code: eRetCodes.DB_ERROR,
+            message: msg
+        });
+    }
+    return callback(null, repo);
+}
+
 class ControllerBase extends EventModule {
     constructor(props) {
         super(props);
         // Init private members
-        this._model = props.model || null;
+        this._modelName = props.modelName || 'test';
+        this._dsName = props.dsName || 'default';
+        //
         this._searchKeys = props.searchKeys || {};
         this._propKeys = props.propKeys || {};
         this._mandatoryAddKeys = props.mandatoryAddKeys || [];
@@ -126,25 +154,30 @@ class ControllerBase extends EventModule {
         this._domainEvents = props.domainEvents || {};
         // Implementing basic CRUD methods
         this.listAll = (req, res) => {
-            let validator = Object.assign({}, dbHelper.paginationOpt, this._searchKeys);
+            let validator = Object.assign({}, repoFactory.paginationKeys, this._searchKeys);
             tools.parseParameter2(req.query, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
                 let filter = this._extQueryFilter(args);
                 //
-                dbHelper.findPartial(this._model, {
-                    filter: filter,
-                    populate: this._populateKeys
-                }, (err, results) => {
+                _getRepository.call(this, req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    _emitEvents.call(this, {
-                        method: 'listAll',
-                        data: results
-                    }, () => {
-                        return res.sendSuccess(results);
+                    repo.findPartial({
+                        filter: filter,
+                        populate: this._populateKeys
+                    }, (err, results) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        _emitEvents.call(this, {
+                            method: 'listAll',
+                            data: results
+                        }, () => {
+                            return res.sendSuccess(results);
+                        });
                     });
                 });
             });
@@ -163,18 +196,23 @@ class ControllerBase extends EventModule {
                     return res.sendRsp(err.code, err.message);
                 }
                 //
-                dbHelper.findMany(this._model, {
-                    filter: args,
-                    populate: this._populateKeys
-                }, (err, docs) => {
+                _getRepository.call(this, req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    _emitEvents.call(this, {
-                        method: 'listByProject',
-                        data: docs
-                    }, () => {
-                        return res.sendSuccess(docs);
+                    repo.findMany({
+                        filter: args,
+                        populate: this._populateKeys
+                    }, (err, docs) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        _emitEvents.call(this, {
+                            method: 'listByProject',
+                            data: docs
+                        }, () => {
+                            return res.sendSuccess(docs);
+                        });
                     });
                 });
             });
@@ -191,15 +229,20 @@ class ControllerBase extends EventModule {
                     return res.sendRsp(err.code, err.message);
                 }
                 //
-                dbHelper.create(this._model, args, (err, doc) => {
+                _getRepository.call(this, req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    _emitEvents.call(this, {
-                        method: 'addOne',
-                        data: doc
-                    }, () => {
-                        return res.sendSuccess(doc);
+                    repo.create(args, (err, doc) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        _emitEvents.call(this, {
+                            method: 'addOne',
+                            data: doc
+                        }, () => {
+                            return res.sendSuccess(doc);
+                        });
                     });
                 });
             });
@@ -216,13 +259,18 @@ class ControllerBase extends EventModule {
                     return res.sendRsp(err.code, err.message);
                 }
                 //
-                dbHelper.findById(this._model, args.id, {
-                    populate: this._populateKeys
-                }, (err, doc) => {
+                _getRepository.call(this, req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    return res.sendSuccess(doc);
+                    repo.findById(args.id, {
+                        populate: this._populateKeys
+                    }, (err, doc) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        return res.sendSuccess(doc);
+                    });
                 });
             });
         };
@@ -238,65 +286,76 @@ class ControllerBase extends EventModule {
                     return res.sendRsp(err.code, err.message);
                 }
                 //
-                let setData = Object.assign({}, args);
-                delete setData.id;
-                if (Object.keys(setData).length === 0) {
-                    return res.sendRsp(eRetCodes.ACCEPTED, 'Empty updates!');
-                }
-                setData.updateAt = new Date();
-                dbHelper.updateOne(this._model, {
-                    filter: {
-                        _id: args.id
-                    },
-                    updates: this._extUpdates(setData),
-                    populate: this._populateKeys
-                }, (err, doc) => {
+                _getRepository.call(this, req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    _emitEvents.call(this, {
-                        method: 'updateOne',
-                        data: doc
-                    }, () => {
-                        return res.sendSuccess(doc);
+                    let setData = Object.assign({}, args);
+                    delete setData.id;
+                    if (Object.keys(setData).length === 0) {
+                        return res.sendRsp(eRetCodes.ACCEPTED, 'Empty updates!');
+                    }
+                    setData.updateAt = new Date();
+                    repo.updateOne({
+                        filter: {
+                            _id: args.id
+                        },
+                        updates: this._extUpdates(setData),
+                        populate: this._populateKeys
+                    }, (err, doc) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        _emitEvents.call(this, {
+                            method: 'updateOne',
+                            data: doc
+                        }, () => {
+                            return res.sendSuccess(doc);
+                        });
                     });
                 });
             });
         };
         this.deleteOne = (req, res) => {
-            tools.parseParameter2(req.body, {
+            let validator = {
                 id: {
                     type: 'ObjectId',
                     required: true
                 }
-            }, (err, args) => {
+            };
+            tools.parseParameter2(req.body, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
-                this._allowDelete(args.id, (reason, result) => {
-                    if (reason) {
-                        return res.sendRsp(eRetCodes.METHOD_NOT_ALLOWED, reason);
+                _getRepository.call(this, req.dataSource, (err, repo) => {
+                    if (err) {
+                        return res.sendRsp(err.code, err.message);
                     }
-                    //
-                    let filter = _packDeleteFilter.call(this, args);
-                    dbHelper.remove(this._model, {
-                        filter: filter
-                    }, (err, result) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
+                    this._allowDelete(args.id, repo, (reason, result) => {
+                        if (reason) {
+                            return res.sendRsp(eRetCodes.DB_DELETE_ERR, reason);
                         }
-                        _emitEvents.call(this, {
-                            method: 'deleteOne',
-                            data: filter
-                        }, () => {
-                            return res.sendSuccess();
+                        //
+                        let filter = _packDeleteFilter.call(this, args);
+                        repo.remove({
+                            filter: filter
+                        }, (err, result) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            _emitEvents.call(this, {
+                                method: 'deleteOne',
+                                data: filter
+                            }, () => {
+                                return res.sendSuccess();
+                            });
                         });
                     });
                 });
             });
         };
         this.patchOne = (req, res) => {
-            tools.parseParameter2(req.body, {
+            let validator = {
                 id: {
                     type: 'ObjectId',
                     requird: true
@@ -304,28 +363,34 @@ class ControllerBase extends EventModule {
                 jsonPatch: {
                     required: true
                 }
-            }, (err, args) => {
+            };
+            tools.parseParameter2(req.body, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
-                let updates = this._parsePatch(args.jsonPatch);
-                //
-                if (Object.keys(updates).length === 0) {
-                    return res.sendRsp(eRetCodes.ACCEPTED, 'Invalid jsonPatch!');
-                }
-                //
-                dbHelper.updateOne(this._model, {
-                    filter: {_id: args.id},
-                    updates: updates
-                }, (err, doc) => {
+                _getRepository.call(this, req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    _emitEvents.call(this, {
-                        method: 'patchOne',
-                        data: doc
-                    }, () => {
-                        return res.sendSuccess(doc);
+                    let updates = this._parsePatch(args.jsonPatch);
+                    //
+                    if (Object.keys(updates).length === 0) {
+                        return res.sendRsp(eRetCodes.ACCEPTED, 'Invalid jsonPatch!');
+                    }
+                    //
+                    repo.updateOne({
+                        filter: {_id: args.id},
+                        updates: updates
+                    }, (err, doc) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        _emitEvents.call(this, {
+                            method: 'patchOne',
+                            data: doc
+                        }, () => {
+                            return res.sendSuccess(doc);
+                        });
                     });
                 });
             });
