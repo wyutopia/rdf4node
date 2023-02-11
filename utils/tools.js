@@ -626,7 +626,7 @@ function _deepAssign () {
     let target = arguments[0];
     for (i = 1; i < arguments.length; i++) {
         Object.keys(arguments[i]).forEach(key => {
-            target[key] = JSON.parse(JSON.stringify(arguments[i][key]));
+            target[key] = structuredClone(arguments[i][key]);
         });
     }
     return target;
