@@ -37,18 +37,19 @@ if (config.security) {
     }
     //TODO: Add other security wrappers
 }
-if (config.mongodb) {
+// Database libs
+if (config.mongodb || config.dbTypes.indexOf('mongo') !== -1) {
     exports.mongoose = require('./libs/common/mongoose.wrapper');
     exports.mongoSession = require('./libs/common/mongo-session.wrapper');
     exports.dbHelper = require('./utils/db-helper');
 }
-if (config.influxdb) {
+if (config.influxdb || config.dbTypes.indexOf('influxdb') !== -1) {
     exports.influxDbWrapper = require('./libs/common/influxdb.wrapper');
 }
-if (config.amq) {
+if (config.amq || config.mq) {
     exports.rascalWrapper = require('./libs/common/rascal.wrapper');
 }
-if (config.mysql2) {
+if (config.mysql2 || config.dbTypes.indexOf('mysql') !== -1) {
     exports.mysql2Wrapper = require('./libs/common/mysql2.wrapper');
 }
 if (config.grpc) {
@@ -60,12 +61,12 @@ if (config.ldap) {
 if (config.httpMonitor) {
     exports.httpMonitor = require('./libs/common/http-monitor');
 }
-if (config.redis) {
+if (config.redis || config.dbTypes.indexOf('redis') !== -1) {
     exports.redisWrapper = require('./libs/common/redis.wrapper');
 }
-if (config.tedious) {
+if (config.tedious || config.dbTypes.indexOf('mssql') !== -1) {
     exports.tdsWrapper = require('./libs/common/tedious.wrapper');
 }
-if (config.elastic) {
+if (config.elastic || config.dbTypes.indexOf('elastic') !== -1) {
     exports.elasticWrapper = require('./libs/common/es.wrapper');
 }

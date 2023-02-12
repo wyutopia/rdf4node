@@ -243,7 +243,7 @@ const eMetricType = {
 };
 exports.eMetricType = eMetricType;
 
-exports.getUpdatableFields = function (paths, excludes = ['_id', 'version', 'createAt', 'updateAt']) {
+function  _getMutableFields (paths, excludes = ['_id', 'version', 'createAt', 'updateAt']) {
     let fields = Object.keys(paths);
     excludes.forEach( key => {
         let index = fields.indexOf(key);
@@ -252,7 +252,9 @@ exports.getUpdatableFields = function (paths, excludes = ['_id', 'version', 'cre
         }
     });
     return fields;
-};
+}
+exports.getUpdatableFields = _getMutableFields;
+exports.getMutableFields = _getMutableFields;
 
 const eRequestAuthType = {
     NONE     : 'none',

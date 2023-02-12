@@ -101,6 +101,7 @@ class DataSourceFactory extends EventModule {
             });
             //
             if (this._ds['default'] === undefined) {
+                logger.error(`>>> Set default data-source to in-memory storage! <<<`);
                 this._ds['default'] = new DataSource({
                     name: 'default',
                     type: sysdefs.eDbType.INMEM,
