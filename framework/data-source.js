@@ -3,13 +3,16 @@
  */
 const mongoose = require('mongoose');
 //
-const sysConf = require('./config');
 const sysdefs = require('../include/sysdefs');
-const _MODULE_NAME = sysdefs.eFrameworkModules.DATASOURCEFACTORY;
-const {EventModule, EventObject} = require('../include/common');
+const _MODULE_NAME = sysdefs.eFrameworkModules.DATASOURCE_FACTORY;
+const {EventModule, EventObject} = require('../include/events');
+const {
+    sysConf, 
+    winstonWrapper: {WinstonLogger}
+} = require('../libs');
+const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
+
 const tools = require('../utils/tools');
-const { WinstonLogger } = require('../libs/base/winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'ds');
 
 function _parseConnParams(config) {
     let params = [];
@@ -37,6 +40,10 @@ function _initMongoConnection(config) {
     this.isConnected = true;
 }
 
+function _initInMemoryStorage(config) {
+    this._memStorage = {};
+}
+
 function _initMySqlConnection(config) {
 
 }
@@ -45,8 +52,10 @@ function _initMySqlConnection(config) {
 class DataSource extends EventObject {
     constructor(props) {
         super(props);
-        // Declaring member variables
+        // Save class properites
+        this.type = props.type || sysdefs.eDbType.INMEM;
         this.conf = props.conf || {};
+        // Declaring member variables
         this.isConnected = false;
         this._models = {};
         // Implenting event handlers
@@ -61,12 +70,15 @@ class DataSource extends EventObject {
         };
         //
         (() => {
-            switch(this._conf.type) {
+            switch(this.type) {
+                case sysdefs.eDbType.INMEM:
+                    _initInMemoryStorage.call(this, this.conf);
+                    break;
                 case sysdefs.eDbType.MONGO:
-                    _initMongoConnection.call(this, this._conf.config);
+                    _initMongoConnection.call(this, this.conf);
                     break;
                 case sysdefs.eDbType.MYSQL:
-                    _initMySqlConnection.call(this, this._conf.config);
+                    _initMySqlConnection.call(this, this.conf);
                     break;
                 default:
                     break;
@@ -107,6 +119,7 @@ class DataSourceFactory extends EventModule {
             if (this._ds['default'] === undefined) {
                 this._ds['default'] = new DataSource({
                     name: 'default',
+                    type: sysdefs.eDbType.INMEM,
                     conf: {}
                 })
             }

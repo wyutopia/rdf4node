@@ -263,6 +263,7 @@ exports.eRequestAuthType = eRequestAuthType;
 
 
 const eDbType = {
+    INMEM         : 'inmem',
     MONGO         : 'mongo',
     MYSQL         : 'mysql',
     SQLSERVER     : 'sqlsrv'

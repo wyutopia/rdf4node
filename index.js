@@ -4,8 +4,11 @@
 exports.theApp = require('./bootstrap');
 
 // Definitions
-exports.eRetCodes = require('./include/retcodes.js');
-exports.components = require('./include/components');
+exports.eRetCodes = require('./include/retcodes');
+exports.base = require('./include/base');
+exports.common = require('./include/common');
+exports.events = require('./include/events');
+exports.components = require('./framework/components');
 
 // base libs
 exports.XTask = require('./libs/xtask');
@@ -18,7 +21,6 @@ exports.expressWrapper = require('./libs/base/express.wrapper');
 exports.MorganWrapper = require('./libs/base/morgan.wrapper');
 exports.winstonWrapper = require('./libs/base/winston.wrapper');
 exports.monitor = require('./libs/base/prom.wrapper');
-exports.icp = require('./libs/base/icp');
 
 // utilities
 exports.tools = require('./utils/tools');
@@ -44,7 +46,6 @@ if (config.influxdb) {
     exports.influxDbWrapper = require('./libs/common/influxdb.wrapper');
 }
 if (config.amq) {
-    //exports.amqpWrapper = require('./libs/common/ampq.wrapper');
     exports.rascalWrapper = require('./libs/common/rascal.wrapper');
 }
 if (config.mysql2) {

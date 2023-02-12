@@ -1,7 +1,7 @@
 /**
  * Created by Eric on 2021/12/14
  */
- const pubdefs = require("../../include/sysdefs");
+ const sysdefs = require("../../include/sysdefs");
  const mntService = require('../base/prom.wrapper');
  
  const gIgnoredUrls = [
@@ -18,11 +18,11 @@
      moduleName: 'http',
      metrics: [{
          name: eHttpMetrics.REQ_TOTAL,
-         type: pubdefs.eMetricType.COUNTER,
+         type: sysdefs.eMetricType.COUNTER,
          labelNames: ['url']
      }, {
          name: eHttpMetrics.REQ_CODE_TOTAL,
-         type: pubdefs.eMetricType.COUNTER,
+         type: sysdefs.eMetricType.COUNTER,
          labelNames: ['url', 'status_code']
      }]
  });

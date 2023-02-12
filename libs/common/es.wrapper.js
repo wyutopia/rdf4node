@@ -3,7 +3,8 @@
  */
 const fs = require('fs');
 const path = require('path');
-const pubdefs = require('../../include/sysdefs');
+// Framework libs
+const sysdefs = require('../../include/sysdefs');
 const theApp = require('../../bootstrap');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');

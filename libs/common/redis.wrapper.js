@@ -3,10 +3,14 @@
  */
 const async = require('async');
 const { createClient } = require('redis');
-const { CommonModule, EventModule, eClientState, CommonObject } = require('../../include/components');
+// Framework libs
 const theApp = require('../../bootstrap');
 const eRetCodes = require('../../include/retcodes');
-const pubdefs = require('../../include/sysdefs');
+const sysdefs = require('../../include/sysdefs');
+const eClientState = sysdefs.eClientState;
+const { CommonObject } = require('../../include/common');
+const { EventModule } = require('../../includes/events');
+
 const tools = require('../../utils/tools');
 const mntService = require('../base/prom.wrapper');
 const { WinstonLogger } = require('../base/winston.wrapper');
@@ -22,7 +26,7 @@ const metricCollector = mntService.regMetrics({
     moduleName: MODULE_NAME,
     metrics: [{
         name: eMetricNames.activeConnection,
-        type: pubdefs.eMetricType.GAUGE
+        type: sysdefs.eMetricType.GAUGE
     }]
 })
 
@@ -259,7 +263,7 @@ class RedisWrapper extends EventModule {
             return client;
         }
         this.dispose = (callback) => {
-            this.state = pubdefs.eModuleState.STOP_PENDING;
+            this.state = sysdefs.eModuleState.STOP_PENDING;
             logger.info(`${this.name}: Closing all client connections ...`);
             let keys = Object.keys(this._clients);
             async.eachLimit(keys, 4, (key, next) => {
@@ -281,7 +285,7 @@ class RedisWrapper extends EventModule {
         });
         //
         (() => {
-            this.state = pubdefs.eModuleState.ACTIVE;
+            this.state = sysdefs.eModuleState.ACTIVE;
             theApp.regModule(this);
         })();
     }
@@ -290,7 +294,7 @@ class RedisWrapper extends EventModule {
 const redisWrapper = new RedisWrapper({
     name: MODULE_NAME,
     mandatory: true,
-    type: pubdefs.eModuleType.CONN,
-    state: pubdefs.eModuleState.ACTIVE
+    type: sysdefs.eModuleType.CONN,
+    state: sysdefs.eModuleState.ACTIVE
 });
 module.exports = redisWrapper;

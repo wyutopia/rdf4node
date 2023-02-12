@@ -1,11 +1,14 @@
 /**
 * Created by Eric on 2021/12/28
 */
+// System libs
 const async = require('async');
 const {Connection, Request, TYPES} = require('tedious');
-const pubdefs = require('../../include/sysdefs');
+// Framework libs
+const sysdefs = require('../../include/sysdefs');
+const eClientState = sysdefs.eClientState;
 const eRetCodes = require('../../include/retcodes');
-const {CommonObject,  CommonModule, eClientState} = require('../../include/components');
+const {CommonObject,  CommonModule} = require('../../include/common');
 const theApp = require('../../bootstrap');
 const tools = require('../../utils/tools');
 const mntService = require('../base/prom.wrapper');
@@ -77,7 +80,7 @@ class TdsClient extends CommonObject {
         //
         this.config = options.config;
         this.connectionRetry = options.connectionRetry !== undefined? options.connectionRetry : true;
-        this.connectionRetryInterval = options.connectionRetryInterval? options.connectionRetryInterval : pubdefs.eInterval._10_SEC;
+        this.connectionRetryInterval = options.connectionRetryInterval? options.connectionRetryInterval : sysdefs.eInterval._10_SEC;
         this.hRetry = null;
         this.state = eClientState.Null;
         this.connection = null;
@@ -205,9 +208,9 @@ class TdsWrapper extends CommonModule {
 }
 const tdsWrapper = new TdsWrapper({
     name: 'TdsClientManager',
-    type: pubdefs.eModuleType.CONN,
+    type: sysdefs.eModuleType.CONN,
     mandatory: true,
-    state: pubdefs.eModuleState.ACTIVE
+    state: sysdefs.eModuleState.ACTIVE
 });
 
 module.exports = exports = tdsWrapper;

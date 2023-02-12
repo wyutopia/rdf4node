@@ -7,8 +7,8 @@ const async = require('async');
 const EventEmitter = require('events');
 const schedule = require('node-schedule');
 
-const pubdefs = require('../include/sysdefs');
-const {CommonModule} = require('../include/components');
+const sysdefs = require('../include/sysdefs');
+const {CommonModule} = require('../include/common');
 
 const theApp = require('../bootstrap');
 const tools = require('../utils/tools');
@@ -29,7 +29,7 @@ const metricCollector = mntService.regMetrics({
     moduleName: MODULE_NAME,
     metrics:[{
         name: eMetricNames.activeTasks,
-        type: pubdefs.eMetricType.GAUGE
+        type: sysdefs.eMetricType.GAUGE
     }]
 });
 
@@ -67,8 +67,8 @@ class XTaskManager extends CommonModule {
 const taskMng = new XTaskManager({
     name: MODULE_NAME,
     mandatory: true,
-    state: pubdefs.eModuleState.ACTIVE,
-    type: pubdefs.eModuleType.TASK
+    state: sysdefs.eModuleState.ACTIVE,
+    type: sysdefs.eModuleType.TASK
 });
 
 // The interval task wrapper
@@ -85,7 +85,7 @@ class XTask extends EventEmitter {
 
         // Member variables
         this.alias = props.alias || 'XTask';
-        this.interval = props.interval || pubdefs.eInterval._5_SEC;
+        this.interval = props.interval || sysdefs.eInterval._5_SEC;
         this.startup = props.startup !== undefined ? props.startup.toUpperCase() : 'AUTO';
         this.cronExp = props.cronExp;
         this.immediateExec = props.immediateExec;

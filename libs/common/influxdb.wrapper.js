@@ -10,9 +10,10 @@ exports.FluxTableMetaData = FluxTableMetaData;
 exports.flux = flux;
 exports.fluxDuration = fluxDuration;
 //
-const pubdefs = require('../../include/sysdefs');
+const sysdefs = require('../../include/sysdefs');
+const eClientState = sysdefs.eClientState;
 const eRetCodes = require('../../include/retcodes');
-const { CommonObject, EventModule, eClientState } = require('../../include/components');
+const { EventObject, EventModule } = require('../../include/events');
 const theApp = require('../../bootstrap');
 const tools = require('../../utils/tools');
 const mntService = require('../base/prom.wrapper');
@@ -21,7 +22,7 @@ const logger = WinstonLogger(process.env.SRV_ROLE || 'influxdb');
 const MODULE_NAME = "INFLUXDB_CONN";
 
 
-class InfluxDbClient extends CommonObject {
+class InfluxDbClient extends EventObject {
     constructor(props) {
         super(props);
         //
@@ -159,6 +160,6 @@ class ClientFactory extends EventModule {
 exports.clientFactory = new ClientFactory({
     name: 'InfluxDBClientFactory',
     mandatory: false,
-    state: pubdefs.eModuleState.ACTIVE,
-    type: pubdefs.eModuleType.CONN
+    state: sysdefs.eModuleState.ACTIVE,
+    type: sysdefs.eModuleType.CONN
 });

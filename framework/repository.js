@@ -1,11 +1,14 @@
 /**
  * Created by Eric on 2023/02/07
  */
-const tools = require('../utils/tools');
-const {EventModule, EventObject} = require('./common');
-const { WinstonLogger } = require('../libs/base/winston.wrapper');
+// System libs
+// Framework libs
+const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY_FACTORY;
 const eRetCodes = require('../include/retcodes');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'repo');
+const {EventModule, EventObject, sysEvents} = require('../include/events');
+const {winstonWrapper: {WinstonLogger}} = require('../libs');
+const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
+const tools = require('../utils/tools');
 //
 const dsFactory = require('./data-source');
 

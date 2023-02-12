@@ -3,9 +3,9 @@
  */
 const assert = require('assert');
 const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REGISTRY;
-const {CommonObject} = require('./common');
-const {WinstonWrapper} = require('../libs/base/winston.wrapper');
-const logger = WinstonWrapper(process.env.SRV_ROLE || 'reg');
+const {CommonObject} = require('../include/common');
+const {winstonWrapper: {WinstonLogger}} = require('../libs');
+const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 const icp = require('./icp');
 

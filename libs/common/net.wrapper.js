@@ -8,8 +8,9 @@ const net = require('net');
 
 // Project modules
 const theApp = require('../../bootstrap');
-const pubdefs = require('../../include/sysdefs');
-const {EventObject, eClientState} =  require('../../include/components');
+const sysdefs = require('../../include/sysdefs');
+const eClientState = sysdefs.eClientState;
+const {EventObject} =  require('../../include/events');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'grpc');
@@ -40,13 +41,13 @@ const metricsCollector = mntService.regMetrics({
     moduleName: MODULE_NAME,
     metrics: [{
         name: eMetricsName.tcpConnectAttempt,
-        type: pubdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.COUNTER
     }, {
         name: eMetricsName.tcpConnectSuccess,
-        type: pubdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.COUNTER
     }, {
         name: eMetricsName.tcpConnectFailed,
-        type: pubdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.COUNTER
     }]
 });
 
@@ -102,7 +103,7 @@ class TcpClient extends EventObject {
             let client = net.createConnection({
                 host: options.ip || '127.0.0.1',
                 port: options.port || 3000,
-                timeout: options.connectTimeoutMs || pubdefs.eInterval._3_SEC
+                timeout: options.connectTimeoutMs || sysdefs.eInterval._3_SEC
             }, () => {
                 logger.debug(`${this.name}[${this.state}]: server connected.`);
                 this.client = client;

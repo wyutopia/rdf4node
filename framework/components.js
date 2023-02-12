@@ -1,51 +1,16 @@
 /**
  * Created by Eric on 2023/02/07
  */
-//
+// System libs
 const assert = require('assert');
-// Platform includes
-const pubdefs = require('../include/sysdefs');
+// Framework libs
+const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
-const {EventObject, moduleInit} = require('../include/common');
+const {EventModule, icp, sysEvents} = require('../include/events');
+const {winstonWrapper: {WinstonLogger}} = require('../libs');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'comp');
 const tools = require('../utils/tools');
-// framework libs
-const icp = require('./icp');
 const {repoFactory, paginationKeys} = require('./repository');
-
-/////////////////////////////////////////////////////////////////////////
-// The EventModule
-class EventModule extends EventObject {
-    constructor(props) {
-        super(props);
-        moduleInit.call(this, props);
-        //
-        this.pubEvent = (event, options, callback) => {
-            if (typeof options === 'function') {
-                callback = options;
-                options = {
-                    routingKey: event.code
-                }
-            }
-            return icp.publish(event, callback);
-        };
-        this._msgProc = (msg, ackOrNack) => {
-            //TODO: Handle msg
-            return ackOrNack();
-        };
-        this.on('message', (msg, ackOrNack) => {
-            //setImmediate(this._msgProc.bind(this, msg, ackOrNack));
-            setTimeout(this._msgProc.bind(this, msg, ackOrNack), 5);
-        });
-        // Perform initiliazing codes...
-        (() => {
-            icp.register(this.name, this);
-            // Subscribe events
-            let allEvents = Object.values(sysEvents).concat(props.subEvents || []);
-            icp.subscribe(allEvents, this.name);
-        })();
-    }
-}
-exports.EventModule = EventModule;
 
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
@@ -436,4 +401,8 @@ class ControllerBase extends EventModule {
         };
     }
 };
-exports.ControllerBase = ControllerBase;
+
+// Declaring module exports
+module.exports = exports = {
+    ControllerBase: ControllerBase
+};

@@ -5,11 +5,12 @@
  const mysql = require('mysql2');
  //
  const theApp = require('../../bootstrap');
- const pubdefs = require('../../include/sysdefs');
+ const sysdefs = require('../../include/sysdefs');
+ const eState = sysdefs.eConnectionState;
  const eRetCodes = require('../../include/retcodes');
- const {EventEmitter, EventModule, eConnectionState: eState} = require('../../include/components');
+ const {EventEmitter, EventModule} = require('../../include/events');
  const tools = require('../../utils/tools');
- const {mysql: config} = require('../base.config');
+ const {mysql: config} = require('../base/config');
  const {WinstonLogger} = require('../base/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'mysql2');
  
@@ -33,25 +34,25 @@ const metricsCollector = mntService.regMetrics({
     moduleName: MODULE_NAME,
     metrics: [{
         name: eMetricsName.poolActive,
-        type: pubdefs.eMetricType.GAUGE
+        type: sysdefs.eMetricType.GAUGE
     }, {
         name: eMetricsName.connTotal,
-        type: pubdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.COUNTER
     }, {
         name: eMetricsName.connRefused,
-        type: pubdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.COUNTER
     }, {
         name: eMetricsName.connActive,
-        type: pubdefs.eMetricType.GAUGE
+        type: sysdefs.eMetricType.GAUGE
     }, {
         name: eMetricsName.queryAttempt,
-        type: pubdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.COUNTER
     }, {
         name: eMetricsName.querySuccess,
-        type: pubdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.COUNTER
     }, {
         name: eMetricsName.queryFailure,
-        type: pubdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.COUNTER
     }]
 });
  
@@ -153,7 +154,7 @@ class MySqlConnection {
                 this._ttlTimer = null;
             }
         }
-        this.startTtlTimer = (itv = pubdefs.eInterval._1_MIN) => {
+        this.startTtlTimer = (itv = sysdefs.eInterval._1_MIN) => {
             if (this._ttlTimer === null) {
                 this._ttlTimer = setTimeout(() => {
                     this._ttlTimer = null;
@@ -299,7 +300,7 @@ class MySqlConnectionPool extends EventEmitter{
                     clearInterval(this._ttlTimer);
                     this._parent.emit('pool_inact', this._id);
                 }
-            }, pubdefs.eInterval._10_SEC);
+            }, sysdefs.eInterval._10_SEC);
         })();
     }
 }
@@ -318,7 +319,7 @@ class MysqlWrapper extends EventModule {
          */
         this.createConnection = (dbConf) => {
             let conn = null;
-            if (this.state !== pubdefs.eModuleState.ACTIVE) {
+            if (this.state !== sysdefs.eModuleState.ACTIVE) {
                 return conn;
             }
             let poolId = tools.genSign(`${dbConf.host}:${dbConf.port}:${dbConf.database}`);
@@ -329,10 +330,10 @@ class MysqlWrapper extends EventModule {
                     parent: this,
                     dbConf: dbConf,
                     //
-                    poolTtl: this._config.poolTtl || pubdefs.eInterval._2_MIN,
+                    poolTtl: this._config.poolTtl || sysdefs.eInterval._2_MIN,
                     connLimit: this._config.connLimit || 10,
                     connReuse: this._config.connReuse !== undefined? this._config.connReuse : false,
-                    connTtl: this._config.connTtl || pubdefs.eInterval._1_MIN,
+                    connTtl: this._config.connTtl || sysdefs.eInterval._1_MIN,
                 };
                 logger.debug(`New connection-pool with options: ${tools.inspect(options)}`);
                 pool = new MySqlConnectionPool(options);
@@ -349,17 +350,17 @@ class MysqlWrapper extends EventModule {
         });
         this.dispose = (callback) => {
             logger.info(this.name, 'perform cleaning ...');
-            if (this.state !== pubdefs.eModuleState.ACTIVE) {
+            if (this.state !== sysdefs.eModuleState.ACTIVE) {
                 logger.warn(this.name, 'method re-entry!');
                 return callback();
             }
-            this.state = pubdefs.eModuleState.STOP_PENDING;
+            this.state = sysdefs.eModuleState.STOP_PENDING;
             let keys = Object.keys(this._pools);
             async.eachLimit(keys, 4, (key, next) => {
                 let pool = this._pools[key];
                 return pool.dispose(next);
             }, () => {
-                this.state = pubdefs.eModuleState.INIT;
+                this.state = sysdefs.eModuleState.INIT;
                 logger.info(this.name, 'All connection closed.');
                 return callback();
             });
@@ -373,9 +374,9 @@ class MysqlWrapper extends EventModule {
  
  const mysqlWrapper = new MysqlWrapper({
      name: MODULE_NAME,
-     type: pubdefs.eModuleType.CONN,
+     type: sysdefs.eModuleType.CONN,
      mandatory: true,
-     state: pubdefs.eModuleState.ACTIVE,
+     state: sysdefs.eModuleState.ACTIVE,
      config: config
  });
  module.exports = exports = mysqlWrapper;

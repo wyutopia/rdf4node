@@ -15,7 +15,7 @@
  let logDir = process.env.LOG_DIR || path.join(appRootPath.path, 'logs');
  morgan.format(appName, ':xforwarded - [:date[iso]] ":method :url HTTP/:http-version" :status :res[content-length] :response-time ms ":referrer" ":user-agent"');
  
- function morganWrapper(proc) {
+ function MorganWrapper(proc) {
      let accessLogStream = fs.createWriteStream(path.join(logDir, `${proc}-access.log`), {flags: 'a'});
      let options = {};
      if (process.env.NODE_ENV === 'production') {
@@ -27,5 +27,5 @@
      return morgan(appName, options);
  }
  
- module.exports = exports = morganWrapper;
+ module.exports = exports = MorganWrapper;
  

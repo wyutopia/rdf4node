@@ -1,13 +1,13 @@
 /**
  * Created by Eric 2021/11/10
  */
-// Global modules
+// System libs
 const assert = require('assert');
 const async = require('async');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 // Project modules
-const pubdefs = require("../../include/sysdefs");
+const sysdefs = require("../../include/sysdefs");
 const theApp = require("../../bootstrap");
 const {grpc: config} =  require('../base/config');
 const mntService = require('../base/prom.wrapper');
@@ -29,14 +29,14 @@ const metricsCollector = mntService.regMetrics({
     metrics: [{
         name: eMetricCounters.pd,
         help: 'Number of ProtocolDescriptors',
-        type: pubdefs.eMetricType.GAUGE,
+        type: sysdefs.eMetricType.GAUGE,
         fnCollectAsync: async () => {
             return Object.keys(gDescriptors).length;
         }
     }, {
         name: eMetricCounters.clientActive,
         help: 'Number of active gRpc clients',
-        type: pubdefs.eMetricType.GAUGE,
+        type: sysdefs.eMetricType.GAUGE,
         fnCollectAsync: async () => {
             let count = 0;
             Object.keys(gDescriptors).forEach( key => {
@@ -46,7 +46,7 @@ const metricsCollector = mntService.regMetrics({
         }
     }, {
         name: eMetricCounters.clientTotal,
-        type: pubdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.COUNTER
     }]
 });
 

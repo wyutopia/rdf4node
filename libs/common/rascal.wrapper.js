@@ -2,13 +2,15 @@
  * Created by Eric on 2022/01/02
  * To replace amqp.wrapper in the future
  */
+// System libs
 const async = require('async');
 const assert = require('assert');
-const {eClientState, EventModule} = require('../../include/components');
 const { Broker } = require('rascal');
-// Project scope
-const pubdefs = require('../../include/sysdefs');
+// Framework libs
 const theApp = require('../../bootstrap');
+const sysdefs = require('../../include/sysdefs');
+const eClientState = sysdefs.eClientState;
+const {EventModule} = require('../../include/events');
 const tools = require('../../utils/tools');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
@@ -249,6 +251,6 @@ class RascalClient {
 module.exports = exports = new RascalClientMangager({
     name: MODULE_NAME,
     mandatory: true,
-    state: pubdefs.eModuleState.ACTIVE,
-    type: pubdefs.eModuleType.CONN
+    state: sysdefs.eModuleState.ACTIVE,
+    type: sysdefs.eModuleType.CONN
 });

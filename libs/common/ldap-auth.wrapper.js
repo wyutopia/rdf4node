@@ -4,12 +4,13 @@
  */
 const { authenticate } = require('ldap-authentication');
 const config = require('../base/config');
+const ldapConf = config.ldap || {};
 const tools = require('../../utils/tools');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
 
 exports.auth = async function (username, password) {
-    let options = Object.assign({}, config.ldap);
+    let options = tools.deepAssign({}, ldapConf);
     options.username = username;
     options.userPassword = password;
     //logger.info('LDAP options: ', tools.inspect(options));
@@ -17,7 +18,7 @@ exports.auth = async function (username, password) {
 };
 
 exports.authAsync = function (username, password, callback) {
-    let options = Object.assign({}, config.ldap);
+    let options = tools.deepAssign({}, ldapConf);
     options.username = username;
     options.userPassword = '***';
     logger.debug(`LDAP options: ${tools.inspect(options)}`);
