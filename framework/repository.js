@@ -97,6 +97,7 @@ class Repository extends EventObject {
         super(props);
         //
         this.modelName = props.modelName || 'user';
+        this.modelSchema = props.modelSchema || {};
         this.dsName = props.dsName || 'default';
         this._model = null;
         this.getModel = () => {
@@ -340,7 +341,7 @@ class Repository extends EventObject {
         (() => {
             let ds = dsFactory.getDataSource(this.dsName);
             if (ds) {
-                this._model = ds.getModel(this.modelName);
+                this._model = ds.getModel(this.modelName, this.modelSchema);
             }
         })();
     }
@@ -352,29 +353,23 @@ class RepositoryFactory extends EventModule {
         //
         this._repos = {};
         //
-        this.getRepo = (modelName, dsName = 'default') => {
+        this.getRepo = (modelName, modelSchema, dsName = 'default') => {
             assert(modelName !== undefined);
             let key = `${modelName}@${dsName}`;
-            if (key === 'rest@default') {
+            if (key === 'test@default') {
                 logger.error(`Using ${key} repository is not recommended in real project!`);
             }
-            if (this._repos[key] !== undefined) {
-                return this._repos[key];
+            if (this._repos[key] === undefined) {
+                this._repos[key] = new Repository({
+                    name: key,
+                    //
+                    modelName: modelName,
+                    mdoelSchema: modelSchema,
+                    dsName: dsName
+                });
+                logger.error(`>>> New repository: ${key} created. <<<`);
             }
-            let repo = new Repository({
-                name: key,
-                modelName: modelName,
-                dsName: dsName
-            });
-            this._repos[key] = repo;
-            logger.error(`New repository: ${key} created.`);
-            // let repo = null;
-            // try {
-
-            // } catch (ex) {
-            //     logger.error(`Create new repository: ${key} error! - ${tools.inspect(ex)}`);
-            // }
-            return repo;
+            return this._repos[key];
         };
     }
 }

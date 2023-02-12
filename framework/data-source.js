@@ -1,6 +1,7 @@
 /**
  * Created by Eric on 2023/02/08
  */
+const assert = require('assert');
 const mongoose = require('mongoose');
 //
 const sysdefs = require('../include/sysdefs');
@@ -44,6 +45,7 @@ class DataSource extends EventObject {
         this._models = {};
         // Implenting event handlers
         this.getModel = (modelName, modelSchema) => {
+            assert(modelName !== undefined && modelSchema !== undefined);
             if (!this.isConnected) {
                 return null;
             }
