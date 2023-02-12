@@ -11,23 +11,17 @@ const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.ICP
 const eRetCodes = require('../include/retcodes');
 const {icp: icpConf} = require('./config');
 const { WinstonLogger } = require('../base/winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE);
+const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../../utils/tools');
 
 const {CommonModule} = require('./common');
 const sysRegistry = require('./registry');
 
-function _setConfig (conf) {
-    return {
-        internal: conf.internal === undefined? false : conf.internal,
-        persistent: conf.persistent === undefined? false : conf.persistent
-    }
-}
-
+// The Class
 class InterCommPlatform extends CommonModule {
     constructor(props) {
         super(props);
-        // Set configurations
+        // Declaring properties
         this.internal = props.internal !== undefined? props.internal : true;
         this.persistent = props.persistent !== undefined? props.persistent : false;
         // Declaring member variables
@@ -105,7 +99,7 @@ class InterCommPlatform extends CommonModule {
     }
 } 
 module.exports = exports = new InterCommPlatform({
-    name: '_MODULE_NAME',
+    name: _MODULE_NAME,
     //
     internal: true,              // Using internal communication
     persistent: false            // No persistence

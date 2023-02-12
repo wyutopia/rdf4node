@@ -1,6 +1,7 @@
 /**
  * Created by Eric on 2023/01/30
  */
+const EventEmitter = require('events');
 const {objectInit, moduleInit} = require('./base');
 
 exports.objectInit = objectInit;
@@ -23,3 +24,11 @@ class CommonModule extends CommonObject {
 }
 exports.CommonModule = CommonModule;
 
+class EventObject extends EventEmitter {
+    constructor(props) {
+        super(props);
+        objectInit.call(this, props);
+        // Additional properties go here ...
+    }
+}
+exports.EventObject = EventObject;

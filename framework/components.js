@@ -9,8 +9,11 @@ const eRetCodes = require('../include/retcodes');
 const {EventObject, moduleInit} = require('../include/common');
 const tools = require('../utils/tools');
 // framework libs
+const icp = require('./icp');
 const {repoFactory, paginationKeys} = require('./repository');
 
+/////////////////////////////////////////////////////////////////////////
+// The EventModule
 class EventModule extends EventObject {
     constructor(props) {
         super(props);
@@ -44,7 +47,8 @@ class EventModule extends EventObject {
 }
 exports.EventModule = EventModule;
 
-
+/////////////////////////////////////////////////////////////////////////
+// Define the ControllerBase
 function _$extUpdates (setData) {
     return {
         $set: setData
