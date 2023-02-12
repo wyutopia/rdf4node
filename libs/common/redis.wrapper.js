@@ -9,7 +9,7 @@ const eRetCodes = require('../../include/retcodes');
 const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
 const { CommonObject } = require('../../include/common');
-const { EventModule } = require('../../includes/events');
+const { EventModule } = require('../../include/events');
 
 const tools = require('../../utils/tools');
 const mntService = require('../base/prom.wrapper');

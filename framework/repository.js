@@ -98,6 +98,9 @@ class Repository extends EventObject {
         this.modelName = props.modelName || 'user';
         this.dsName = props.dsName || 'default';
         this._model = null;
+        this.getModel = () => {
+            return this._model;
+        };
         //
         this.create = (data, callback) => {
             if (typeof data === 'function') {

@@ -115,26 +115,6 @@ function _packDeleteFilter(args) {
     return filter;
 }
 
-function _getRepository (options, callback) {
-    assert(options !== undefined);
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
-    }
-    let modelName = options.modelName || this._modelName;
-    let dsName = options.dsName || this._dsName;
-    let repo = repoFactory.getRepo(modelName, dsName);
-    if (!repo) {
-        let msg = `Repository not exists! - ${this._modelName} - ${this._dsName}`;
-        logger.error(msg);
-        return callback({
-            code: eRetCodes.DB_ERROR,
-            message: msg
-        });
-    }
-    return callback(null, repo);
-}
-
 class ControllerBase extends EventModule {
     constructor(props) {
         super(props);
@@ -148,12 +128,32 @@ class ControllerBase extends EventModule {
         this._mandatoryAddKeys = props.mandatoryAddKeys || [];
         this._mutableKeys = props.mutableKeys || this._propKeys;
         this._populateKeys = props.populateKeys || [];
+        this._selectKeys = props.selectKeys || null;
         // Declaring private overridable methods
         this._allowDelete = props.allowDelete || _$allowDelete;
         this._parsePatch = props.parsePatch || _$parsePatch;
         this._extUpdates = props.extUpdates || _$extUpdates;
         this._extQueryFilter = props.extQueryFilter || _$extQueryFilter;
         this._extDeleteFilter = props.extDeleteFilter || _$extDeleteFilter;
+        this._getRepo = (options, callback) => {
+            assert(options !== undefined);
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            }
+            let modelName = options.modelName || this._modelName;
+            let dsName = options.dsName || this._dsName;
+            let repo = repoFactory.getRepo(modelName, dsName);
+            if (!repo) {
+                let msg = `Repository not exists! - ${this._modelName} - ${this._dsName}`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.DB_ERROR,
+                    message: msg
+                });
+            }
+            return callback(null, repo);
+        };
         // Register event publishers
         this._domainEvents = props.domainEvents || {};
         // Implementing basic CRUD methods
@@ -165,14 +165,18 @@ class ControllerBase extends EventModule {
                 }
                 let filter = this._extQueryFilter(args);
                 //
-                _getRepository.call(this, req.dataSource, (err, repo) => {
+                this._getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    repo.findPartial({
+                    let options = {
                         filter: filter,
                         populate: this._populateKeys
-                    }, (err, results) => {
+                    };
+                    if (this._selectKeys) {
+                        options.select = this._selectKeys;
+                    }
+                    repo.findPartial(options, (err, results) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
@@ -200,14 +204,18 @@ class ControllerBase extends EventModule {
                     return res.sendRsp(err.code, err.message);
                 }
                 //
-                _getRepository.call(this, req.dataSource, (err, repo) => {
+                this._getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    repo.findMany({
+                    let options = {
                         filter: args,
                         populate: this._populateKeys
-                    }, (err, docs) => {
+                    };
+                    if (this._selectKeys) {
+                        options.select = this._selectKeys;
+                    }
+                    repo.findMany(options, (err, docs) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
@@ -233,7 +241,7 @@ class ControllerBase extends EventModule {
                     return res.sendRsp(err.code, err.message);
                 }
                 //
-                _getRepository.call(this, req.dataSource, (err, repo) => {
+                this._getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
@@ -263,13 +271,17 @@ class ControllerBase extends EventModule {
                     return res.sendRsp(err.code, err.message);
                 }
                 //
-                _getRepository.call(this, req.dataSource, (err, repo) => {
+                this._getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    repo.findById(args.id, {
+                    let options = {
                         populate: this._populateKeys
-                    }, (err, doc) => {
+                    }
+                    if (this._selectKeys) {
+                        options.select = this._selectKeys;
+                    }
+                    repo.findById(args.id, options, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
@@ -290,7 +302,7 @@ class ControllerBase extends EventModule {
                     return res.sendRsp(err.code, err.message);
                 }
                 //
-                _getRepository.call(this, req.dataSource, (err, repo) => {
+                this._getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
@@ -300,13 +312,17 @@ class ControllerBase extends EventModule {
                         return res.sendRsp(eRetCodes.ACCEPTED, 'Empty updates!');
                     }
                     setData.updateAt = new Date();
-                    repo.updateOne({
+                    let options = {
                         filter: {
                             _id: args.id
                         },
                         updates: this._extUpdates(setData),
                         populate: this._populateKeys
-                    }, (err, doc) => {
+                    }
+                    if (this._selectKeys) {
+                        options.select = this._selectKeys;
+                    }
+                    repo.updateOne(options, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
@@ -331,7 +347,7 @@ class ControllerBase extends EventModule {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
-                _getRepository.call(this, req.dataSource, (err, repo) => {
+                this._getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
@@ -372,7 +388,7 @@ class ControllerBase extends EventModule {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
-                _getRepository.call(this, req.dataSource, (err, repo) => {
+                this._getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
@@ -382,10 +398,14 @@ class ControllerBase extends EventModule {
                         return res.sendRsp(eRetCodes.ACCEPTED, 'Invalid jsonPatch!');
                     }
                     //
-                    repo.updateOne({
+                    let options = {
                         filter: {_id: args.id},
                         updates: updates
-                    }, (err, doc) => {
+                    }
+                    if (this._selectKeys) {
+                        options.select = this._selectKeys;
+                    }
+                    repo.updateOne(options, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
