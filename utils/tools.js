@@ -9,8 +9,8 @@ const spawn = require('child_process').spawn;
 const util = require("util");
 const { networkInterfaces } = require("os");
 const { v4: uuidv4 } = require('uuid');
-
-const pubdefs = require('../include/sysdefs');
+// Framework libs
+const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes.js');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'tools');
@@ -184,7 +184,7 @@ function _getFlowToken(options, callback) {
  */
 exports.invokeHttpRequest = function (options, callback) {
     if (options.timeout === undefined) {
-        options.timeout = pubdefs.eInterval._5_SEC;
+        options.timeout = sysdefs.eInterval._5_SEC;
     }
     let bodyParser = options.bodyParser;
     if (typeof bodyParser === 'function') {
@@ -632,3 +632,22 @@ function _deepAssign () {
     return target;
 }
 exports.deepAssign = _deepAssign;
+
+function _packMongoUri (config) {
+    let host = config.host || `${config.ip}:${config.port}`;
+    let params = ((conf) => {
+        let p = [];
+        let keys = Object.keys(conf.parameters || {});
+        if (keys.indexOf('authSource') === -1) {
+            p.push(`authSource=${conf.authSource || conf.db}`);
+        }
+        keys.forEach( key => {
+            p.push(`${key}=${conf.parameters[key]}`);
+        });
+        return p.join('&');
+    })(config);
+    let uri = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}`
+            + `@${host}/${config.db || ''}?${params}`;
+    return uri;
+}
+exports.packMongoUri = _packMongoUri;

@@ -11,30 +11,14 @@ const {
     winstonWrapper: {WinstonLogger}
 } = require('../libs');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
-
 const tools = require('../utils/tools');
-
-function _parseConnParams(config) {
-    let params = [];
-    let keys = Object.keys(config.parameters || {});
-    if (keys.indexOf('authSource') === -1) { // authSource not exists!
-        params.push(`authSource=${config.authSource || config.db}`);
-    }
-    keys.forEach(key => {
-        params.push(`${key}=${config.parameters[key]}`);
-    });
-    return params.join('&');
-}
 
 function _initMongoConnection(config) {
     const options = {
         useUnifiedTopology: true,
         useNewUrlParser: true
     };
-    let host = config.host || `${config.ip}:${config.port}`;
-    let connParams = _parseConnParams(config);
-    let uri = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}` 
-                    + `@${host}/${config.db || ''}?${connParams}`;
+    let uri = tools.packMongoUri(config);
     logger.info(`>>> Create mongodb connection with ${uri}`);
     this._conn = mongoose.createConnection(uri, options);
     this.isConnected = true;
