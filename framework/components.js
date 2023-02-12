@@ -141,11 +141,10 @@ class ControllerBase extends EventModule {
                 callback = options;
                 options = {};
             }
-            let modelName = options.modelName || this._modelName;
             let dsName = options.dsName || this._dsName;
-            let repo = repoFactory.getRepo(modelName, dsName);
+            let repo = repoFactory.getRepo(this._modelName, this._modelSchema, dsName);
             if (!repo) {
-                let msg = `Repository not exists! - ${this._modelName} - ${this._dsName}`;
+                let msg = `Repository not exists! - ${this._modelName} - ${dsName}`;
                 logger.error(msg);
                 return callback({
                     code: eRetCodes.DB_ERROR,

@@ -364,7 +364,7 @@ class RepositoryFactory extends EventModule {
                     name: key,
                     //
                     modelName: modelName,
-                    mdoelSchema: modelSchema,
+                    modelSchema: modelSchema,
                     dsName: dsName
                 });
                 logger.error(`>>> New repository: ${key} created. <<<`);
