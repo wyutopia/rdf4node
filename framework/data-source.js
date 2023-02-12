@@ -37,7 +37,7 @@ class DataSource extends EventObject {
     constructor(props) {
         super(props);
         // Save class properites
-        this.type = props.type || sysdefs.eDbType.INMEM;
+        this.dbType = props.dbType || sysdefs.eDbType.INMEM;
         this.conf = props.conf || {};
         // Declaring member variables
         this.isConnected = false;
@@ -54,7 +54,7 @@ class DataSource extends EventObject {
         };
         //
         (() => {
-            switch(this.type) {
+            switch(this.dbType) {
                 case sysdefs.eDbType.INMEM:
                     _initInMemoryStorage.call(this, this.conf);
                     break;
@@ -96,7 +96,9 @@ class DataSourceFactory extends EventModule {
             Object.keys(dsConf).forEach(dsName => {
                 this._ds[dsName] = new DataSource({
                     name: dsName,
-                    conf: dsConf[dsName]
+                    //
+                    dbType: dsConf[dsName].type,
+                    conf: dsConf[dsName].config
                 });
             });
             //
@@ -104,7 +106,7 @@ class DataSourceFactory extends EventModule {
                 logger.error(`>>> Set default data-source to in-memory storage! <<<`);
                 this._ds['default'] = new DataSource({
                     name: 'default',
-                    type: sysdefs.eDbType.INMEM,
+                    dbType: sysdefs.eDbType.INMEM,
                     conf: {}
                 })
             }

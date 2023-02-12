@@ -2,6 +2,7 @@
  * Created by Eric on 2023/02/07
  */
 // System libs
+const assert = require('assert');
 // Framework libs
 const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY_FACTORY;
 const eRetCodes = require('../include/retcodes');
