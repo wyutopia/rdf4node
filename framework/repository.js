@@ -102,12 +102,10 @@ function _retrievePopulateSchemas(populate, modelSchema) {
     }
     let populates = Array.isArray(populate)? populate : [populate];
     populates.forEach(p => {
-        let field = tools.safeGetJsonValue(modelSchema.paths, p.path);
-        if (field) {
-            let name = field.options.ref;
-            if (modelNames.indexOf(name) === -1) {
-                modelNames.push(name);
-            }
+        let options = modelSchema.path(p.path).options;
+        let name = options.ref || options.type[0].ref;
+        if (modelNames.indexOf(name) === -1) {
+            modelNames.push(name);
         }
     });
     //logger.debug(`>>> Retrieve populate schemas from ${tools.inspect(populate)}. Result in: ${tools.inspect(modelNames)}.`);
@@ -142,7 +140,7 @@ class Repository extends EventObject {
             this._model.create(data).then(doc => {
                 return callback(null, doc);
             }).catch(err => {
-                let msg = `Create ${db.modelName} error! - ${err.message}`;
+                let msg = `Create ${this.modelName} error! - ${err.message}`;
                 logger.error(msg);
                 return callback({
                     code: eRetCodes.DB_INSERT_ERR,
@@ -162,11 +160,11 @@ class Repository extends EventObject {
                     message: 'Model should be initialized before using!'
                 });
             }
-            logger.debug(`${db.modelName} - options: ${tools.inspect(options)}`);
+            logger.debug(`${this.modelName} - options: ${tools.inspect(options)}`);
             //
             this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
                 let query = this._model.findOne(options.filter || {});
-                return _unifiedFind(query, options, callback);
+                return _uniQuery(query, options, callback);
             });
         };
         // Find all documents
@@ -184,8 +182,8 @@ class Repository extends EventObject {
             logger.debug(`${this.name} - options: ${tools.inspect(options)}`);
             //
             this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
-                let query = db.find(options.filter || {});
-                return _unifiedFind(query, options, callback);
+                let query = this._model.find(options.filter || {});
+                return _uniQuery(query, options, callback);
             });
         };
         // Paginating find documents

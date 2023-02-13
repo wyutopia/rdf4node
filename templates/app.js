@@ -30,6 +30,14 @@ if (process.env.NODE_ENV === 'production') {
     app.use(rateLimiter);
 }
 
+// Add dataSource into req temporary...
+app.use((req, res, next) => {
+    req.dataSource = {
+      dsName: 'default'
+    };
+    return next();
+});
+
 let indexRouter = require('./routes/index');
 app.use('/', indexRouter);
 
