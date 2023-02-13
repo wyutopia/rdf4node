@@ -2,6 +2,7 @@
  * Created by Eric on 2023/02/07
  */
 // System libs
+const async = require('async');
 const assert = require('assert');
 // Framework libs
 const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY_FACTORY;
@@ -65,45 +66,68 @@ function _updateOne(params, callback) {
         options.new = true;
     }
     logger.debug(`Update: ${this.name} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`);
-    let query = this._model.findOneAndUpdate(filter, updates, options);
-    ['select', 'populate'].forEach(method => {
-        if (params[method]) {
-            query[method](params[method]);
-        }
-    });
-    query.exec((err, doc) => {
-        if (err) {
-            let msg = `Update ${this.name} error! - ${err.message}`;
-            logger.error(msg);
-            return callback({
-                code: eRetCodes.DB_UPDATE_ERR,
-                message: msg
-            });
-        }
-        if (!doc) {
-            let msg = `Specified ${this.name} not found! - ${tools.inspect(filter)}`;
-            logger.error(msg);
-            return callback({
-                code: eRetCodes.NOT_FOUND,
-                message: msg
-            });
-        }
-        return callback(null, doc);
+    this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
+        let query = this._model.findOneAndUpdate(filter, updates, options);
+        ['select', 'populate'].forEach(method => {
+            if (params[method]) {
+                query[method](params[method]);
+            }
+        });
+        query.exec((err, doc) => {
+            if (err) {
+                let msg = `Update ${this.name} error! - ${err.message}`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.DB_UPDATE_ERR,
+                    message: msg
+                });
+            }
+            if (!doc) {
+                let msg = `Specified ${this.name} not found! - ${tools.inspect(filter)}`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.NOT_FOUND,
+                    message: msg
+                });
+            }
+            return callback(null, doc);
+        });
     });
 }
 
+function _retrievePopulateSchemas(populate, modelSchema) {
+    let modelNames = [];
+    if (populate === undefined) {
+        return modelNames;
+    }
+    let populates = Array.isArray(populate)? populate : [populate];
+    populates.forEach(p => {
+        let field = tools.safeGetJsonValue(modelSchema.paths, p.path);
+        if (field) {
+            let name = field.options.ref;
+            if (modelNames.indexOf(name) === -1) {
+                modelNames.push(name);
+            }
+        }
+    });
+    //logger.debug(`>>> Retrieve populate schemas from ${tools.inspect(populate)}. Result in: ${tools.inspect(modelNames)}.`);
+    return modelNames;
+}
+
+// The repository class
 class Repository extends EventObject {
     constructor(props) {
         super(props);
+        this.parent = props.parent;
         //
-        this.modelName = props.modelName || 'user';
+        this.modelName = props.modelName || 'User';
         this.modelSchema = props.modelSchema || {};
         this.dsName = props.dsName || 'default';
         this._model = null;
         this.getModel = () => {
             return this._model;
         };
-        //
+        // Create one or many documents
         this.create = (data, callback) => {
             if (typeof data === 'function') {
                 callback = data;
@@ -126,6 +150,7 @@ class Repository extends EventObject {
                 });
             });
         };
+        // Find one document
         this.findOne = (options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -139,9 +164,12 @@ class Repository extends EventObject {
             }
             logger.debug(`${db.modelName} - options: ${tools.inspect(options)}`);
             //
-            let query = db.findOne(options.filter || {});
-            return _unifiedFind(query, options, callback);
+            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
+                let query = this._model.findOne(options.filter || {});
+                return _unifiedFind(query, options, callback);
+            });
         };
+        // Find all documents
         this.findMany = (options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -155,9 +183,12 @@ class Repository extends EventObject {
             }
             logger.debug(`${this.name} - options: ${tools.inspect(options)}`);
             //
-            let query = db.find(options.filter || {});
-            return _unifiedFind(query, options, callback);
+            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
+                let query = db.find(options.filter || {});
+                return _unifiedFind(query, options, callback);
+            });
         };
+        // Paginating find documents
         this.findPartial = (options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -170,51 +201,54 @@ class Repository extends EventObject {
                 });
             }
             //
-            let filter = options.filter || {};
-            let ps = parseInt(filter.pageSize || '10');
-            let pn = parseInt(filter.page || '1');
-        
-            logger.debug(`Query ${this.name} with filter: ${tools.inspect(filter)}`);
-            let countMethod = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
-            this._model[countMethod](filter, (err, total) => {
-                if (err) {
-                    let msg = `${countMethod} for ${this.name} error! - ${err.message}`;
-                    logger.error(msg);
-                    return callback({
-                        code: eRetCodes.DB_QUERY_ERR,
-                        message: msg
-                    });
-                }
-                let results = {
-                    total: total,
-                    pageSize: ps,
-                    page: pn
-                };
-                if (total === 0) {
-                    results.values = [];
-                    return callback(null, results);
-                }
-                // Assemble query promise
-                let query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
-                ['select', 'sort', 'populate', 'allowDiskUse'].forEach(method => {
-                    if (options[method]) {
-                        query[method](options[method]);
-                    }
-                });
-                return query.exec((err, docs) => {
+            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
+                let filter = options.filter || {};
+                let ps = parseInt(filter.pageSize || '10');
+                let pn = parseInt(filter.page || '1');
+            
+                logger.debug(`Query ${this.name} with filter: ${tools.inspect(filter)}`);
+                let countMethod = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
+                this._model[countMethod](filter, (err, total) => {
                     if (err) {
-                        let msg = `Query ${this.name} error! - ${err.message}`;
+                        let msg = `${countMethod} for ${this.name} error! - ${err.message}`;
                         logger.error(msg);
                         return callback({
                             code: eRetCodes.DB_QUERY_ERR,
                             message: msg
                         });
                     }
-                    results.values = docs;
-                    return callback(null, results);
+                    let results = {
+                        total: total,
+                        pageSize: ps,
+                        page: pn
+                    };
+                    if (total === 0) {
+                        results.values = [];
+                        return callback(null, results);
+                    }
+                    // Assemble query promise
+                    let query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
+                    ['select', 'sort', 'populate', 'allowDiskUse'].forEach(method => {
+                        if (options[method]) {
+                            query[method](options[method]);
+                        }
+                    });
+                    return query.exec((err, docs) => {
+                        if (err) {
+                            let msg = `Query ${this.name} error! - ${err.message}`;
+                            logger.error(msg);
+                            return callback({
+                                code: eRetCodes.DB_QUERY_ERR,
+                                message: msg
+                            });
+                        }
+                        results.values = docs;
+                        return callback(null, results);
+                    });
                 });
             });
         };
+        // Find one document by id
         this.findById = (id, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -226,8 +260,12 @@ class Repository extends EventObject {
                     message: 'Model should be initialized before using!'
                 });
             }
-            let query = this._model.findById(id);
-            return _uniQuery(query, options, callback);
+            logger.debug(`${this.name} - options: ${id} ${tools.inspect(options)}`);
+            //
+            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
+                let query = this._model.findById(id);
+                return _uniQuery(query, options, callback);
+            });
         };
         this.updateOne = _updateOne.bind(this);
         this.updateMany = (options, callback) => {
@@ -351,8 +389,43 @@ class RepositoryFactory extends EventModule {
     constructor(props) {
         super(props);
         //
+        this._schemas = {};
         this._repos = {};
-        //
+        /**
+         * 
+         * @param {*} options  = {schemas: array, dsName: string, callback: function}
+         * @param {*} callback 
+         */
+        this.prepareQuery = (modelNames, dsName, callback) => {
+            let self = this;
+            async.each(modelNames, (modelName, next) => {
+                // sch: {modelname, modelSchema}
+                let key = `${modelName}@${dsName}`;
+                if (self._repos[key] !== undefined) { // Alread registered
+                    return process.nextTick(next);
+                }
+                let modelSchema = self._schemas[modelName];
+                if (modelSchema === undefined) {
+                    logger.error(`>>> Schema of ${modelName} not registered! <<< `);
+                    return process.nextTick(next);
+                }
+                this._repos[key] = new Repository({
+                    name: key,
+                    //
+                    modelName: modelName,
+                    modelSchema: self._schemas[modelName],
+                    dsName: dsName,
+                    //
+                    parent: self
+                });
+                return process.nextTick(next);
+            }, () => {
+                callback();
+            });
+        };
+        this.registerSchema = (modelName, modelSchema) => {
+            this._schemas[modelName] = modelSchema;
+        };
         this.getRepo = (modelName, modelSchema, dsName = 'default') => {
             assert(modelName !== undefined);
             let key = `${modelName}@${dsName}`;
@@ -365,7 +438,9 @@ class RepositoryFactory extends EventModule {
                     //
                     modelName: modelName,
                     modelSchema: modelSchema,
-                    dsName: dsName
+                    dsName: dsName,
+                    //
+                    parent: this
                 });
                 logger.error(`>>> New repository: ${key} created. <<<`);
             }

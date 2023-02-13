@@ -9,6 +9,7 @@ exports.base = require('./include/base');
 exports.common = require('./include/common');
 exports.events = require('./include/events');
 exports.components = require('./framework/components');
+exports.repository = require('./framework/repository');
 
 // base libs
 exports.XTask = require('./libs/xtask');
