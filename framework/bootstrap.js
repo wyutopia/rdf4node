@@ -51,7 +51,7 @@ function _loadModels() {
 }
 _loadModels();
 
-const allowedServices = ['project.js', 'agile.js', 'license.js'];
+const allowedServices = bootstrapConf.allowedServices || [];
 function _loadServices() {
     let serviceDir = path.join(appRoot.path, bootstrapConf.serviceDir);
     logger.info(`++++++ Step 3: Load all services module from ${serviceDir} ++++++`);
