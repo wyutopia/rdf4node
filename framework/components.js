@@ -80,7 +80,7 @@ function _$extDeleteFilter (filter) {
     // Do nothering...
 }
 
-function _emitEvents(options, callback) {
+function _publishEvents(options, callback) {
     if (typeof options === 'function') {
         callback = options;
         options = {};
@@ -183,7 +183,7 @@ class ControllerBase extends EventModule {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        _emitEvents.call(this, {
+                        _publishEvents.call(this, {
                             method: 'listAll',
                             data: results
                         }, () => {
@@ -222,7 +222,7 @@ class ControllerBase extends EventModule {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        _emitEvents.call(this, {
+                        _publishEvents.call(this, {
                             method: 'listByProject',
                             data: docs
                         }, () => {
@@ -237,7 +237,8 @@ class ControllerBase extends EventModule {
             let validator = Object.assign({
                 id: {
                     type: 'ObjectId',
-                    required: true
+                    required: true,
+                    transKey: 'user'
                 }
             }, this._searchKeys);
             tools.parseParameter2(params, validator, (err, args) => {
@@ -248,7 +249,23 @@ class ControllerBase extends EventModule {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    
+                    let options = {
+                        filter: {
+                            user: args.user
+                        },
+                        populate: this._populateKeys
+                    };
+                    this.emit('BeforeListByUser', options);
+                    if (this._selectKeys) {
+                        options.select = this._selectKeys;
+                    }
+                    repo.findMany(options, (err, docs) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        this.emit('AfterListByUser', docs);
+                        return res.sendSuccess(docs);
+                    });
                 });
             });
         };
@@ -272,7 +289,7 @@ class ControllerBase extends EventModule {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        _emitEvents.call(this, {
+                        _publishEvents.call(this, {
                             method: 'addOne',
                             data: doc
                         }, () => {
@@ -349,7 +366,7 @@ class ControllerBase extends EventModule {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        _emitEvents.call(this, {
+                        _publishEvents.call(this, {
                             method: 'updateOne',
                             data: doc
                         }, () => {
@@ -386,7 +403,7 @@ class ControllerBase extends EventModule {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            _emitEvents.call(this, {
+                            _publishEvents.call(this, {
                                 method: 'deleteOne',
                                 data: result
                             }, () => {
@@ -432,7 +449,7 @@ class ControllerBase extends EventModule {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        _emitEvents.call(this, {
+                        _publishEvents.call(this, {
                             method: 'patchOne',
                             data: doc
                         }, () => {
