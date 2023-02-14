@@ -7,7 +7,7 @@ mongoose.Promise = require('bluebird');
 mongoose.set('strictQuery', true);
 const pubdefs = require('../../include/sysdefs');
 const theApp = require('../../bootstrap');
-const {mongodb: config} = require('../base/config');
+const {mongodb: config} = require('../../framework/config');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
 

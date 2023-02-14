@@ -10,22 +10,21 @@ exports.common = require('./include/common');
 exports.events = require('./include/events');
 exports.components = require('./framework/components');
 exports.repository = require('./framework/repository');
+const config = require('./framework/config');
+exports.sysConfig = config;
+exports.allConfig = config;
+// utilities
+exports.tools = require('./utils/tools');
+exports.logDir = require('./utils/logdir-maint');
 
 // base libs
 exports.XTask = require('./libs/xtask');
-exports.moduleWrapper = require('./libs/event-module');
-
-const config = require('./libs/base/config');
-exports.sysConfig = config;
-exports.allConfig = config;
+//exports.moduleWrapper = require('./libs/event-module');
 exports.expressWrapper = require('./libs/base/express.wrapper');
 exports.MorganWrapper = require('./libs/base/morgan.wrapper');
 exports.winstonWrapper = require('./libs/base/winston.wrapper');
 exports.monitor = require('./libs/base/prom.wrapper');
 
-// utilities
-exports.tools = require('./utils/tools');
-exports.logDir = require('./utils/logdir-maint');
 
 // common libs
 exports.netWrapper = require('./libs/common/net.wrapper');
@@ -40,7 +39,7 @@ if (config.security) {
 }
 // Database libs
 if (config.mongodb || config.dbTypes.indexOf('mongo') !== -1) {
-    exports.mongoose = require('./libs/common/mongoose.wrapper');
+    exports.mongoose = require('mongoose');
     exports.mongoSession = require('./libs/common/mongo-session.wrapper');
     exports.dbHelper = require('./utils/db-helper');
 }

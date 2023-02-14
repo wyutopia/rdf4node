@@ -47,7 +47,8 @@ echo "Folder common created."
 # Step 4: Add conf folder
 mkdir -p conf
 cd conf
-cp "${TEMP_DIR}/conf/conf-dev.json" ./conf-dev.json
+cp "${TEMP_DIR}/conf/bootstrap.js" .
+cp "${TEMP_DIR}/conf/conf-dev.json" .
 sed -i $BACK_FILE "s/rdf4node/${PROJ_NAME}/g" conf-dev.json
 
 cp ./conf-dev.json ./conf-pro.json
@@ -62,6 +63,7 @@ echo "Folder conf created."
 # Step 5: Add models folder
 mkdir -p models
 cd models
+sp "${TEMP_DIR}/models/user.js" .
 cd ..
 echo "Folder models created."
 

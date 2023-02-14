@@ -7,7 +7,7 @@
  const fs = require('fs');
  const path = require('path');
  //
- const tools = require('../../utils/tools');
+ const tools = require('../utils/tools');
  
  let config = {};
  try {
@@ -32,8 +32,8 @@
                 dbTypes.push(ds.type);
             }
         });
-        config.dbTypes = dbTypes;
      }
+     config.dbTypes = dbTypes;
      // 
      console.log('The configurations: ', tools.inspect(config));
  } catch (ex) {

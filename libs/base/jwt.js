@@ -7,7 +7,7 @@ const jsonwebtoken = require('jsonwebtoken');
 const pubdefs = require('../../include/sysdefs');
 const eRetCodes = require('../../include/retcodes');
 
-const { security: config } = require('./config');
+const { security: config } = require('../../framework/config');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE);
 const tools = require('../../utils/tools');

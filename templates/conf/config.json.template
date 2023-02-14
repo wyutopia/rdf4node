@@ -29,22 +29,24 @@
       "expireTimeMs": 900000,
       "standardHeaders": true
     },
-    "store": "mongo"
+    "store": {
+      "type": "mongo",
+      "confPath": "dataSources.default.config"
+    }
   },
-  "inet": {
-    "apm": {
-      "baseUrl": "http://127.0.0.1"
-    },
-    "maxHopCount": 3
-  },
-  "mongodb": {
-    "ip": "127.0.0.1",
-    "port": 27017,
-    "user": "dbo",
-    "pwd": "Dev#2021",
-    "db": "rdf",
-    "authSource": "rdf"
-  },
+  "dataSources": {
+    "default": {
+      "type": "mongo",
+      "config": {
+        "ip": "127.0.0.1",
+        "port": 27017,
+        "user": "dbo",
+        "pwd": "Dev123456",
+        "db": "test",
+        "authSource": "test"
+      }
+    }
+  }
   "redis": {
     "host": "127.0.0.1",
     "port": 6379,

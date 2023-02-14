@@ -1,18 +1,17 @@
 /**
  * Created by Eric on 2022/02/26
  */
-let express = require('express');
-let router = express.Router();
-
 const fs = require('fs');
 const path = require('path');
-const {WinstonLogger} = require('./winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
-const jwt = require('./jwt');
-const tools = require('../../utils/tools');
+let express = require('express');
+let router = express.Router();
 const appRoot = require('app-root-path');
 const routeDir = path.join(appRoot.path, 'routes');
-
+// Framework
+const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
+const jwt = require('../libs/base/jwt');
+const tools = require('../utils/tools');
 const config = require('./config');
 const securityConf = config.security || {};
 /**

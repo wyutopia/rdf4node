@@ -6,7 +6,7 @@
 const rateLimit = require('express-rate-limit');
 const MongoStore = require('rate-limit-mongo');
 // Framework libs
-const config = require('./config');
+const config = require('../../framework/config');
 const rateLimitConf = config.rateLimit || {};
 const tools = require('../../utils/tools');
 

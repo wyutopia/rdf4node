@@ -17,5 +17,10 @@
     "security": {
       "allowOrigin": "*"
     },
-    "httpMonitor": true
+    "httpMonitor": true,
+    "dataSources": {
+      "default": {
+        "type": "inmem"
+      }
+    }
   }

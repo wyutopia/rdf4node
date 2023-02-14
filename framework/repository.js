@@ -4,6 +4,10 @@
 // System libs
 const async = require('async');
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const appRoot = require('app-root-path');
+const bootstrapConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 // Framework libs
 const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY_FACTORY;
 const eRetCodes = require('../include/retcodes');
@@ -49,7 +53,7 @@ function _updateOne(params, callback) {
             code: eRetCodes.DB_ERROR,
             message: 'Model should be initialized before using!'
         });
-    }    
+    }
     //
     let filter = params.filter || {};
     let updates = params.updates || {};
@@ -66,7 +70,7 @@ function _updateOne(params, callback) {
         options.new = true;
     }
     logger.debug(`Update: ${this.name} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`);
-    this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
+    this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this._modelSchema), this.dsName,() => {
         let query = this._model.findOneAndUpdate(filter, updates, options);
         ['select', 'populate'].forEach(method => {
             if (params[method]) {
@@ -108,7 +112,7 @@ function _retrievePopulateSchemas(populate, modelSchema) {
             modelNames.push(name);
         }
     });
-    //logger.debug(`>>> Retrieve populate schemas from ${tools.inspect(populate)}. Result in: ${tools.inspect(modelNames)}.`);
+    logger.debug(`>>> Retrieve populate schemas from ${tools.inspect(populate)}. Result in: ${tools.inspect(modelNames)}.`);
     return modelNames;
 }
 
@@ -162,7 +166,7 @@ class Repository extends EventObject {
             }
             logger.debug(`${this.modelName} - options: ${tools.inspect(options)}`);
             //
-            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
+            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), this.dsName,() => {
                 let query = this._model.findOne(options.filter || {});
                 return _uniQuery(query, options, callback);
             });
@@ -181,7 +185,7 @@ class Repository extends EventObject {
             }
             logger.debug(`${this.name} - options: ${tools.inspect(options)}`);
             //
-            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
+            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), this.dsName,() => {
                 let query = this._model.find(options.filter || {});
                 return _uniQuery(query, options, callback);
             });
@@ -199,11 +203,11 @@ class Repository extends EventObject {
                 });
             }
             //
-            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
+            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), this.dsName, () => {
                 let filter = options.filter || {};
                 let ps = parseInt(filter.pageSize || '10');
                 let pn = parseInt(filter.page || '1');
-            
+
                 logger.debug(`Query ${this.name} with filter: ${tools.inspect(filter)}`);
                 let countMethod = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
                 this._model[countMethod](filter, (err, total) => {
@@ -260,7 +264,7 @@ class Repository extends EventObject {
             }
             logger.debug(`${this.name} - options: ${id} ${tools.inspect(options)}`);
             //
-            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), () => {
+            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), this.dsName, () => {
                 let query = this._model.findById(id);
                 return _uniQuery(query, options, callback);
             });
@@ -341,7 +345,7 @@ class Repository extends EventObject {
                 if (err) {
                     logger.error(`${this.name}: count by ${tools.inspect(filter)} error! - ${err.message}`);
                     return callback({
-                        code: eRetCodes.DB_QUERY_ERR, 
+                        code: eRetCodes.DB_QUERY_ERR,
                         message: 'Count error!'
                     });
                 }
@@ -390,9 +394,9 @@ class RepositoryFactory extends EventModule {
         this._schemas = {};
         this._repos = {};
         /**
-         * 
+         *
          * @param {*} options  = {schemas: array, dsName: string, callback: function}
-         * @param {*} callback 
+         * @param {*} callback
          */
         this.prepareQuery = (modelNames, dsName, callback) => {
             let self = this;
@@ -444,6 +448,23 @@ class RepositoryFactory extends EventModule {
             }
             return this._repos[key];
         };
+        // Load all database schemas from
+        (() => {
+            let modelDir = path.join(appRoot.path, bootstrapConf.modelDir);
+            logger.info(`Scan database model schemas from ${modelDir} ...`);
+            let modelFiles = fs.readdirSync(modelDir);
+            modelFiles.forEach(filename => {
+                let filePath = path.join(modelDir, filename)
+                try {
+                    let {modelName, modelSchema} = require(filePath);
+                    //
+                    this._schemas[modelName] = modelSchema;
+                } catch (ex) {
+                    logger.error(`Load database schema from: ${filePath} error! - ${ex.message}`);
+                }
+            });
+            logger.info(`>>> Registered database schemas: ${tools.inspect(Object.keys(this._schemas))}`);
+        })();
     }
 }
 
