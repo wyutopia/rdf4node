@@ -428,11 +428,15 @@ class RepositoryFactory extends EventModule {
         this.registerSchema = (modelName, modelSchema) => {
             this._schemas[modelName] = modelSchema;
         };
-        this.getRepo = (modelName, modelSchema, dsName = 'default') => {
+        this.getRepo = (modelName, dsName = 'default') => {
             assert(modelName !== undefined);
             let key = `${modelName}@${dsName}`;
             if (key === 'test@default') {
                 logger.error(`Using ${key} repository is not recommended in real project!`);
+            }
+            let modelSchema = this._schemas[modelName];
+            if (!modelSchema) {
+                return null;
             }
             if (this._repos[key] === undefined) {
                 this._repos[key] = new Repository({

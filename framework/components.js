@@ -93,9 +93,11 @@ function _emitEvents(options, callback) {
     if (domainEvent === undefined) {
         return callback();
     }
-    let evt = Object.assign({
+    let evt = tools.deepAssign({
         headers: {
-            source: this.name
+            source: this.name,
+            modelName: this.modelName,
+            dsName: this.dsName
         },
         body: options.data
     }, domainEvent.success);
@@ -118,10 +120,12 @@ function _packDeleteFilter(args) {
 class ControllerBase extends EventModule {
     constructor(props) {
         super(props);
+        // 
+        this.modelSpec = props.modelSpec;
         // Init private members
-        this._modelName = props.modelName || 'test';
-        this._modelSchema = props.modelSchema || {};
-        this._dsName = props.dsName || 'default';
+        this.modelName = props.modelName || 'test';
+        this.modelSchema = props.modelSchema || {};
+        this.dsName = props.dsName || 'default';
         //
         this._searchKeys = props.searchKeys || {};
         this._propKeys = props.propKeys || {};
@@ -141,10 +145,10 @@ class ControllerBase extends EventModule {
                 callback = options;
                 options = {};
             }
-            let dsName = options.dsName || this._dsName;
-            let repo = repoFactory.getRepo(this._modelName, this._modelSchema, dsName);
+            let dsName = options.dsName || this.dsName;
+            let repo = repoFactory.getRepo(this.modelName, dsName);
             if (!repo) {
-                let msg = `Repository not exists! - ${this._modelName} - ${dsName}`;
+                let msg = `Repository not exists! - ${this.modelName} - ${dsName}`;
                 logger.error(msg);
                 return callback({
                     code: eRetCodes.DB_ERROR,
@@ -367,7 +371,7 @@ class ControllerBase extends EventModule {
                             }
                             _emitEvents.call(this, {
                                 method: 'deleteOne',
-                                data: filter
+                                data: result
                             }, () => {
                                 return res.sendSuccess();
                             });
