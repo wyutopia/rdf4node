@@ -9,7 +9,7 @@ const path = require('path');
 const appRoot = require('app-root-path');
 const bootstrapConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 // Framework libs
-const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY_FACTORY;
+const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY;
 const eRetCodes = require('../include/retcodes');
 const {EventModule, EventObject, sysEvents} = require('../include/events');
 const {winstonWrapper: {WinstonLogger}} = require('../libs');
@@ -465,6 +465,6 @@ module.exports = exports = {
         }
     },
     repoFactory: new RepositoryFactory({
-        name: '_RepositoryFactory_'
+        name: _MODULE_NAME
     })
 }

@@ -5,7 +5,7 @@ const assert = require('assert');
 const mongoose = require('mongoose');
 //
 const sysdefs = require('../include/sysdefs');
-const _MODULE_NAME = sysdefs.eFrameworkModules.DATASOURCE_FACTORY;
+const _MODULE_NAME = sysdefs.eFrameworkModules.DATASOURCE;
 const {EventModule, EventObject} = require('../include/events');
 const {
     sysConf, 
@@ -117,5 +117,5 @@ class DataSourceFactory extends EventModule {
 }
 
 module.exports = exports = new DataSourceFactory({
-    name: '_DataSourceFactory_'
+    name: _MODULE_NAME
 });

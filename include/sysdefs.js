@@ -49,10 +49,12 @@ const eDeployMode = {
 exports.eDeployMode = eDeployMode;
 
 const eFrameworkModules = {
-    REGISTRY                : '_registry_',
-    ICP                     : '_icp_',
-    DATASOURCE_FACTORY      : '_datasource_factory_',
-    REPOSITORY_FACTORY      : '_repository_factory_'
+    REGISTRY        : '_registry_',
+    ICP             : '_icp_',
+    DATASOURCE      : '_datasource_',
+    REPOSITORY      : '_repository_',
+    CONFIG          : '_config_',
+    ROUTER          : '_router_'
 };
 exports.eFrameworkModules = eFrameworkModules;
 

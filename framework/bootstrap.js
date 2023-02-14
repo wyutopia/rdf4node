@@ -51,16 +51,20 @@ function _loadModels() {
 }
 _loadModels();
 
+const allowedServices = ['project.js', 'agile.js', 'license.js'];
 function _loadServices() {
     let serviceDir = path.join(appRoot.path, bootstrapConf.serviceDir);
     logger.info(`++++++ Step 3: Load all services module from ${serviceDir} ++++++`);
     let allServices = [];
     let svcFiles = fs.readdirSync(serviceDir);
     svcFiles.forEach( filename => {
+        if (allowedServices.indexOf(filename) === -1) {
+            return null;
+        }
         let filePath = path.join(serviceDir, filename);
         try {
             let svc = require(filePath);
-            let svcName = registry.registerService(svc);
+            let svcName = registry.register(svc);
             allServices.push(svcName);
         } catch (ex) {
             logger.error(`Load service: ${filename} error! - ${ex.message}`);
@@ -68,4 +72,4 @@ function _loadServices() {
     });
     logger.debug(`>>> All available services: ${tools.inspect(allServices)}`);
 }
-//_loadServices();
+_loadServices();

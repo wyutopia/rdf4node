@@ -22,6 +22,7 @@ class Registry extends CommonObject {
                 logger.error(`module: ${name} already exists! overrided!!!`);
             }
             this._modules[name] = moduleRef;
+            return name;
         };
 
         this.getModule = (name) => {
