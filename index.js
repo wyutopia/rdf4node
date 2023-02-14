@@ -10,6 +10,7 @@ exports.common = require('./include/common');
 exports.events = require('./include/events');
 exports.components = require('./framework/components');
 exports.repository = require('./framework/repository');
+exports.registry = require('./framework/registry');
 const config = require('./framework/config');
 exports.sysConfig = config;
 exports.allConfig = config;
@@ -39,7 +40,7 @@ if (config.security) {
 }
 // Database libs
 if (config.mongodb || config.dbTypes.indexOf('mongo') !== -1) {
-    exports.mongoose = require('mongoose');
+    exports.mongoose = require('./libs/common/mongoose.wrapper');
     exports.mongoSession = require('./libs/common/mongo-session.wrapper');
     exports.dbHelper = require('./utils/db-helper');
 }

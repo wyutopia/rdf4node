@@ -3,6 +3,7 @@
 /**
  * Module dependencies.
  */
+require('@icedeer/rdf4node/framework/bootstrap');
 const { sysConfig: config } = require('@icedeer/rdf4node');
 let app = require('../app');
 let debug = require('debug')('rdf4node:server');

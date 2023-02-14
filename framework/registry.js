@@ -7,8 +7,6 @@ const {CommonObject} = require('../include/common');
 const {winstonWrapper: {WinstonLogger}} = require('../libs');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
-const icp = require('./icp');
-
 // The class
 class Registry extends CommonObject {
     constructor(props) {
@@ -16,10 +14,10 @@ class Registry extends CommonObject {
         //
         this._modules = {};
         //
-        this.register = (name, moduleRef) => {
-            assert(name !== undefined);
+        this.register = (moduleRef) => {
             assert(moduleRef !== null && moduleRef !== undefined);
             //
+            let name = moduleRef.name || tools.uuidv4();
             if (this._modules[name] !== undefined) {
                 logger.error(`module: ${name} already exists! overrided!!!`);
             }

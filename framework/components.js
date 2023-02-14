@@ -233,7 +233,24 @@ class ControllerBase extends EventModule {
             });
         };
         this.listByUser = (req, res) => {
-
+            let params = Object.assign({}, req.params, req.query);
+            let validator = Object.assign({
+                id: {
+                    type: 'ObjectId',
+                    required: true
+                }
+            }, this._searchKeys);
+            tools.parseParameter2(params, validator, (err, args) => {
+                if (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
+                this._getRepo(req.dataSource, (err, repo) => {
+                    if (err) {
+                        return res.sendRsp(err.code, err.message);
+                    }
+                    
+                });
+            });
         };
         this.addOne = (req, res) => {
             let validator = tools.deepAssign({}, this._propKeys);

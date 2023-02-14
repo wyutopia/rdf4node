@@ -452,23 +452,6 @@ class RepositoryFactory extends EventModule {
             }
             return this._repos[key];
         };
-        // Load all database schemas from
-        (() => {
-            let modelDir = path.join(appRoot.path, bootstrapConf.modelDir);
-            logger.info(`Scan database model schemas from ${modelDir} ...`);
-            let modelFiles = fs.readdirSync(modelDir);
-            modelFiles.forEach(filename => {
-                let filePath = path.join(modelDir, filename)
-                try {
-                    let {modelName, modelSchema} = require(filePath);
-                    //
-                    this._schemas[modelName] = modelSchema;
-                } catch (ex) {
-                    logger.error(`Load database schema from: ${filePath} error! - ${ex.message}`);
-                }
-            });
-            logger.info(`>>> Registered database schemas: ${tools.inspect(Object.keys(this._schemas))}`);
-        })();
     }
 }
 
