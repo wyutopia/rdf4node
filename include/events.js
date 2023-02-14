@@ -149,6 +149,7 @@ class EventModule extends EventObject {
     constructor(props) {
         super(props);
         moduleInit.call(this, props);
+        this._eventHandlers = props.eventHandlers || {};
         //
         this.pubEvent = (event, options, callback) => {
             if (typeof options === 'function') {
@@ -160,8 +161,14 @@ class EventModule extends EventObject {
             return icp.publish(event, callback);
         };
         this._msgProc = (msg, ackOrNack) => {
-            //TODO: Handle msg
-            return ackOrNack();
+            if (typeof ackOrNack !== 'function') {
+                ackOrNack = tools.noop;
+            }
+            let handler = this._eventHandlers[msg.code];
+            if (handler === undefined) {
+                return ackOrNack(false);
+            }
+            return handler.call(this, msg, ackOrNack);
         };
         this.on('message', (msg, ackOrNack) => {
             //setImmediate(this._msgProc.bind(this, msg, ackOrNack));
@@ -171,7 +178,7 @@ class EventModule extends EventObject {
         (() => {
             icp.register(this.name, this);
             // Subscribe events
-            let allEvents = Object.values(sysEvents).concat(props.subEvents || []);
+            let allEvents = Object.values(sysEvents).concat(Object.keys(this._eventHandlers));
             icp.subscribe(allEvents, this.name);
         })();
     }

@@ -462,7 +462,17 @@ class ControllerBase extends EventModule {
     }
 };
 
+// The ServiceBase class
+class ServiceBase extends EventModule {
+    constructor(props) {
+        super(props);
+        this.dsName = props.dsName || 'default';
+        // Declaring other variables and methods here ...
+    }
+};
+
 // Declaring module exports
 module.exports = exports = {
-    ControllerBase: ControllerBase
+    ControllerBase: ControllerBase,
+    ServiceBase: ServiceBase
 };
