@@ -49,11 +49,12 @@ const eDeployMode = {
 exports.eDeployMode = eDeployMode;
 
 const eFrameworkModules = {
+    CONFIG          : '_config_',
     REGISTRY        : '_registry_',
     ICP             : '_icp_',
     DATASOURCE      : '_datasource_',
     REPOSITORY      : '_repository_',
-    CONFIG          : '_config_',
+    ENDPOINT        : '_endpoint_',
     ROUTER          : '_router_'
 };
 exports.eFrameworkModules = eFrameworkModules;
@@ -65,7 +66,7 @@ const eModuleState = {
     STOP_PENDING : 'pending'
 };
 exports.eModuleState = eModuleState;
-exports.isValidModuleState = (s) => {
+exports.isValidModuleState = function (s) {
     return Object.values(eModuleState).indexOf(s) > -1;
 };
 
@@ -77,7 +78,7 @@ const eModuleType = {
     OSEXT        : 'osext'
 };
 exports.eModuleType = eModuleType;
-exports.isValidModuleType = (s) => {
+exports.isValidModuleType = function (s) {
     return Object.values(eModuleType).indexOf(s) > -1;
 };
 
@@ -264,7 +265,7 @@ const eRequestAuthType = {
     AKSK     : 'aksk' 
 };
 exports.eRequestAuthType = eRequestAuthType;
-
+exports.isValidAuthType = function(t) { return Object.values(eRequestAuthType).indexOf(t) > -1; }
 
 const eDbType = {
     INMEM         : 'inmem',

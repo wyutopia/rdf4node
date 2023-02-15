@@ -73,3 +73,7 @@ function _loadServices() {
     logger.debug(`>>> All available services: ${tools.inspect(allServices)}`);
 }
 _loadServices();
+
+function _loadEndpoint() { // Only http endpoint is supported currently
+    
+}

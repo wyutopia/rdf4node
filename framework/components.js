@@ -250,12 +250,10 @@ class ControllerBase extends EventModule {
                         return res.sendRsp(err.code, err.message);
                     }
                     let options = {
-                        filter: {
-                            user: args.user
-                        },
+                        filter: args,
                         populate: this._populateKeys
                     };
-                    this.emit('BeforeListByUser', options);
+                    this.emit('BeforeListByUser', options, args);
                     if (this._selectKeys) {
                         options.select = this._selectKeys;
                     }
@@ -285,15 +283,18 @@ class ControllerBase extends EventModule {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    repo.create(args, (err, doc) => {
+                    let doc = tools.deepAssign({}, args);
+                    this.emit('BeforeAddOne', doc, args);
+                    repo.create(doc, (err, result) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
                         _publishEvents.call(this, {
                             method: 'addOne',
-                            data: doc
+                            data: result
                         }, () => {
-                            return res.sendSuccess(doc);
+                            this.emit('AfterAddOne', result);
+                            return res.sendSuccess(result);
                         });
                     });
                 });
@@ -362,6 +363,7 @@ class ControllerBase extends EventModule {
                     if (this._selectKeys) {
                         options.select = this._selectKeys;
                     }
+                    this.emit('BeforeUpdateOne', options, args);
                     repo.updateOne(options, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
@@ -370,6 +372,7 @@ class ControllerBase extends EventModule {
                             method: 'updateOne',
                             data: doc
                         }, () => {
+                            this.emit('AfterUpdateOne', doc);
                             return res.sendSuccess(doc);
                         });
                     });
@@ -445,6 +448,7 @@ class ControllerBase extends EventModule {
                     if (this._selectKeys) {
                         options.select = this._selectKeys;
                     }
+                    this.emit('BeforePatchOne', options, args);
                     repo.updateOne(options, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
@@ -453,6 +457,7 @@ class ControllerBase extends EventModule {
                             method: 'patchOne',
                             data: doc
                         }, () => {
+                            this.emit('AfterPatchOne', doc);
                             return res.sendSuccess(doc);
                         });
                     });
