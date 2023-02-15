@@ -40,9 +40,10 @@ function _loadModels() {
         try {
             let modelSpec = require(filePath);
             let modelName = modelSpec.modelName;
-            //
-            repoFactory.registerSchema(modelName, modelSpec.modelSchema);
-            allModels.push(modelName);
+            if (modelName) {
+                repoFactory.registerSchema(modelName, modelSpec.modelSchema);
+                allModels.push(modelName);
+            }
         } catch (ex) {
             logger.error(`Load database schema from: ${filename} error! - ${ex.message}`);
         }
@@ -75,5 +76,5 @@ function _loadServices() {
 _loadServices();
 
 function _loadEndpoint() { // Only http endpoint is supported currently
-    
+
 }

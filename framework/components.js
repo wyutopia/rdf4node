@@ -117,9 +117,12 @@ function _packDeleteFilter(args) {
     return filter;
 }
 
-class ControllerBase extends ControllerBase {
-    constructor(props)
-    //
+class ControllerBase extends EventModule {
+    constructor(props) {
+        super(props);
+        // Declaring member variables
+        // Implementing member methods
+    }
 }
 
 class EntityController extends ControllerBase {
