@@ -117,7 +117,12 @@ function _packDeleteFilter(args) {
     return filter;
 }
 
-class ControllerBase extends EventModule {
+class ControllerBase extends ControllerBase {
+    constructor(props)
+    //
+}
+
+class EntityController extends ControllerBase {
     constructor(props) {
         super(props);
         // 
@@ -479,5 +484,6 @@ class ServiceBase extends EventModule {
 // Declaring module exports
 module.exports = exports = {
     ControllerBase: ControllerBase,
+    EntityController: EntityController,
     ServiceBase: ServiceBase
 };
