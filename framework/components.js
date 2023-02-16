@@ -72,7 +72,7 @@ function _$parsePatch(jsonPatch) {
     return updates
 }
 
-function _$extQueryFilter (filter) {
+function _$extFindFilter (filter) {
     return filter;
 }
 
@@ -125,28 +125,57 @@ class ControllerBase extends EventModule {
     }
 }
 
+const _defaultCtlSpec = {
+    // For query options
+    searchKeys: {},
+    propKeys: {},
+    mutableKeys: {},
+    mandatoryAddKeys: {},
+    populateKeys: [],
+    selectKeys: null,
+    // For customized query operations
+    extFindFilter: _$extFindFilter,
+    parsePatch: _$parsePatch,
+    extUpdates: _$extUpdates,
+    allowDelete : _$allowDelete,
+    extDeleteFilter: _$extDeleteFilter
+};
+
+function _initControlSpec(ctlSpec) {
+    Object.keys(_defaultCtlSpec).forEach( key => {
+        let privateKey = `_${key}`;
+        this[privateKey] = ctlSpec[key] || _defaultCtlSpec[key];
+    });
+}
+
 class EntityController extends ControllerBase {
     constructor(props) {
         super(props);
         // 
         this.modelSpec = props.modelSpec;
-        // Init private members
+        // Declaring the repoSpec of the entity
         this.modelName = props.modelName || 'test';
         this.modelSchema = props.modelSchema || {};
         this.dsName = props.dsName || 'default';
-        //
+        // Declaring the ctlSpec of the entity
         this._searchKeys = props.searchKeys || {};
         this._propKeys = props.propKeys || {};
         this._mandatoryAddKeys = props.mandatoryAddKeys || [];
         this._mutableKeys = props.mutableKeys || this._propKeys;
         this._populateKeys = props.populateKeys || [];
         this._selectKeys = props.selectKeys || null;
-        // Declaring private overridable methods
-        this._allowDelete = props.allowDelete || _$allowDelete;
-        this._parsePatch = props.parsePatch || _$parsePatch;
+        // Controller methods
+        this._extFindFilter = props.extFindFilter || _$extFindFilter;
         this._extUpdates = props.extUpdates || _$extUpdates;
-        this._extQueryFilter = props.extQueryFilter || _$extQueryFilter;
+        this._parsePatch = props.parsePatch || _$parsePatch;
+        this._allowDelete = props.allowDelete || _$allowDelete;
         this._extDeleteFilter = props.extDeleteFilter || _$extDeleteFilter;
+        
+        if (props.ctlSpec !== undefined) {
+            _initControlSpec.call(this, props.ctlSpec);
+        }
+        
+        // Implementing the class methods
         this._getRepo = (options, callback) => {
             assert(options !== undefined);
             if (typeof options === 'function') {
@@ -174,7 +203,7 @@ class EntityController extends ControllerBase {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
-                let filter = this._extQueryFilter(args);
+                let filter = this._extFindFilter(args);
                 //
                 this._getRepo(req.dataSource, (err, repo) => {
                     if (err) {
