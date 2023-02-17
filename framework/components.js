@@ -160,7 +160,7 @@ function _initCtlSpec(ctlSpec) {
 function _beforeFind(args) {
     let options = {
         filter: tools.deepAssign({}, args),
-        populate: this._populateKeys,
+        populate: this._populate,
     };
     if (this._selectKeys) {
         options.select = this._selectKeys;
@@ -182,7 +182,7 @@ function _beforeUpdate(args) {
         updates: {
             $set: setData
         },
-        populate: this._populateKeys
+        populate: this._populate
     }
     if (this._selectKeys) {
         options.select = this._selectKeys;
