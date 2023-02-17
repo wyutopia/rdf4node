@@ -394,6 +394,14 @@ function _validateNumber (field, validator, argv) {
     return errMsg;
 }
 
+function _validateDate (field, validator, argv) {
+    let errMsg = null;
+    if (Date.parse(argv) === NaN) {
+        errMsg = `Invalid Date format for ${field}!`;
+    }
+    return errMsg;
+}
+
 const typedArrayRe = new RegExp("^Array\<(String|Number|ObjectId)\>$");
 const typedListRe = new RegExp("^List\<(String|Number|ObjectId)\>$");
 function _validateParameter(field, validator, argv) {
@@ -433,6 +441,9 @@ function _validateParameter(field, validator, argv) {
             if (typeof argv !== 'boolean') {
                 errMsg = `Should be Boolean for ${field}`;
             }
+            break;
+        case 'Date':
+            errMsg = _validateDate(field, validator, argv);
             break;
     }
     return errMsg;

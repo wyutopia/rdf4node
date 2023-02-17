@@ -456,7 +456,7 @@ class RepositoryFactory extends EventModule {
 }
 
 module.exports = exports = {
-    paginationKeys: {
+    paginationVal: {
         pageSize: {
             type: 'Number'
         },

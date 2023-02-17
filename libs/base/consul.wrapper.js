@@ -8,7 +8,7 @@
 const async = require('async');
 const Consul = require('consul');
 //
-const { consul: config } = require('./config');
+const { consul: config } = require('../../framework/config');
 const eRetCodes = require('../../include/retcodes');
 const pubdefs = require('../../include/sysdefs');
 const tools = require('../../utils/tools');

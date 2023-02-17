@@ -10,7 +10,7 @@ const {EventModule, icp, sysEvents} = require('../include/events');
 const {winstonWrapper: {WinstonLogger}} = require('../libs');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'comp');
 const tools = require('../utils/tools');
-const {repoFactory, paginationKeys} = require('./repository');
+const {repoFactory, paginationVal} = require('./repository');
 
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
@@ -126,13 +126,13 @@ class ControllerBase extends EventModule {
 }
 
 const _defaultCtlSpec = {
-    // For query options
-    searchKeys: {},
-    propKeys: {},
-    mutableKeys: {},
-    mandatoryAddKeys: {},
-    populateKeys: [],
-    selectKeys: null,
+    // For CRUD operations
+    searchVal: {},              // For query
+    addVal: {},                 // For create
+    mandatoryAddKeys: [],
+    updateVal: {},              // For Update
+    populate: [],               // For populate
+    selectKeys: null,           // For result projection
     // For overridable query operations
     beforeFindAll: tools.noop,
     beforeFindByProject: tools.noop,
@@ -214,6 +214,7 @@ class EntityController extends ControllerBase {
         // Init repo properties
         this.modelName = props.modelName || 'test';
         this.modelSchema = props.modelSchema || {};
+        this.modelRefs = props.modelRefs || [];
         this.dsName = props.dsName || 'default';
         // Init controller properties
         _initCtlSpec.call(this, props.ctlSpec || {});
@@ -239,6 +240,9 @@ class EntityController extends ControllerBase {
         // Register event publishers
         this._domainEvents = props.domainEvents || {};
         // Implementing basic CRUD methods
+        this.find = (req, res) => {
+
+        };
         this.findOne = (req, res) => {
             let params = Object.assign({}, req.params, req.query, req.body);
             tools.parseParameter2(params, {
@@ -265,8 +269,8 @@ class EntityController extends ControllerBase {
                 });
             });
         };
-        this.findAll = (req, res) => {
-            let validator = Object.assign({}, repoFactory.paginationKeys, this._searchKeys);
+        this.findPartial = (req, res) => {
+            let validator = Object.assign({}, repoFactory.paginationVal, this._searchVal);
             tools.parseParameter2(req.query, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
@@ -301,7 +305,7 @@ class EntityController extends ControllerBase {
                     required: true,
                     transKey: 'project'
                 }
-            }, this._searchKeys);
+            }, this._searchVal);
             tools.parseParameter2(params, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
@@ -335,7 +339,7 @@ class EntityController extends ControllerBase {
                     required: true,
                     transKey: 'user'
                 }
-            }, this._searchKeys);
+            }, this._searchVal);
             tools.parseParameter2(params, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
@@ -358,7 +362,7 @@ class EntityController extends ControllerBase {
             });
         };
         this.addOne = (req, res) => {
-            let validator = tools.deepAssign({}, this._propKeys);
+            let validator = tools.deepAssign({}, this._addVal);
             this._mandatoryAddKeys.forEach( key => {
                 if (validator[key]) {
                     validator[key].required = true;
@@ -395,7 +399,7 @@ class EntityController extends ControllerBase {
                     type: 'ObjectId',
                     required: true
                 }
-            }, this._mutableKeys);
+            }, this._updateVal);
             tools.parseParameter2(req.body, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
