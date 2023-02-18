@@ -134,18 +134,19 @@ const _defaultCtlSpec = {
     populate: [],               // For populate
     selectKeys: null,           // For result projection
     // For overridable query operations
-    beforeFindAll: tools.noop,
     beforeFindByProject: tools.noop,
     beforeFindByUser: tools.noop,
-    afterFindAll: tools.noop,
-    afterFindOne: tools.noop,
-    afterFindPartial: tools.noop,
+    beforeFindPartial: tools.noop,
+    //
+    afterFindOne: tools.noop,      // For only one document
+    afterFindMany: tools.noop,     // For one or array results
+    afterFindPartial: tools.noop,  // For pagination results
     //
     beforeAdd: function () { return {} },
-    afterAdd: tools.noop,
+    afterAdd: function (doc) { return doc; },
     //
     beforeUpdateOne: tools.noop,
-    afterUpdateOne: tools.noop,
+    afterUpdateOne: function (doc) { return doc; },
     //
     allowDelete: function (id, callback) { return callback('Not allowed!', false) },
     beforeDeleteOne: tools.noop
@@ -243,7 +244,7 @@ class EntityController extends ControllerBase {
         this.find = (req, res) => {
 
         };
-        this.findOne = (req, res) => {
+        this.findByid = (req, res) => {
             let params = Object.assign({}, req.params, req.query, req.body);
             tools.parseParameter2(params, {
                 id: {
@@ -251,6 +252,27 @@ class EntityController extends ControllerBase {
                     required: true
                 }
             }, (err, args) => {
+                if (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
+                this._getRepo(req.dataSource, (err, repo) => {
+                    if (err) {
+                        return res.sendRsp(err.code, err.message);
+                    }
+                    let options = _beforeFind.call(this, args);
+                    repo.findOne(options, (err, doc) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        this._afterFindOne(doc);
+                        return res.sendSuccess(doc);
+                    });
+                });
+            });
+        };
+        this.findOne = (req, res) => {
+            let params = Object.assign({}, req.params, req.query, req.body);
+            tools.parseParameter2(params, this._searchVal, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -281,7 +303,7 @@ class EntityController extends ControllerBase {
                     }
                     //
                     let options = _beforeFind.call(this, args);
-                    this._beforeFindAll(options);
+                    this._beforeFindPartial(options);
                     repo.findPartial(options, (err, results) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
@@ -290,7 +312,7 @@ class EntityController extends ControllerBase {
                             method: 'findAll',
                             data: results
                         }, () => {
-                            this._afterFindMany(results);
+                            this._afterFindPartial(results);
                             return res.sendSuccess(results);
                         });
                     });
@@ -377,16 +399,16 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let doc = this._beforeAdd(args, repo);
-                    repo.create(doc, (err, result) => {
+                    let user = this._beforeAdd(args, repo);
+                    repo.create(user, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
                         _publishEvents.call(this, {
                             method: 'addOne',
-                            data: result
+                            data: doc
                         }, () => {
-                            this._afterAdd(result);
+                            let result = this._afterAdd(doc);
                             return res.sendSuccess(result);
                         });
                     });
@@ -411,7 +433,7 @@ class EntityController extends ControllerBase {
                     }
                     let options = _beforeUpdate.call(this, args);
                     if (options.noop) {
-                        return res.sendRep(eRetCodes.ACCEPTED, 'Empty updates!');
+                        return res.sendRsp(eRetCodes.ACCEPTED, 'Empty updates!');
                     }
                     this._beforeUpdateOne(options);
                     repo.updateOne(options, (err, doc) => {
@@ -422,8 +444,8 @@ class EntityController extends ControllerBase {
                             method: 'updateOne',
                             data: doc
                         }, () => {
-                            this._afterUpdateOne(doc);
-                            return res.sendSuccess(doc);
+                            let result = this._afterUpdateOne(doc);
+                            return res.sendSuccess(result);
                         });
                     });
                 });

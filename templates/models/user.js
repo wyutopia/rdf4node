@@ -19,8 +19,13 @@ let schema = new Schema({
         maxLength: 128,
         unique: true 
     },
-    password           : { type: String, required: true },
-    status             : { type: Number, default: pubdefs.eStatus.ACT_PENDING },
+    password           : { 
+        type: String, 
+        minLength: 6,
+        maxLength: 64,
+        required: true 
+    },
+    status             : { type: Number, enum: Object.values(pubdefs.eStatus), default: pubdefs.eStatus.ACT_PENDING },
     //profile
     mobile             : { 
         type: String, 
@@ -37,7 +42,7 @@ schema.index({username: 1, mobile: 1, email: 1, status: 1});
 
 const _searchVal = schema.extractValidators(['username', 'mobile', 'email', 'status']);
 const _addVal = schema.extractValidators(['username', 'password', 'mobile', 'email']);
-const _updateVal = schema.extractValidators('mobile', 'email', 'status');
+const _updateVal = schema.extractValidators(['mobile', 'email', 'status']);
 
 // Declaring module exports
 const _MODEL_NAME_ = 'User';
@@ -46,7 +51,7 @@ module.exports = exports = {
     modelSchema: schema,
     modelRefs: [], // Add ref model  names here to advance registering model schemas
     // Controller properties
-    ctlSpec: {
+    validators: {
         searchVal: _searchVal,
         addVal: _addVal,
         mandatoryAddKeys: ['username', 'password'],
