@@ -131,7 +131,7 @@ const _defaultCtlSpec = {
     addVal: {},                 // For create
     mandatoryAddKeys: [],
     updateVal: {},              // For Update
-    populate: [],               // For populate
+    populate: null,             // For populate
     selectKeys: null,           // For result projection
     // For overridable query operations
     beforeFindByProject: tools.noop,
@@ -160,9 +160,11 @@ function _initCtlSpec(ctlSpec) {
 
 function _beforeFind(args) {
     let options = {
-        filter: tools.deepAssign({}, args),
-        populate: this._populate,
+        filter: tools.deepAssign({}, args)
     };
+    if (this._populate) {
+        options.populate = this._populate;
+    }
     if (this._selectKeys) {
         options.select = this._selectKeys;
     }
@@ -182,8 +184,10 @@ function _beforeUpdate(args) {
         },
         updates: {
             $set: setData
-        },
-        populate: this._populate
+        }
+    }
+    if (this._populate) {
+        options.populate = this._populate;
     }
     if (this._selectKeys) {
         options.select = this._selectKeys;
@@ -399,8 +403,8 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let user = this._beforeAdd(args, repo);
-                    repo.create(user, (err, doc) => {
+                    let data = this._beforeAdd(args, repo);
+                    repo.create(data, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
