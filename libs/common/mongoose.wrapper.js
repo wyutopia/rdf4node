@@ -7,40 +7,44 @@ mongoose.Promise = require('bluebird');
 mongoose.set('strictQuery', true);
 
 let Schema = mongoose.Schema;
-Schema.prototype.extractValidators = function (keys, options = {}) {
+Schema.prototype.extractValidators = function (keys, options = {isSearch: false}) {
     let results = {};
     keys.forEach(key => {
         let path = this.path(key);
         if (!path) {
             return;
         }
+        let pathType = path.instance;
+        let pathValidators = path.validators || [];
+        if (pathType === 'Array') {
+            pathType = options.isSearch? path.$embeddedSchemaType.instance : `Array<${path.$embeddedSchemaType.instance}>`;
+            pathValidators = path.$embeddedSchemaType.validators || [];
+        }
         let validator = {
-            type: path.instance
+            type: pathType
         }
-        if (path.validators) {
-            path.validators.forEach (v => {
-                switch(v.type) {
-                    case 'enum':
-                        validator.enum = v.enumValues;
-                        break;
-                    case 'min':
-                        validator.min = v.min;
-                        break;
-                    case 'max':
-                        validator.max = v.max;
-                        break;
-                    case 'minlength':
-                        validator.minLen = v.minlength;
-                        break;
-                    case 'maxlength':
-                        validator.maxLen = v.maxlength;
-                        break;
-                    case 'regexp':
-                        validator.match = v.regexp
-                        break;
-                }
-            });
-        }
+        pathValidators.forEach (v => {
+            switch(v.type) {
+                case 'enum':
+                    validator.enum = v.enumValues;
+                    break;
+                case 'min':
+                    validator.min = v.min;
+                    break;
+                case 'max':
+                    validator.max = v.max;
+                    break;
+                case 'minlength':
+                    validator.minLen = v.minlength;
+                    break;
+                case 'maxlength':
+                    validator.maxLen = v.maxlength;
+                    break;
+                case 'regexp':
+                    validator.match = v.regexp
+                    break;
+            }
+        });
         results[key] = validator;
     });
     return results;
