@@ -133,6 +133,7 @@ const _defaultCtlSpec = {
     updateVal: {},              // For Update
     populate: null,             // For populate
     selectKeys: null,           // For result projection
+    inventoryKeys: 'name',      // For inventory query
     // For overridable query operations
     beforeFindByProject: tools.noop,
     beforeFindByUser: tools.noop,
@@ -148,7 +149,7 @@ const _defaultCtlSpec = {
     beforeUpdateOne: tools.noop,
     afterUpdateOne: function (doc) { return doc; },
     //
-    allowDelete: function (id, callback) { return callback('Not allowed!', false) },
+    allowDelete: function (id, repo, callback) { return callback('Not allowed!', false) },
     beforeDeleteOne: tools.noop
 };
 function _initCtlSpec(ctlSpec) {
@@ -159,14 +160,19 @@ function _initCtlSpec(ctlSpec) {
 }
 
 function _beforeFind(args) {
+    let filter = tools.deepAssign({}, args);
+    delete filter.inventory;
     let options = {
-        filter: tools.deepAssign({}, args)
+        filter: filter
     };
-    if (this._populate) {
+    if (!args.inventory && this._populate) {
         options.populate = this._populate;
     }
     if (this._selectKeys) {
         options.select = this._selectKeys;
+    }
+    if (args.inventory) {
+        options.select = this._inventoryKeys;
     }
     return options;
 }
@@ -246,7 +252,25 @@ class EntityController extends ControllerBase {
         this._domainEvents = props.domainEvents || {};
         // Implementing basic CRUD methods
         this.find = (req, res) => {
-
+            let params = Object.assign({}, req.params, req.query, req.body);
+            tools.parseParameter2(params, this._searchVal, (err, args) => {
+                if (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
+                this._getRepo(req.dataSource, (err, repo) => {
+                    if (err) {
+                        return res.sendRsp(err.code, err.message);
+                    }
+                    let options = _beforeFind.call(this, args);
+                    repo.findMany(options, (err, docs) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        this._afterFindMany(docs);
+                        return res.sendSuccess(docs);
+                    });
+                });
+            });
         };
         this.findByid = (req, res) => {
             let params = Object.assign({}, req.params, req.query, req.body);
@@ -330,7 +354,8 @@ class EntityController extends ControllerBase {
                     type: 'ObjectId',
                     required: true,
                     transKey: 'project'
-                }
+                },
+                inventory: {}
             }, this._searchVal);
             tools.parseParameter2(params, validator, (err, args) => {
                 if (err) {
@@ -364,7 +389,8 @@ class EntityController extends ControllerBase {
                     type: 'ObjectId',
                     required: true,
                     transKey: 'user'
-                }
+                },
+                inventory: {}
             }, this._searchVal);
             tools.parseParameter2(params, validator, (err, args) => {
                 if (err) {
@@ -470,12 +496,11 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._allowDelete(args.id, repo, (reason, result) => {
+                    this._allowDelete(args.id, repo, (reason, options) => {
                         if (reason) {
                             return res.sendRsp(eRetCodes.DB_DELETE_ERR, reason);
                         }
                         //
-                        let options = _beforeDelete.call(this, args);
                         this._beforeDeleteOne(options);
                         repo.remove(options, (err, result) => {
                             if (err) {

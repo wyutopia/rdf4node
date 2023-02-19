@@ -125,7 +125,9 @@ class Repository extends EventObject {
         this.modelName = props.modelName || 'User';
         this.modelSchema = props.modelSchema || {};
         this.dsName = props.dsName || 'default';
+        this.allowCache = props.allowCache === true? true : false;
         this._model = null;
+        this._cache = {};
         this.getModel = () => {
             return this._model;
         };
