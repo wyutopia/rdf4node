@@ -70,60 +70,42 @@ function _updateOne(params, callback) {
         options.new = true;
     }
     logger.debug(`Update: ${this.name} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`);
-    this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this._modelSchema), this.dsName,() => {
-        let query = this._model.findOneAndUpdate(filter, updates, options);
-        ['select', 'populate'].forEach(method => {
-            if (params[method]) {
-                query[method](params[method]);
-            }
-        });
-        query.exec((err, doc) => {
-            if (err) {
-                let msg = `Update ${this.name} error! - ${err.message}`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.DB_UPDATE_ERR,
-                    message: msg
-                });
-            }
-            if (!doc) {
-                let msg = `Specified ${this.name} not found! - ${tools.inspect(filter)}`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.NOT_FOUND,
-                    message: msg
-                });
-            }
-            return callback(null, doc);
-        });
-    });
-}
-
-function _retrievePopulateSchemas(populate, modelSchema) {
-    let modelNames = [];
-    if (populate === undefined) {
-        return modelNames;
-    }
-    let populates = Array.isArray(populate)? populate : [populate];
-    populates.forEach(p => {
-        let options = modelSchema.path(p.path).options;
-        let name = options.ref || options.type[0].ref;
-        if (modelNames.indexOf(name) === -1) {
-            modelNames.push(name);
+    //
+    let query = this._model.findOneAndUpdate(filter, updates, options);
+    ['select', 'populate'].forEach(method => {
+        if (params[method]) {
+            query[method](params[method]);
         }
     });
-    logger.debug(`>>> Retrieve populate schemas from ${tools.inspect(populate)}. Result in: ${tools.inspect(modelNames)}.`);
-    return modelNames;
+    query.exec((err, doc) => {
+        if (err) {
+            let msg = `Update ${this.name} error! - ${err.message}`;
+            logger.error(msg);
+            return callback({
+                code: eRetCodes.DB_UPDATE_ERR,
+                message: msg
+            });
+        }
+        if (!doc) {
+            let msg = `Specified ${this.name} not found! - ${tools.inspect(filter)}`;
+            logger.error(msg);
+            return callback({
+                code: eRetCodes.NOT_FOUND,
+                message: msg
+            });
+        }
+        return callback(null, doc);
+    });
 }
 
 // The repository class
 class Repository extends EventObject {
     constructor(props) {
         super(props);
-        this.parent = props.parent;
         //
         this.modelName = props.modelName || 'User';
         this.modelSchema = props.modelSchema || {};
+        this.modelRefs = props.modelRefs || [];
         this.dsName = props.dsName || 'default';
         this.allowCache = props.allowCache === true? true : false;
         this._model = null;
@@ -169,10 +151,8 @@ class Repository extends EventObject {
             }
             logger.debug(`${this.modelName} - options: ${tools.inspect(options)}`);
             //
-            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), this.dsName,() => {
-                let query = this._model.findOne(options.filter || {});
-                return _uniQuery(query, options, callback);
-            });
+            let query = this._model.findOne(options.filter || {});
+            return _uniQuery(query, options, callback);
         };
         // Find all documents
         this.findMany = (options, callback) => {
@@ -188,10 +168,8 @@ class Repository extends EventObject {
             }
             logger.debug(`${this.name} - options: ${tools.inspect(options)}`);
             //
-            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), this.dsName,() => {
-                let query = this._model.find(options.filter || {});
-                return _uniQuery(query, options, callback);
-            });
+            let query = this._model.find(options.filter || {});
+            return _uniQuery(query, options, callback);
         };
         // Paginating find documents
         this.findPartial = (options, callback) => {
@@ -206,50 +184,49 @@ class Repository extends EventObject {
                 });
             }
             //
-            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), this.dsName, () => {
-                let filter = options.filter || {};
-                let ps = parseInt(filter.pageSize || '10');
-                let pn = parseInt(filter.page || '1');
+            let filter = options.filter || {};
+            let ps = parseInt(filter.pageSize || '10');
+            let pn = parseInt(filter.page || '1');
 
-                logger.debug(`Query ${this.name} with filter: ${tools.inspect(filter)}`);
-                let countMethod = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
-                this._model[countMethod](filter, (err, total) => {
+            logger.debug(`Query ${this.name} with filter: ${tools.inspect(filter)}`);
+            //
+            let countMethod = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
+            this._model[countMethod](filter, (err, total) => {
+                if (err) {
+                    let msg = `${countMethod} for ${this.name} error! - ${err.message}`;
+                    logger.error(msg);
+                    return callback({
+                        code: eRetCodes.DB_QUERY_ERR,
+                        message: msg
+                    });
+                }
+                let results = {
+                    total: total,
+                    pageSize: ps,
+                    page: pn
+                };
+                if (total === 0) {
+                    results.values = [];
+                    return callback(null, results);
+                }
+                // Assemble query promise
+                let query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
+                ['select', 'sort', 'populate', 'allowDiskUse'].forEach(method => {
+                    if (options[method]) {
+                        query[method](options[method]);
+                    }
+                });
+                return query.exec((err, docs) => {
                     if (err) {
-                        let msg = `${countMethod} for ${this.name} error! - ${err.message}`;
+                        let msg = `Query ${this.name} error! - ${err.message}`;
                         logger.error(msg);
                         return callback({
                             code: eRetCodes.DB_QUERY_ERR,
                             message: msg
                         });
                     }
-                    let results = {
-                        total: total,
-                        pageSize: ps,
-                        page: pn
-                    };
-                    if (total === 0) {
-                        results.values = [];
-                        return callback(null, results);
-                    }
-                    // Assemble query promise
-                    let query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
-                    ['select', 'sort', 'populate', 'allowDiskUse'].forEach(method => {
-                        if (options[method]) {
-                            query[method](options[method]);
-                        }
-                    });
-                    return query.exec((err, docs) => {
-                        if (err) {
-                            let msg = `Query ${this.name} error! - ${err.message}`;
-                            logger.error(msg);
-                            return callback({
-                                code: eRetCodes.DB_QUERY_ERR,
-                                message: msg
-                            });
-                        }
-                        results.values = docs;
-                        return callback(null, results);
-                    });
+                    results.values = docs;
+                    return callback(null, results);
                 });
             });
         };
@@ -267,10 +244,8 @@ class Repository extends EventObject {
             }
             logger.debug(`${this.name} - options: ${id} ${tools.inspect(options)}`);
             //
-            this.parent.prepareQuery(_retrievePopulateSchemas(options.populate, this.modelSchema), this.dsName, () => {
-                let query = this._model.findById(id);
-                return _uniQuery(query, options, callback);
-            });
+            let query = this._model.findById(id);
+            return _uniQuery(query, options, callback);
         };
         this.updateOne = _updateOne.bind(this);
         this.updateMany = (options, callback) => {
@@ -355,8 +330,8 @@ class Repository extends EventObject {
                 return callback(null, count);
             });
         };
-        this.remove = (params, callback) => {
-            assert(params !== undefined && params.filter !== undefined && Object.keys(params.filter).length > 0);
+        this.remove = (options, callback) => {
+            assert(options !== undefined);
             assert(typeof callback === 'function');
             //
             if (!this._model) {
@@ -366,11 +341,11 @@ class Repository extends EventObject {
                 });
             }
             //
-            let options = params.options || {};
+            let filter = options.filter || {bulkDeleteIsNotAllowed: true};
             let methodName = options.multi === true? 'deleteMany' : 'deleteOne';
-            this._model[methodName](options.filter, (err, result) => {
+            this._model[methodName](filter, (err, result) => {
                 if (err) {
-                    let msg = `Delete ${this.name} error! - ${err.code}#${err.message}`;
+                    let msg = `Delete with options: ${tools.inspect(options)} error! - ${err.code}#${err.message}`;
                     logger.error(msg);
                     return callback({
                         code: eRetCodes.DB_DELETE_ERR,
@@ -390,70 +365,46 @@ class Repository extends EventObject {
     }
 }
 
+// The repository-factory
 class RepositoryFactory extends EventModule {
     constructor(props) {
         super(props);
         //
-        this._schemas = {};
+        this._modelSpecs = {};
         this._repos = {};
-        /**
-         *
-         * @param {*} options  = {schemas: array, dsName: string, callback: function}
-         * @param {*} callback
-         */
-        this.prepareQuery = (modelNames, dsName, callback) => {
-            let self = this;
-            async.each(modelNames, (modelName, next) => {
-                // sch: {modelname, modelSchema}
-                let key = `${modelName}@${dsName}`;
-                if (self._repos[key] !== undefined) { // Alread registered
-                    return process.nextTick(next);
-                }
-                let modelSchema = self._schemas[modelName];
-                if (modelSchema === undefined) {
-                    logger.error(`>>> Schema of ${modelName} not registered! <<< `);
-                    return process.nextTick(next);
-                }
-                this._repos[key] = new Repository({
-                    name: key,
-                    //
-                    modelName: modelName,
-                    modelSchema: self._schemas[modelName],
-                    dsName: dsName,
-                    //
-                    parent: self
-                });
-                return process.nextTick(next);
-            }, () => {
-                callback();
-            });
-        };
-        this.registerSchema = (modelName, modelSchema) => {
-            this._schemas[modelName] = modelSchema;
+        // Implementing methods
+        this.registerSchema = (modelName, modelSpec) => {
+            this._modelSpecs[modelName] = modelSpec;
         };
         this.getRepo = (modelName, dsName = 'default') => {
             assert(modelName !== undefined);
-            let key = `${modelName}@${dsName}`;
-            if (key === 'test@default') {
+            let repoKey = `${modelName}@${dsName}`;
+            if (repoKey === 'test@default') {
                 logger.error(`Using ${key} repository is not recommended in real project!`);
             }
-            let modelSchema = this._schemas[modelName];
-            if (!modelSchema) {
+            let modelSpec = this._modelSpecs[modelName];
+            if (!modelSpec) {
+                logger.error(`modelSpec: ${modelName} not registered.`);
                 return null;
             }
-            if (this._repos[key] === undefined) {
-                this._repos[key] = new Repository({
-                    name: key,
-                    //
-                    modelName: modelName,
-                    modelSchema: modelSchema,
-                    dsName: dsName,
-                    //
-                    parent: this
+            if (this._repos[repoKey] === undefined) {
+                // Create all relative repoes
+                [modelName].concat(modelSpec.refs).forEach(name => {
+                    let spec = this._modelSpecs[name];
+                    let key = `${name}@${dsName}`;
+                    if (spec !== undefined && this._repos[key] === undefined) {
+                        this._repos[key] = new Repository({
+                            name: key,
+                            //
+                            modelName: name,
+                            modelSchema: spec.schema,
+                            dsName: dsName
+                        });
+                        logger.error(`>>> New repository: ${key} created. <<<`);
+                    }
                 });
-                logger.error(`>>> New repository: ${key} created. <<<`);
             }
-            return this._repos[key];
+            return this._repos[repoKey];
         };
     }
 }

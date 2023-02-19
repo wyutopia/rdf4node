@@ -41,7 +41,10 @@ function _loadModels() {
             let modelSpec = require(filePath);
             let modelName = modelSpec.modelName;
             if (modelName) {
-                repoFactory.registerSchema(modelName, modelSpec.modelSchema);
+                repoFactory.registerSchema(modelName, {
+                    schema: modelSpec.modelSchema,
+                    refs: modelSpec.modelRefs || []
+                });
                 allModels.push(modelName);
             }
         } catch (ex) {
