@@ -141,6 +141,7 @@ class Repository extends EventObject {
                     message: 'Model should be initialized before using!'
                 });
             }
+            logger.debug(`Create ${this.modelName} with data: ${tools.inspect(data)}`);
             this._model.create(data).then(doc => {
                 return callback(null, doc);
             }).catch(err => {
@@ -456,7 +457,7 @@ class RepositoryFactory extends EventModule {
 }
 
 module.exports = exports = {
-    paginationKeys: {
+    paginationVal: {
         pageSize: {
             type: 'Number'
         },

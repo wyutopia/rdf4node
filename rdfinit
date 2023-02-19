@@ -41,6 +41,7 @@ echo "Folder bin upgraded."
 mkdir -p common
 cd common
 cp "${TEMP_DIR}/common/pubdefs.js" .
+cp "${TEMP_DIR}/common/app-events.js" .
 cd ..
 echo "Folder common created."
 
@@ -63,20 +64,21 @@ echo "Folder conf created."
 # Step 5: Add models folder
 mkdir -p models
 cd models
-sp "${TEMP_DIR}/models/user.js" .
+cp "${TEMP_DIR}/models/user.js" .
 cd ..
 echo "Folder models created."
 
 # Step 6: Add controllers folder
 mkdir -p controllers
 cd controllers
-cp "${TEMP_DIR}/controllers/example.js" .
+cp "${TEMP_DIR}/controllers/users.js" .
 cd ..
 echo "Folder controllers created."
 
 # Step 7: Add services folder
 mkdir -p services
 cd services
+cp "${TEMP_DIR}/services/user.js" .
 cd ..
 echo "Folder services created."
 
@@ -84,9 +86,10 @@ echo "Folder services created."
 cd routes
 rm -f users.js
 cp -f "${TEMP_DIR}/routes/index.js" .
+cp -f "${TEMP_DIR}/routes/monitor.js" .
 mkdir -p v1
 cd v1
-cp "${TEMP_DIR}/routes/v1/example.js" .
+cp "${TEMP_DIR}/routes/v1/users.js" .
 cp "${TEMP_DIR}/routes/v1/logdir.js" .
 cd ..
 cd ..

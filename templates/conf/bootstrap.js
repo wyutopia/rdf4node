@@ -6,5 +6,6 @@ module.exports = exports = {
     //
     modelDir: 'models',
     controllerDir: 'controllers',
-    serviceDir: 'services'
+    serviceDir: 'services',
+    allowedServices: ['user.js']
 };

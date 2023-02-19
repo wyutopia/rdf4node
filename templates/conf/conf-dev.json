@@ -20,7 +20,15 @@
     "httpMonitor": true,
     "dataSources": {
       "default": {
-        "type": "inmem"
+        "type": "mongo",
+        "config": {
+          "ip": "127.0.0.1",
+          "port": 27017,
+          "user": "dbo",
+          "pwd": "Dev123456",
+          "db": "test",
+          "authSource": "test"
+        }
       }
     }
   }

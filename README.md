@@ -104,13 +104,13 @@ Then you can open web consol from http://127.0.0.1:15672
 docker pull redis:latest
 docker run -id -p 6379:6379 \
     --name redis-dev \
-    redis --requirepass "Dev#2022"
+    redis --requirepass "Dev#2023"
 
 ```
 #### Connect with cli
 ```
 docker exec -it redis-dev redis-cli
-> auth "Dev#2022"
+> auth "Dev#2023"
 > select 0         // System allocated database #
 ```
 ### Start elasticsearch instance for development
