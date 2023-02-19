@@ -142,7 +142,7 @@ const _defaultCtlSpec = {
     afterFindMany: tools.noop,     // For one or array results
     afterFindPartial: tools.noop,  // For pagination results
     //
-    beforeAdd: function () { return {} },
+    beforeAdd: function (args, repo) { return args; },
     afterAdd: function (doc) { return doc; },
     //
     beforeUpdateOne: tools.noop,
