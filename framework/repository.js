@@ -400,7 +400,7 @@ class RepositoryFactory extends EventModule {
                             modelSchema: spec.schema,
                             dsName: dsName
                         });
-                        logger.error(`>>> New repository: ${key} created. <<<`);
+                        logger.info(`>>> New repository: ${key} created. <<<`);
                     }
                 });
             }
