@@ -140,7 +140,7 @@ const _defaultCtlSpec = {
     beforeFindPartial: tools.noop,
     //
     afterFindOne: tools.noop,      // For only one document
-    afterFindMany: tools.noop,     // For one or array results
+    afterFindMany: function (docs) { return docs; },     // For one or array results
     afterFindPartial: tools.noop,  // For pagination results
     //
     beforeAdd: function (args, repo) { return args; },
@@ -161,6 +161,10 @@ function _initCtlSpec(ctlSpec) {
 
 function _beforeFind(args) {
     let filter = tools.deepAssign({}, args);
+    if (filter.id !== undefined) {
+        filter._id = filter.id;
+        delete filter.id;
+    }
     delete filter.inventory;
     let options = {
         filter: filter
@@ -266,13 +270,13 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._afterFindMany(docs);
-                        return res.sendSuccess(docs);
+                        let results = this._afterFindMany(docs);
+                        return res.sendSuccess(results);
                     });
                 });
             });
         };
-        this.findByid = (req, res) => {
+        this.findById = (req, res) => {
             let params = Object.assign({}, req.params, req.query, req.body);
             tools.parseParameter2(params, {
                 id: {
