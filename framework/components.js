@@ -139,7 +139,7 @@ const _defaultCtlSpec = {
     beforeFindByUser: tools.noop,
     beforeFindPartial: tools.noop,
     //
-    afterFindOne: tools.noop,      // For only one document
+    afterFindOne: function (doc) { return doc; },      // For only one document
     afterFindMany: function (docs) { return docs; },     // For one or array results
     afterFindPartial: tools.noop,  // For pagination results
     //
@@ -296,8 +296,8 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._afterFindOne(doc);
-                        return res.sendSuccess(doc);
+                        let result = this._afterFindOne(doc);
+                        return res.sendSuccess(result);
                     });
                 });
             });
@@ -317,8 +317,8 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._afterFindOne(doc);
-                        return res.sendSuccess(doc);
+                        let result = this._afterFindOne(doc);
+                        return res.sendSuccess(result);
                     });
                 });
             });
@@ -379,8 +379,8 @@ class EntityController extends ControllerBase {
                             method: 'findByProject',
                             data: docs
                         }, () => {
-                            this._afterFindMany(docs);
-                            return res.sendSuccess(docs);
+                            let results = this._afterFindMany(docs);
+                            return res.sendSuccess(results);
                         });
                     });
                 });
@@ -411,8 +411,8 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._afterFindMany(docs);
-                        return res.sendSuccess(docs);
+                        let results = this._afterFindMany(docs);
+                        return res.sendSuccess(results);
                     });
                 });
             });
