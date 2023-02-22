@@ -132,6 +132,7 @@ const _defaultCtlSpec = {
     mandatoryAddKeys: [],
     updateVal: {},              // For Update
     populate: null,             // For populate
+    sortOption: null,           // For sort
     selectKeys: null,           // For result projection
     inventoryKeys: 'name',      // For inventory query
     // For overridable query operations
@@ -175,6 +176,9 @@ function _prepareFindOption (args) {
     }
     if (this._selectKeys) {
         options.select = this._selectKeys;
+    }
+    if (this._sortOption) {
+        options.sort = this._sortOption;
     }
     if (args.inventory) {
         options.select = this._inventoryKeys;
