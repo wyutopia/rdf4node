@@ -135,6 +135,7 @@ const _defaultCtlSpec = {
     selectKeys: null,           // For result projection
     inventoryKeys: 'name',      // For inventory query
     // For overridable query operations
+    beforeFind: tools.noop,
     beforeFindByProject: tools.noop,
     beforeFindByUser: tools.noop,
     beforeFindPartial: tools.noop,
@@ -159,7 +160,7 @@ function _initCtlSpec(ctlSpec) {
     });
 }
 
-function _beforeFind(args) {
+function _prepareFindOption (args) {
     let filter = tools.deepAssign({}, args);
     if (filter.id !== undefined) {
         filter._id = filter.id;
@@ -265,7 +266,8 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let options = _beforeFind.call(this, args);
+                    let options = _prepareFindOption.call(this, args);
+                    this._beforeFind(options);
                     repo.findMany(options, (err, docs) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
@@ -291,7 +293,7 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let options = _beforeFind.call(this, args);
+                    let options = _prepareFindOption.call(this, args);
                     repo.findOne(options, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
@@ -312,7 +314,8 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let options = _beforeFind.call(this, args);
+                    let options = _prepareFindOption.call(this, args);
+                    this._beforeFind(options);
                     repo.findOne(options, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
@@ -334,7 +337,8 @@ class EntityController extends ControllerBase {
                         return res.sendRsp(err.code, err.message);
                     }
                     //
-                    let options = _beforeFind.call(this, args);
+                    let options = _prepareFindOption.call(this, args);
+                    this._beforeFind(options);
                     this._beforeFindPartial(options);
                     repo.findPartial(options, (err, results) => {
                         if (err) {
@@ -369,7 +373,8 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let options = _beforeFind.call(this, args);
+                    let options = _prepareFindOption.call(this, args);
+                    this._beforeFind(options);
                     this._beforeFindByProject(options);
                     repo.findMany(options, (err, docs) => {
                         if (err) {
@@ -405,7 +410,8 @@ class EntityController extends ControllerBase {
                         return res.sendRsp(err.code, err.message);
                     }
                     //
-                    let options = _beforeFind.call(this, args);
+                    let options = _prepareFindOption.call(this, args);
+                    this._beforeFind(options);
                     this._beforeFindByUser(options);
                     repo.findMany(options, (err, docs) => {
                         if (err) {

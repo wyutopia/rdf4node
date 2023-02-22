@@ -58,15 +58,11 @@ function _assembleRealConfig(rawConf) {
         socket: sockConf,
         legacyMode: true
     };
-    if (rawConf.username !== undefined) {
-        config.username = rawConf.username;
-    }
-    if (rawConf.password !== undefined) {
-        config.password = rawConf.password;
-    }
-    if (rawConf.database !== undefined) {
-        config.database = rawConf.database;
-    }
+    ['username', 'password', 'database'].forEach(key => {
+        if (rawConf[key] !== undefined) {
+            config[key] = rawConf[key];
+        }
+    })
     return config;
 }
 
