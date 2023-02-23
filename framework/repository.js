@@ -406,7 +406,7 @@ class RepositoryFactory extends EventModule {
             }
             return this._repos[repoKey];
         };
-        // entitiesOption[modelName] = {ids, queryOption};
+        // entitiesOption[modelName] = {ids, queryOptions};
         this.findEntities = (entitiesOption, dsName, callback) => {
             if (typeof dsName === 'function') {
                 callback = dsName;
@@ -420,13 +420,8 @@ class RepositoryFactory extends EventModule {
                 if (!repo) {
                     return process.nextTick(next);
                 }
-                let entityOption = entitiesOption[modelName];
-                let options = Object.assign({
-                    filter: {
-                        $in: entitiesOption.ids
-                    }
-                }, entityOption.queryOption);
-                repo.findMay(options, (err, docs) => {
+                let queryOptions = entitiesOption[modelName];
+                repo.findMay(queryOptions, (err, docs) => {
                     if (err) {
                         logger.error(`Find ${modelName} entites error! - ${err.message}`);
                         return next();
@@ -434,7 +429,7 @@ class RepositoryFactory extends EventModule {
                         docs.forEach(doc => {
                             results[doc._id] = doc;
                         });
-                        }
+                    }
                     return next();
                 });
             }, () => {
