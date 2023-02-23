@@ -122,6 +122,14 @@ class ControllerBase extends EventModule {
         super(props);
         // Declaring member variables
         // Implementing member methods
+        this._getRepositories = (modelNames, dsName = 'default') => {
+            assert(Array.isArray(modelNames));
+            let results = {};
+            modelNames.forEach(modelName => {
+                results[modelName] = repoFactory.getRepo(modelName, dsName);
+            });
+            return results;
+        };
     }
 }
 

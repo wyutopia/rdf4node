@@ -406,6 +406,45 @@ class RepositoryFactory extends EventModule {
             }
             return this._repos[repoKey];
         };
+        // entitiesOption[modelName] = {ids, queryOption};
+        this.findEntities = (entitiesOption, dsName, callback) => {
+            if (typeof dsName === 'function') {
+                callback = dsName;
+                dsName = 'default'
+            }
+            logger.debug(`findEntites: ${tools.inspect(entitiesOption)} - ${dsName}`);
+            let results = {};
+            let modelNames = Object.keys(entitiesOption);
+            async.each(modelNames, (modelName, next) => {
+                let repo = this._getRepo(modelName, dsName);
+                if (!repo) {
+                    return process.nextTick(next);
+                }
+                let entityOption = entitiesOption[modelName];
+                let options = Object.assign({
+                    filter: {
+                        $in: entitiesOption.ids
+                    }
+                }, entityOption.queryOption);
+                repo.findMay(options, (err, docs) => {
+                    if (err) {
+                        logger.error(`Find ${modelName} entites error! - ${err.message}`);
+                        return next();
+                    } else {
+                        docs.forEach(doc => {
+                            results[doc._id] = doc;
+                        });
+                        }
+                    return next();
+                });
+            }, () => {
+                return callback(null, results);
+            });
+        };
+
+        this.findDistEntites = (distEntitiesOption, callback) => {
+            return callback(null, {});
+        }
     }
 }
 
