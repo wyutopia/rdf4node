@@ -416,12 +416,12 @@ class RepositoryFactory extends EventModule {
             let results = {};
             let modelNames = Object.keys(entitiesOption);
             async.each(modelNames, (modelName, next) => {
-                let repo = this._getRepo(modelName, dsName);
+                let repo = this.getRepo(modelName, dsName);
                 if (!repo) {
                     return process.nextTick(next);
                 }
                 let queryOptions = entitiesOption[modelName];
-                repo.findMay(queryOptions, (err, docs) => {
+                repo.findMany(queryOptions, (err, docs) => {
                     if (err) {
                         logger.error(`Find ${modelName} entites error! - ${err.message}`);
                         return next();
