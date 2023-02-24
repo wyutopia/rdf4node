@@ -298,6 +298,9 @@ exports.parseParameters = function (params, options, callback) {
 
 function _validateString (field, validator, argv) {
     let errMsg = null;
+    if (!argv && validator.allowNull) {
+        return errMsg;
+    }
     if (validator.minLen !== undefined) {
         if (argv.length < validator.minLen) {
             errMsg = `Length of ${field} should great than ${validator.minLen} !`;
@@ -427,7 +430,7 @@ function _validateParameter(field, validator, argv) {
     }
     switch(validator.type) {
         case 'ObjectId':
-            if (!ObjectId.isValid(argv)) {
+            if (!ObjectId.isValid(argv) && validator.allowNull !== true) {
                 errMsg = `Invalid ObjectId value: ${field}!`;
             }
             break;

@@ -406,6 +406,15 @@ class RepositoryFactory extends EventModule {
             }
             return this._repos[repoKey];
         };
+        this.getRepos = (modelNames, dsName = 'default') => {
+            assert(Array.isArray(modelNames));
+            let results = {};
+            modelNames.forEach(modelName => {
+                let repo = this.getRepo(modelName, dsName);
+                results[modelName] = repo;
+            });
+            return results;
+        };
         // entitiesOption[modelName] = {ids, queryOptions};
         this.findEntities = (entitiesOption, dsName, callback) => {
             if (typeof dsName === 'function') {
