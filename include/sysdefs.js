@@ -52,8 +52,10 @@ const eFrameworkModules = {
     CONFIG          : '_config_',
     REGISTRY        : '_registry_',
     ICP             : '_icp_',
+    TIMER           : '_timer_',
     DATASOURCE      : '_datasource_',
     REPOSITORY      : '_repository_',
+    CACHE           : '_cache_',
     ENDPOINT        : '_endpoint_',
     ROUTER          : '_router_'
 };
