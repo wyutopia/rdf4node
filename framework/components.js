@@ -10,7 +10,7 @@ const {EventModule, icp, sysEvents} = require('../include/events');
 const {winstonWrapper: {WinstonLogger}} = require('../libs');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'comp');
 const tools = require('../utils/tools');
-const {repoFactory, paginationVal} = require('./repository');
+const {repoFactory, paginationVal, _DS_DEFAULT_} = require('./repository');
 
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
@@ -97,7 +97,7 @@ function _publishEvents(options, callback) {
         headers: {
             source: this.name,
             modelName: this.modelName,
-            dsName: this.dsName
+            dsName: options.dsName || _DS_DEFAULT_
         },
         body: options.data
     }, domainEvent.success);
@@ -235,6 +235,7 @@ function _beforePatch(args) {
     return options;
 }
 
+
 // The class
 class EntityController extends ControllerBase {
     constructor(props) {
@@ -243,17 +244,21 @@ class EntityController extends ControllerBase {
         this.modelName = props.modelName || 'test';
         this.modelSchema = props.modelSchema || {};
         this.modelRefs = props.modelRefs || [];
-        this.dsName = props.dsName || 'default';
+        //
+        this._entityRepos = {};
         // Init controller properties
         _initCtlSpec.call(this, props.ctlSpec || {});
         // Implementing the class methods
-        this._getRepo = (options, callback) => {
-            assert(options !== undefined);
-            if (typeof options === 'function') {
-                callback = options;
-                options = {};
+        this._getRepo = (dataSourceOption, callback) => {
+            assert(dataSourceOption !== undefined);
+            if (typeof dataSourceOption === 'function') {
+                callback = dataSourceOption;
+                dataSourceOption = {};
             }
-            let dsName = options.dsName || this.dsName;
+            let dsName = dataSourceOption.dsName || _DS_DEFAULT_;
+            if (this._entityRepos[dsName] !== undefined) {
+                return callback(null, this._entityRepos[dsName]);
+            }
             let repo = repoFactory.getRepo(this.modelName, dsName);
             if (!repo) {
                 let msg = `Repository not exists! - ${this.modelName} - ${dsName}`;
@@ -263,7 +268,23 @@ class EntityController extends ControllerBase {
                     message: msg
                 });
             }
+            this._entityRepos[dsName] = repo;
             return callback(null, repo);
+        };
+        this.getRepoSync = (dataSourceOption) => {
+            if (dataSourceOption === undefined) {
+                dataSourceOption = {};
+            }
+            let dsName = dataSourceOption.dsName || DS_DEFAULT;
+            let repo = this._entityRepos[dsName];
+            if (repo !== undefined) {
+                return repo;
+            }
+            repo = repoFactory.getRepo(this.modelName, dsName);
+            if (repo) {
+                this._entityRepos[dsName] = repo;
+            }
+            return repo;
         };
         // Register event publishers
         this._domainEvents = props.domainEvents || {};
@@ -451,6 +472,7 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
+                    this._allowAdd(args, repo, )
                     let data = this._beforeAdd(args, repo);
                     repo.create(data, (err, doc) => {
                         if (err) {
@@ -583,7 +605,6 @@ class EntityController extends ControllerBase {
 class ServiceBase extends EventModule {
     constructor(props) {
         super(props);
-        this.dsName = props.dsName || 'default';
         // Declaring other variables and methods here ...
     }
 };

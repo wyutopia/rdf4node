@@ -453,6 +453,7 @@ class RepositoryFactory extends EventModule {
 }
 
 module.exports = exports = {
+    _DS_DEFAULT_: 'default',
     paginationVal: {
         pageSize: {
             type: 'Number'
