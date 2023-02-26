@@ -153,6 +153,7 @@ const _defaultCtlSpec = {
     afterFindMany: function (docs) { return docs; },     // For one or array results
     afterFindPartial: tools.noop,  // For pagination results
     //
+    allowAdd: function (req, args, callback) { return callback(); },
     beforeAdd: function (args, repo) { return args; },
     afterAdd: function (doc) { return doc; },
     //
@@ -472,18 +473,22 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._allowAdd(args, repo, )
-                    let data = this._beforeAdd(args, repo);
-                    repo.create(data, (err, doc) => {
+                    this._allowAdd(req, args, (err) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        _publishEvents.call(this, {
-                            method: 'addOne',
-                            data: doc
-                        }, () => {
-                            let result = this._afterAdd(doc);
-                            return res.sendSuccess(result);
+                        let data = this._beforeAdd(args, repo);
+                        repo.create(data, (err, doc) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            _publishEvents.call(this, {
+                                method: 'addOne',
+                                data: doc
+                            }, () => {
+                                let result = this._afterAdd(doc);
+                                return res.sendSuccess(result);
+                            });
                         });
                     });
                 });
