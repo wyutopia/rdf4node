@@ -278,8 +278,8 @@ const eDbType = {
 exports.eDbType = eDbType;
 
 const eCacheType = {
+    PROCMEM       : 'procmem',
     REDIS         : 'redis',
-    MEMCACHE      : 'memcache'
 };
 exports.eCacheType = eCacheType;
 

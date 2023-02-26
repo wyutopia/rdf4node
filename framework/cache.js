@@ -16,8 +16,8 @@ const tools = require('../utils/tools');
 
 
 const _defaultCacheProps = {
-    type: sysdefs.eCacheType.LOCALMEM,   // Set default cache to local memory
-    prefix: null,                        // No default key prefix
+    type: sysdefs.eCacheType.PROCMEM,   // Set default cache to local process memory
+    prefix: null,                       // No default key prefix
 };
 
 function _initCache (options) {
@@ -28,10 +28,6 @@ function _initCache (options) {
 }
 
 function _setValue (key, val, ttl = 0, callback) {
-    if (typeof ttl === 'function') {
-        callback = ttl;
-        ttl = 0;
-    }
     let realKey = this._prefix? `${this._prefix}:${key}` : key;
     this._dataRepo[realKey] = val;
     // TODO: Start timer if necessary
@@ -62,6 +58,10 @@ class Cache extends EventModule {
         this._dataRepo = {};
         // Implementing all the cache operation methods
         this.set = (key, val, ttl = 0, callback) => {
+            if (typeof ttl === 'function') {
+                callback = ttl;
+                ttl = 0;
+            }
             return _setValue.call(this, key, val, ttl, callback);
         };
         this.unset = (key, callback) => {
