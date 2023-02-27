@@ -134,15 +134,16 @@ class ControllerBase extends EventModule {
 }
 
 const _defaultCtlSpec = {
-    // For CRUD operations
+    // For CRUD operation validators
     searchVal: {},              // For query
     addVal: {},                 // For create
     mandatoryAddKeys: [],
     updateVal: {},              // For Update
+    // For database query options
     populate: null,             // For populate
-    sortOption: null,           // For sort
-    selectKeys: null,           // For result projection
-    inventoryKeys: 'name',      // For inventory query
+    sort: null,                 // For sort
+    select: null,               // For select 
+    inventorySelect: 'name',    // For inventory query
     // For overridable query operations
     beforeFind: tools.noop,
     beforeFindByProject: tools.noop,
@@ -183,14 +184,14 @@ function _prepareFindOption (args) {
     if (!args.inventory && this._populate) {
         options.populate = this._populate;
     }
-    if (this._selectKeys) {
-        options.select = this._selectKeys;
+    if (this._select) {
+        options.select = this._select;
     }
-    if (this._sortOption) {
-        options.sort = this._sortOption;
+    if (this._sort) {
+        options.sort = this._sort;
     }
     if (args.inventory) {
-        options.select = this._inventoryKeys;
+        options.select = this._inventorySelect;
     }
     return options;
 }
@@ -213,8 +214,8 @@ function _beforeUpdate(args) {
     if (this._populate) {
         options.populate = this._populate;
     }
-    if (this._selectKeys) {
-        options.select = this._selectKeys;
+    if (this._select) {
+        options.select = this._select;
     }
     return options;
 }
@@ -230,8 +231,8 @@ function _beforePatch(args) {
         filter: {_id: args.id},
         updates: updates
     }
-    if (this._selectKeys) {
-        options.select = this._selectKeys;
+    if (this._select) {
+        options.select = this._select;
     }
     return options;
 }
