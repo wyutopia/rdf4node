@@ -76,7 +76,7 @@ exports.uuidv4 = function () {
 };
 
 exports.safeGetJsonValue = function (json, path) {
-    if (typeof json !== 'object' || typeof path !== 'string') {
+    if (!json || typeof json !== 'object' || typeof path !== 'string') {
         return null;
     }
     if (path.length === 0) {

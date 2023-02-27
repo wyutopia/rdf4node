@@ -14,16 +14,6 @@ const {repoFactory, paginationVal, _DS_DEFAULT_} = require('./repository');
 
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
-function _$extUpdates (setData) {
-    return {
-        $set: setData
-        // TODO: add $push, $pull, $inc, ... update operations here ...
-    };
-}
-
-function _$allowDelete(id, callback) {
-    return callback('Not allowed!', false);
-}
 
 /**
  *
@@ -143,6 +133,7 @@ const _defaultCtlSpec = {
     populate: null,             // For populate
     sort: null,                 // For sort
     select: null,               // For select 
+    deleteOptions: null,        // For additional delete criterias
     inventorySelect: 'name',    // For inventory query
     // For overridable query operations
     beforeFind: tools.noop,
@@ -161,7 +152,12 @@ const _defaultCtlSpec = {
     beforeUpdateOne: tools.noop,
     afterUpdateOne: function (doc) { return doc; },
     //
-    allowDelete: function (id, repo, callback) { return callback('Not allowed!', false) },
+    allowDelete: function (id, dsName, callback) { 
+        return callback({
+            code: eRetCodes.METHOD_NOT_ALLOWED,
+            message: 'Not allowed!'
+        });
+    },
     beforeDeleteOne: tools.noop
 };
 function _initCtlSpec(ctlSpec) {
@@ -546,11 +542,16 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._allowDelete(args.id, repo, (reason, options) => {
-                        if (reason) {
-                            return res.sendRsp(eRetCodes.DB_DELETE_ERR, reason);
+                    this._allowDelete(args.id, req.dataSource.dsName || _DS_DEFAULT_, (err) => {
+                        if (err) {
+                            return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                         }
                         //
+                        let options = {
+                            filter: tools.deepAssign({
+                                _id: args.id
+                            }, this._deleteOptions || {})
+                        }
                         this._beforeDeleteOne(options);
                         repo.remove(options, (err, result) => {
                             if (err) {
