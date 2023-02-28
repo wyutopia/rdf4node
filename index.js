@@ -10,6 +10,7 @@ exports.common = require('./include/common');
 exports.events = require('./include/events');
 exports.components = require('./framework/components');
 exports.repository = require('./framework/repository');
+exports.cache = require('./framework/cache');
 exports.registry = require('./framework/registry');
 const config = require('./framework/config');
 exports.sysConfig = config;

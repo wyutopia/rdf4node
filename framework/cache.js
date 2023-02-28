@@ -13,8 +13,6 @@ const {winstonWrapper: {WinstonLogger}} = require('../libs');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 
-
-
 const _defaultCacheProps = {
     type: sysdefs.eCacheType.PROCMEM,   // Set default cache to local process memory
     prefix: null,                       // No default key prefix
