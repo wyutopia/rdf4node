@@ -261,6 +261,7 @@ class Repository extends EventObject {
             }
             let filter = options.filter || {};
             let updates = options.updates || {};
+            logger.debug(`UpdateMany ${this.name} with filter: ${tools.inspect(filter)} - updates: ${tools.inspect(updates)}`);
             this._model.updateMany(filter, updates, (err, result) => {
                 if (err) {
                     logger.error(`${this.name}: updateMany error! - ${err.message}`);
@@ -319,6 +320,7 @@ class Repository extends EventObject {
             }
             let filter = options.filter || {};
             let methodName = options.allowRealCount === true? 'countDocuments' : 'estimatedDocumentCount';
+            logger.debug(`Count ${this.name} by ${methodName} with filter: ${tools.inspect(filter)}`);
             this._model[methodName](filter, (err, count) => {
                 if (err) {
                     logger.error(`${this.name}: count by ${tools.inspect(filter)} error! - ${err.message}`);
@@ -343,6 +345,7 @@ class Repository extends EventObject {
             //
             let filter = options.filter || {bulkDeleteIsNotAllowed: true};
             let methodName = options.multi === true? 'deleteMany' : 'deleteOne';
+            logger.debug(`Remove ${this.name} by ${methodName} with filter: ${tools.inspect(filter)}`);
             this._model[methodName](filter, (err, result) => {
                 if (err) {
                     let msg = `Delete with options: ${tools.inspect(options)} error! - ${err.code}#${err.message}`;

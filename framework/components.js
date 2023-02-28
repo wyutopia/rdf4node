@@ -558,6 +558,9 @@ class EntityController extends ControllerBase {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
+                            if (result.deletedCount === 0) {
+                                return res.sendRsp(eRetCodes.ACCEPTED, 'No document deleted!');
+                            }
                             _publishEvents.call(this, {
                                 method: 'deleteOne',
                                 data: {
@@ -565,7 +568,7 @@ class EntityController extends ControllerBase {
                                     dsName: dsName
                                 }
                             }, () => {
-                                return res.sendSuccess();
+                                return res.sendSuccess(result);
                             });
                         });
                     });
