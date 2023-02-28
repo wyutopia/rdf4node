@@ -542,7 +542,8 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._allowDelete(args.id, req.dataSource.dsName || _DS_DEFAULT_, (err) => {
+                    let dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    this._allowDelete(args.id, dsName, (err) => {
                         if (err) {
                             return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                         }
@@ -559,7 +560,10 @@ class EntityController extends ControllerBase {
                             }
                             _publishEvents.call(this, {
                                 method: 'deleteOne',
-                                data: result
+                                data: {
+                                    id: args.id,
+                                    dsName: dsName
+                                }
                             }, () => {
                                 return res.sendSuccess();
                             });
