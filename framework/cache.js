@@ -1,7 +1,7 @@
 /**
  * Created by Eric on 2023/02/25
  */
-const path = reuqire('path');
+const path = require('path');
 const appRoot = require('app-root-path');
 const bootstrapConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 //
