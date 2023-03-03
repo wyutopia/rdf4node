@@ -22,8 +22,9 @@
          process.exit(1);
      }
      config = JSON.parse(fileData.toString());
-     // Collect database types
+     // Collect database and cache types
      let dbTypes = [];
+     // databases
      let dataSources = tools.safeGetJsonValue(config, 'dataSources');
      if (dataSources) {
         Object.keys(dataSources).forEach(key => {
@@ -32,6 +33,16 @@
                 dbTypes.push(ds.type);
             }
         });
+     }
+     // caches
+     let caches = tools.safeGetJsonValue(config, 'caches');
+     if (caches) {
+        Object.keys(caches).forEach (key => {
+            let cache = caches[key];
+            if (dbTypes.indexOf(cache.type) === -1) {
+                dbTypes.push(cache.type);
+            }
+        })
      }
      config.dbTypes = dbTypes;
      // 
