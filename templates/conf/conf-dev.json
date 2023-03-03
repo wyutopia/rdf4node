@@ -30,5 +30,16 @@
           "authSource": "test"
         }
       }
+    },
+    "caches": {
+      "default": {
+        "type": "procmem"
+      },
+      "demo": {
+        "type": "redis",
+        "config": {
+
+        }
+      }
     }
   }

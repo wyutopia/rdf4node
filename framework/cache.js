@@ -94,6 +94,7 @@ class CacheFactory extends EventModule {
 
 // Declaring cache singleton and set module exports
 module.exports = exports = {
+    __CACHE_DEFAULT_: 'default',
     cacheFactory: new CacheFactory({
         name: _MODULE_NAME
     })

@@ -270,7 +270,7 @@ exports.eRequestAuthType = eRequestAuthType;
 exports.isValidAuthType = function(t) { return Object.values(eRequestAuthType).indexOf(t) > -1; }
 
 const eDbType = {
-    INMEM         : 'inmem',
+    PROCMEM       : 'procmem',
     MONGO         : 'mongo',
     MYSQL         : 'mysql',
     SQLSERVER     : 'sqlsrv'

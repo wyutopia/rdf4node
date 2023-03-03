@@ -25,7 +25,7 @@ function _initMongoConnection(config) {
     this.isConnected = true;
 }
 
-function _initInMemoryStorage(config) {
+function _initProcMemoryStorage(config) {
     this._memStorage = {};
 }
 
@@ -38,7 +38,7 @@ class DataSource extends EventObject {
     constructor(props) {
         super(props);
         // Save class properites
-        this.dbType = props.dbType || sysdefs.eDbType.INMEM;
+        this.dbType = props.dbType || sysdefs.eDbType.PROCMEM;
         this.conf = props.conf || {};
         // Declaring member variables
         this.isConnected = false;
@@ -57,8 +57,8 @@ class DataSource extends EventObject {
         //
         (() => {
             switch(this.dbType) {
-                case sysdefs.eDbType.INMEM:
-                    _initInMemoryStorage.call(this, this.conf);
+                case sysdefs.eDbType.PROCMEM:
+                    _initProcMemoryStorage.call(this, this.conf);
                     break;
                 case sysdefs.eDbType.MONGO:
                     _initMongoConnection.call(this, this.conf);
@@ -108,7 +108,7 @@ class DataSourceFactory extends EventModule {
                 logger.error(`>>> Set default data-source to in-memory storage! <<<`);
                 this._ds['default'] = new DataSource({
                     name: 'default',
-                    dbType: sysdefs.eDbType.INMEM,
+                    dbType: sysdefs.eDbType.PROCMEM,
                     conf: {}
                 })
             }
