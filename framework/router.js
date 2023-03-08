@@ -33,6 +33,12 @@ router.get('/', (req, res, next) => {
     res.render('index', {title: 'the rappid-dev-framework!'});
 });
 
+if (process.env.NODE_ENV !== 'production') {
+    router.get('/api', (req, res) => {
+        return res.render('api', {routes: gRoutes});
+    });
+}
+
 let gRoutes = [];
 const READDIR_OPTIONS = {
     withFileTypes: true

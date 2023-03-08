@@ -95,4 +95,10 @@ cd ..
 cd ..
 echo "Folder routes modified."
 
+# Step 9: Copy views
+cd views
+cp -f "${TEMP_DIR}/views/api.ejs" .
+cd ..
+echo "Folder views modified."
+
 echo "<<< Congratulations!!! >>>"
