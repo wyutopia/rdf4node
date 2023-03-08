@@ -8,8 +8,7 @@ const theApp = require('../../bootstrap');
 const eRetCodes = require('../../include/retcodes');
 const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
-const { CommonObject } = require('../../include/common');
-const { EventModule } = require('../../include/events');
+const { EventObject, EventModule } = require('../../include/events');
 
 const tools = require('../../utils/tools');
 const mntService = require('../base/prom.wrapper');
@@ -66,24 +65,23 @@ function _assembleRealConfig(rawConf) {
     return config;
 }
 
-const configSample = {
+const gClientConfig = {
     host: '127.0.0.1',
     port: 6379,
-    database: 0,     // Optional, default 0
+    database: 0,            // Optional, default 0
     maxRetryTimes: 100,
     retryInterval: 1000,
     username: 'admin',      // Optional
     password: 'Dev#2022'    // Optional
 };
 // The class
-class RedisClient extends CommonObject {
+class RedisClient extends EventObject {
     constructor(props) {
         super(props);
         //
         this.id = props.id;
         this.name = props.name || props.id;
-        this.parent = props.parent;
-        this.config = _assembleRealConfig(props.config); // Refer to configSample
+        this.config = _assembleRealConfig(props.config); // Refer to gClientConfig
         //this.maxRetryTimes = props.maxRetryTimes || 100;
         //this.retryInterval = props.retryInterval || 1000;
         //
@@ -225,13 +223,21 @@ class RedisClient extends CommonObject {
             client.on('end', () => {
                 logger.info(`${this.name}[${this.state}]: Connection closed!`);
                 this.state = eClientState.Pending;
-                this.parent.emit('end', this.id);
+                this.emit('end', this.id);
                 this.state = eClientState.Null;
             });
         })();
     }
 }
 
+const gClientSpecOptions = {
+    name: {
+        type: 'String'
+    },
+    config: {}
+};
+
+// The wrapper class
 class RedisWrapper extends EventModule {
     constructor(props) {
         super(props)
@@ -239,24 +245,30 @@ class RedisWrapper extends EventModule {
         this._clients = {};
         /**
          * 
-         * @param {mode, db, connection} options 
+         * @param {mode, db, gClientSpecOptions} options 
          * @returns 
          */
         this.createClient = (options) => {
-            logger.info(`${this.name}: Create client with options - ${tools.inspect(options)}`)
-            let db = options.database || 0;
-            let name = options.name === undefined ? 'global' : options.name;
+            logger.info(`${this.name}: Create client with options - ${tools.inspect(options)}`);
+            let name = options.name || 'global';
+            let config = options.config || {};
+            let db = config.database || 0;
+            // 
             let clientId = `${name}${db}`; //name+db;
-            if (this._clients[clientId] !== undefined) {
-                return this._clients[clientId];
+            if (this._clients[clientId] === undefined) {
+                let client = new RedisClient({
+                    id: clientId,
+                    name: name,
+                    config: options
+                });
+                client.on('end', (clientId) => {
+                    logger.info(`${this.name}: On client end. - ${clientId}`);
+                    if (this.isActive()) {
+                        delete this._clients[clientId];
+                    }
+                });
             }
-            let client = new RedisClient({
-                id: clientId,
-                parent: this,
-                config: options
-            });
-            this._clients[clientId] = client;
-            return client;
+            return this._clients[clientId];
         }
         this.dispose = (callback) => {
             this.state = sysdefs.eModuleState.STOP_PENDING;
@@ -273,12 +285,6 @@ class RedisWrapper extends EventModule {
                 return callback();
             });
         }
-        this.on('end', (clientId) => {
-            logger.info(`${this.name}: On client end. - ${clientId}`);
-            if (this.isActive()) {
-                delete this._clients[clientId];
-            }
-        });
         //
         (() => {
             this.state = sysdefs.eModuleState.ACTIVE;

@@ -146,7 +146,7 @@ const _defaultCtlSpec = {
     afterFindPartial: tools.noop,  // For pagination results
     //
     allowAdd: function (req, args, callback) { return callback(); },
-    beforeAdd: function (args, repo) { return args; },
+    beforeAdd: function (args, repo, callback) { return callback(null, args); },
     afterAdd: function (doc) { return doc; },
     //
     beforeUpdateOne: tools.noop,
@@ -474,17 +474,21 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        let data = this._beforeAdd(args, repo);
-                        repo.create(data, (err, doc) => {
+                        this._beforeAdd(args, repo, (err, data) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            _publishEvents.call(this, {
-                                method: 'addOne',
-                                data: doc
-                            }, () => {
-                                let result = this._afterAdd(doc);
-                                return res.sendSuccess(result);
+                            repo.create(data, (err, doc) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                _publishEvents.call(this, {
+                                    method: 'addOne',
+                                    data: doc
+                                }, () => {
+                                    let result = this._afterAdd(doc);
+                                    return res.sendSuccess(result);
+                                });
                             });
                         });
                     });
