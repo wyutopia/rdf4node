@@ -41,7 +41,7 @@ Schema.prototype.extractValidators = function (keys, options = {isSearch: false}
                     validator.maxLen = v.maxlength;
                     break;
                 case 'regexp':
-                    validator.match = v.regexp
+                    validator.regexp = v.regexp
                     break;
             }
         });

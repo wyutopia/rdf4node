@@ -301,7 +301,10 @@ function _validateString (field, validator, argv) {
     if (!argv && validator.allowNull) {
         return errMsg;
     }
-    if (validator.minLen !== undefined) {
+    if (validator.regexp && !validator.regexp.test(argv)) {
+        errMsg = `Invalid ${field} value!`;
+    }
+    if (!errMsg && validator.minLen !== undefined) {
         if (argv.length < validator.minLen) {
             errMsg = `Length of ${field} should great than ${validator.minLen} !`;
         }
