@@ -30,7 +30,7 @@ router.all('*', (req, res, next) => {
 /* GET home page. */
 router.get('/', (req, res, next) => {
     //TODO: Replace title with your own project name
-    res.render('index', {title: 'the rappid-dev-framework!'});
+    res.render('index', {title: config.app.alias || 'the rappid-dev-framework!'});
 });
 
 if (process.env.NODE_ENV !== 'production') {

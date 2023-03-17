@@ -3,10 +3,14 @@
 /**
  * Module dependencies.
  */
-const { sysConfig: config } = require('@icedeer/rdf4node');
+const { 
+    sysConfig: config,
+    winstonWrapper: {WinstonLogger}
+} = require('@icedeer/rdf4node');
 let app = require('../app');
-let debug = require('debug')('rdf4node:server');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'www');
 let http = require('http');
+
 
 /**
  * Get port from environment and store in Express.
@@ -86,5 +90,5 @@ function onListening() {
     let bind = typeof addr === 'string'
         ? 'pipe ' + addr
         : 'port ' + addr.port;
-    debug('Listening on ' + bind);
+    logger.info('Listening on ' + bind);
 }
