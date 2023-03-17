@@ -495,6 +495,36 @@ class EntityController extends ControllerBase {
                 });
             });
         };
+        this.insertOne = (req, res) => {
+            let validator = tools.deepAssign({}, this._addVal);
+            this._mandatoryAddKeys.forEach( key => {
+                if (validator[key]) {
+                    validator[key].required = true;
+                }
+            });
+            tools.parseParameter2(req.body, validator, (err, args) => {
+                if (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
+                this._getRepo(req.dataSource, (err, repo) => {
+                    if (err) {
+                        return res.sendRsp(err.code, err.message);
+                    }
+                    repo.insert(data, (err, doc) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        _publishEvents.call(this, {
+                            method: 'addOne',
+                            data: doc
+                        }, () => {
+                            let result = this._afterAdd(doc);
+                            return res.sendSuccess(result);
+                        });
+                    });
+                });
+            });
+        };
         this.updateOne = (req, res) => {
             let validator = Object.assign({
                 id: {
