@@ -10,7 +10,7 @@ let createError = require('http-errors');
 let path = require('path');
 let cookieParser = require('cookie-parser');
 const {
-    sysConf: {security: config},
+    sysConfig: {security: config},
     MorganWrapper, httpMonitor, rateLimiter,
     winstonWrapper: { WinstonLogger },
     expressWrapper: express 
