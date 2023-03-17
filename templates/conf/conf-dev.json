@@ -15,7 +15,8 @@
       "port": 3000
     },
     "security": {
-      "allowOrigin": "*"
+      "allowOrigin": "*",
+      "allowRateLimit": false
     },
     "httpMonitor": true,
     "dataSources": {

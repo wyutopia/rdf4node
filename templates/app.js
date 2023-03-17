@@ -10,9 +10,11 @@ let createError = require('http-errors');
 let path = require('path');
 let cookieParser = require('cookie-parser');
 const {
+    sysConf: {security: config},
     MorganWrapper, httpMonitor, rateLimiter,
     winstonWrapper: { WinstonLogger },
-    expressWrapper: express } = require('@icedeer/rdf4node');
+    expressWrapper: express 
+} = require('@icedeer/rdf4node');
 const httpLogger = MorganWrapper(process.env.SRV_ROLE);
 const logger = WinstonLogger(process.env.SRV_ROLE);
 
@@ -30,7 +32,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-if (process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'production' && config.allowRateLimit) {
     logger.info('Rate limitation enabled.');
     app.use(rateLimiter);
 }
