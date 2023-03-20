@@ -57,6 +57,9 @@ class InterCommPlatform extends CommonModule {
         this._registries = {};
         this._subscribers = {};
         // Implementing methods
+        this._logEvent = (event, options, callback) => {
+            return callback();
+        };
         this.register = (moduleName, instRef, callback) => {
             let err = null;
             if (this._registries[moduleName] === undefined) {
@@ -103,28 +106,30 @@ class InterCommPlatform extends CommonModule {
                 callback = options;
                 options = {};
             }
-            let err = null;
-            //
-            let subscribers = this._subscribers[event.code];
-            if (tools.isTypeOfArray(subscribers)) {
-                subscribers.forEach(moduleName => {
-                    let registry = this._registries[moduleName];
-                    if (!registry || registry.status !== sysdefs.eStatus.ACTIVE) {
-                        logger.info(`Ignore non-active module! - ${moduleName}`);
-                        return;
-                    }
-                    try {
-                        registry.instRef.emit('message', event);
-                    } catch (ex) {
-                        logger.error(`Emit app-event error for module: ${moduleName} - ${tools.inspect(ex)}`);
-                    }
-                });
-            } // Discard event if no subscribers
-            //
-            if (typeof callback === 'function') {
-                return callback(err);
-            }
-            return err;
+            return this._logEvent(event, options, () => {
+                let err = null;
+                //
+                let subscribers = this._subscribers[event.code];
+                if (tools.isTypeOfArray(subscribers)) {
+                    subscribers.forEach(moduleName => {
+                        let registry = this._registries[moduleName];
+                        if (!registry || registry.status !== sysdefs.eStatus.ACTIVE) {
+                            logger.info(`Ignore non-active module! - ${moduleName}`);
+                            return;
+                        }
+                        try {
+                            registry.instRef.emit('message', event);
+                        } catch (ex) {
+                            logger.error(`Emit app-event error for module: ${moduleName} - ${tools.inspect(ex)}`);
+                        }
+                    });
+                } // Discard event if no subscribers
+                //
+                if (typeof callback === 'function') {
+                    return callback(err);
+                }
+                return err;
+            });
         }
     }
 }
@@ -150,6 +155,7 @@ class EventModule extends EventObject {
         super(props);
         moduleInit.call(this, props);
         this._eventHandlers = props.eventHandlers || {};
+        this._logEvent = (msg, fn, callback) => { return callback(); };
         //
         this.pubEvent = (event, options, callback) => {
             if (typeof options === 'function') {
@@ -165,14 +171,15 @@ class EventModule extends EventObject {
                 ackOrNack = tools.noop;
             }
             let handler = this._eventHandlers[msg.code];
-            if (handler === undefined) {
-                return ackOrNack(false);
-            }
-            return handler.call(this, msg, ackOrNack);
+            this._logEvent(msg, handler, () => {
+                if (handler === undefined) {
+                    return ackOrNack(false);
+                }
+                return handler.call(this, msg, ackOrNack);
+            });
         };
         this.on('message', (msg, ackOrNack) => {
-            //setImmediate(this._msgProc.bind(this, msg, ackOrNack));
-            setTimeout(this._msgProc.bind(this, msg, ackOrNack), 5);
+            setTimeout(this._msgProc.bind(this, msg, ackOrNack), 5); // Reduce the interval to increase performnace
         });
         // Perform initiliazing codes...
         (() => {
