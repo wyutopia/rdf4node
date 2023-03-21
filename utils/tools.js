@@ -322,6 +322,7 @@ function _validateTypedArray(field, validator, args) {
     let errMsg = null;
     if (!Array.isArray(args)) {
         errMsg = `${field} should be array!`;
+        return errMsg;
     }
     let t = typeExtractRe.exec(validator.type)[0];
     for (let i = 0; i < args.length; i++) {
@@ -408,8 +409,8 @@ function _validateDate (field, validator, argv) {
     return errMsg;
 }
 
-const typedArrayRe = new RegExp("^Array\<(String|Number|ObjectID)\>$");
-const typedListRe = new RegExp("^List\<(String|Number|ObjectID)\>$");
+const typedArrayRe = new RegExp("^Array<(String|Number|ObjectID)>$");
+const typedListRe = new RegExp("^List<(String|Number|ObjectID)>$");
 function _validateParameter(field, validator, argv) {
     //logger.debug(`Perform validation: ${field} - ${_inspect(validator)} - ${_inspect(argv)}`);
     let errMsg = null;
