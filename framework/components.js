@@ -70,6 +70,7 @@ function _$extDeleteFilter (filter) {
     // Do nothering...
 }
 
+const _reNotAllowed = new RegExp(/^-/);
 function _publishEvents(options, callback) {
     if (typeof options === 'function') {
         callback = options;
@@ -91,6 +92,13 @@ function _publishEvents(options, callback) {
         },
         body: options.data
     }, domainEvent.success);
+    if (typeof domainEvent.select === 'string') {
+        domainEvent.select.split(' ').forEach(key => {
+            if (_reNotAllowed.test(key)) {
+                delete evt.body[key.slice(1)]
+            }
+        });
+    }
     this.pubEvent(evt, err => {
         if (err) {
             logger.error(`Publish event: ${tools.inspect(evt)} error! - ${err.code}#${err.message}`);
@@ -484,7 +492,7 @@ class EntityController extends ControllerBase {
                                 }
                                 _publishEvents.call(this, {
                                     method: 'addOne',
-                                    data: doc
+                                    data: doc.toObject()
                                 }, () => {
                                     let result = this._afterAdd(doc);
                                     return res.sendSuccess(result);
