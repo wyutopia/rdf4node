@@ -3,7 +3,7 @@
  */
 let assert = require('assert');
 let mongoose = require('mongoose');
-mongoose.Promise = require('bluebird');
+//mongoose.Promise = require('bluebird');
 mongoose.set('strictQuery', true);
 
 let Schema = mongoose.Schema;

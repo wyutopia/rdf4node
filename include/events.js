@@ -61,8 +61,8 @@ class EventLogger extends CommonObject {
                 logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)}`);
             }
             return this._execPersistent({
-                operation: 'pub',
                 publisher: src,
+                code: evt.code,
                 body: evt.body,
                 options: options
             }, callback);
@@ -72,8 +72,8 @@ class EventLogger extends CommonObject {
             let src = tools.safeGetJsonValue(evt, 'headers.source');
             logger.info(`Consume event: ${evt.code} - ${src} - ${consumer}`);
             return this._execPersistent({
-                operation: 'con',
                 consumer: consumer,
+                code: evt.code,
                 body: evt.body
             }, callback);
         };

@@ -126,15 +126,16 @@ class Repository extends EventObject {
                 });
             }
             logger.debug(`Create ${this.modelName} with data: ${tools.inspect(data)}`);
-            this._model.create(data).then(doc => {
+            this._model.create(data, (err, doc) => {
+                if (err) {
+                    let msg = `Create ${this.modelName} error! - ${err.message}`;
+                    logger.error(msg);
+                    return callback({
+                        code: eRetCodes.DB_INSERT_ERR,
+                        message: msg
+                    });
+                }
                 return callback(null, doc);
-            }).catch(err => {
-                let msg = `Create ${this.modelName} error! - ${err.message}`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.DB_INSERT_ERR,
-                    message: msg
-                });
             });
         };
         // Find one document
