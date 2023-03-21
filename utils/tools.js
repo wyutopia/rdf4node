@@ -408,8 +408,8 @@ function _validateDate (field, validator, argv) {
     return errMsg;
 }
 
-const typedArrayRe = new RegExp("^Array\<(String|Number|ObjectId)\>$");
-const typedListRe = new RegExp("^List\<(String|Number|ObjectId)\>$");
+const typedArrayRe = new RegExp("^Array\<(String|Number|ObjectID)\>$");
+const typedListRe = new RegExp("^List\<(String|Number|ObjectID)\>$");
 function _validateParameter(field, validator, argv) {
     //logger.debug(`Perform validation: ${field} - ${_inspect(validator)} - ${_inspect(argv)}`);
     let errMsg = null;
