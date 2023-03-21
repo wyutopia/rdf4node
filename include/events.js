@@ -11,7 +11,7 @@ const EventEmitter = require('events');
 // Framework libs
 const sysdefs = require('./sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.ICP
-const {objectInit, moduleInit, CommonModule} = require('./common');
+const {objectInit, moduleInit, CommonModule, CommonObject} = require('./common');
 const eRetCodes = require('./retcodes');
 const {
     sysConf: {icp: icpConf}, 
@@ -46,6 +46,42 @@ const sysEvents = {
     // Append new events here ...
 };
 
+class EventLogger extends CommonObject {
+    constructor(props) {
+        super(props);
+        //
+        this._execPersistent = (persistentOptions, callback) => {
+            return callback();
+        };
+        this.pub = (msg, options, callback) => {
+            if (process.env.NODE_ENV === 'production') {
+                logger.debug(`Publish event: ${msg.code} - ${msg.headers.src} - ${tools.inspect(msg.body)}`);
+            } else {
+                logger.info(`Publish event: ${msg.code} - ${msg.headers.src}`);
+            }
+            return this._execPersistent({
+                operation: 'pub',
+                publisher: msg.headers.src,
+                body: msg.body,
+                options: options
+            }, callback);
+        };
+        this.publish = this.pub;
+        this.con = (evt, consumer, callback) => {
+            logger.info(`Publish event: ${evt.code} - ${msg.headers.src} - ${consumer}`);
+            return this._execPersistent({
+                operation: 'con',
+                consumer: consumer,
+                body: msg.body
+            }, callback);
+        };
+        this.consume = this.con;
+    }
+}
+const eventLogger = new EventLogger({
+    name: '_EventLogger_'
+});
+
 // The Class
 class InterCommPlatform extends CommonModule {
     constructor(props) {
@@ -57,9 +93,6 @@ class InterCommPlatform extends CommonModule {
         this._registries = {};
         this._subscribers = {};
         // Implementing methods
-        this._logEvent = (event, options, callback) => {
-            return callback();
-        };
         this.register = (moduleName, instRef, callback) => {
             let err = null;
             if (this._registries[moduleName] === undefined) {
@@ -106,7 +139,8 @@ class InterCommPlatform extends CommonModule {
                 callback = options;
                 options = {};
             }
-            return this._logEvent(event, options, () => {
+            // 
+            return eventLogger.pub(event, options, () => {
                 let err = null;
                 //
                 let subscribers = this._subscribers[event.code];
@@ -155,7 +189,6 @@ class EventModule extends EventObject {
         super(props);
         moduleInit.call(this, props);
         this._eventHandlers = props.eventHandlers || {};
-        this._logEvent = (msg, fn, callback) => { return callback(); };
         //
         this.pubEvent = (event, options, callback) => {
             if (typeof options === 'function') {
@@ -171,10 +204,10 @@ class EventModule extends EventObject {
                 ackOrNack = tools.noop;
             }
             let handler = this._eventHandlers[msg.code];
-            this._logEvent(msg, handler, () => {
-                if (handler === undefined) {
-                    return ackOrNack(false);
-                }
+            if (handler === undefined) {
+                return ackOrNack(false);
+            }
+            eventLogger.con(msg, handler.name, () => {
                 return handler.call(this, msg, ackOrNack);
             });
         };
@@ -194,6 +227,7 @@ class EventModule extends EventObject {
 // Declaring module exports
 module.exports = exports = {
     icp: icp,
+    eventLogger: eventLogger,
     EventObject: EventObject,
     EventModule: EventModule,
     sysEvents: sysEvents

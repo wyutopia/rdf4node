@@ -7,8 +7,9 @@ const {
     sysConfig: config,
     winstonWrapper: {WinstonLogger}
 } = require('@icedeer/rdf4node');
-let app = require('../app');
+require('../common/extensions');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'www');
+let app = require('../app');
 let http = require('http');
 
 

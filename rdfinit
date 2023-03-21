@@ -42,6 +42,7 @@ mkdir -p common
 cd common
 cp "${TEMP_DIR}/common/pubdefs.js" .
 cp "${TEMP_DIR}/common/app-events.js" .
+cp "${TEMP_DIR}/common/extensions.js" .
 cd ..
 echo "Folder common created."
 
