@@ -53,23 +53,24 @@ class EventLogger extends CommonObject {
         this._execPersistent = (persistentOptions, callback) => {
             return callback();
         };
-        this.pub = (msg, options, callback) => {
+        this.pub = (evt, options, callback) => {
+            let src = tools.safeGetJsonValue(evt, 'headers.source');
             if (process.env.NODE_ENV === 'production') {
-                logger.debug(`Publish event: ${msg.code} - ${msg.headers.src} - ${tools.inspect(msg.body)}`);
+                logger.info(`Publish event: ${evt.code} - ${src}`);
             } else {
-                logger.info(`Publish event: ${msg.code} - ${msg.headers.src}`);
+                logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)}`);
             }
             return this._execPersistent({
                 operation: 'pub',
-                publisher: msg.headers.src,
-                body: msg.body,
+                publisher: src,
+                body: evt.body,
                 options: options
             }, callback);
         };
         this.publish = this.pub;
         this.con = (evt, consumer, callback) => {
-            let src = tools.safeGetJsonValue(evt, 'headers.src');
-            logger.info(`Publish event: ${evt.code} - ${src} - ${consumer}`);
+            let src = tools.safeGetJsonValue(evt, 'headers.source');
+            logger.info(`Consume event: ${evt.code} - ${src} - ${consumer}`);
             return this._execPersistent({
                 operation: 'con',
                 consumer: consumer,
@@ -208,7 +209,7 @@ class EventModule extends EventObject {
             if (handler === undefined) {
                 return ackOrNack(false);
             }
-            eventLogger.con(msg, handler.name, () => {
+            eventLogger.con(msg, `${handler.name}@${this.name}`, () => {
                 return handler.call(this, msg, ackOrNack);
             });
         };
