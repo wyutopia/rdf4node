@@ -53,7 +53,7 @@ class EventLogger extends CommonObject {
         this._execPersistent = (persistentOptions, callback) => {
             return callback();
         };
-        this.pub = (evt, options, callback) => {
+        this._pub = (evt, options, callback) => {
             let src = tools.safeGetJsonValue(evt, 'headers.source');
             if (process.env.NODE_ENV === 'production') {
                 logger.info(`Publish event: ${evt.code} - ${src}`);
@@ -67,8 +67,8 @@ class EventLogger extends CommonObject {
                 options: options
             }, callback);
         };
-        this.publish = this.pub;
-        this.con = (evt, consumer, callback) => {
+        this.publish = this._pub;
+        this._con = (evt, consumer, callback) => {
             let src = tools.safeGetJsonValue(evt, 'headers.source');
             logger.info(`Consume event: ${evt.code} - ${src} - ${consumer}`);
             return this._execPersistent({
@@ -77,7 +77,7 @@ class EventLogger extends CommonObject {
                 body: evt.body
             }, callback);
         };
-        this.consume = this.con;
+        this.consume = this._con;
     }
 }
 const eventLogger = new EventLogger({
@@ -142,7 +142,7 @@ class InterCommPlatform extends CommonModule {
                 options = {};
             }
             // 
-            return eventLogger.pub(event, options, () => {
+            return eventLogger.publish(event, options, () => {
                 let err = null;
                 //
                 let subscribers = this._subscribers[event.code];
@@ -209,7 +209,7 @@ class EventModule extends EventObject {
             if (handler === undefined) {
                 return ackOrNack(false);
             }
-            eventLogger.con(msg, `${handler.name}@${this.name}`, () => {
+            eventLogger.consume(msg, `${handler.name}@${this.name}`, () => {
                 return handler.call(this, msg, ackOrNack);
             });
         };
