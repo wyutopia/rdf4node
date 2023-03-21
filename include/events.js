@@ -68,7 +68,8 @@ class EventLogger extends CommonObject {
         };
         this.publish = this.pub;
         this.con = (evt, consumer, callback) => {
-            logger.info(`Publish event: ${evt.code} - ${msg.headers.src} - ${consumer}`);
+            let src = tools.safeGetJsonValue(evt, 'headers.src');
+            logger.info(`Publish event: ${evt.code} - ${src} - ${consumer}`);
             return this._execPersistent({
                 operation: 'con',
                 consumer: consumer,
