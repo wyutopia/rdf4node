@@ -73,7 +73,7 @@ class EventLogger extends CommonObject {
             return this._execPersistent({
                 operation: 'con',
                 consumer: consumer,
-                body: msg.body
+                body: evt.body
             }, callback);
         };
         this.consume = this.con;
