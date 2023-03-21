@@ -317,7 +317,7 @@ function _validateString (field, validator, argv) {
     return errMsg;
 }
 
-const typeExtractRe = new RegExp("String|Number|ObjectId");
+const typeExtractRe = new RegExp("String|Number|ObjectID");
 function _validateTypedArray(field, validator, args) {
     let errMsg = null;
     if (!Array.isArray(args)) {
@@ -332,7 +332,7 @@ function _validateTypedArray(field, validator, args) {
                     errMsg = `type of #${i} in ${field} should be ${t}`;
                 }
                 break;
-            case 'ObjectId':
+            case 'ObjectID':
                 if(!ObjectId.isValid(argv)) {
                     errMsg = `type of #${i} in ${field} should be ${t}`;
                 }
@@ -359,7 +359,7 @@ function _validateTypedList (field, validator, args) {
     for (let i=0; i<strArr.length; i++) {
         let item = strArr[i];
         switch(t) {
-            case 'ObjectId':
+            case 'ObjectID':
                 if(!ObjectId.isValid(item)) {
                     errMsg = `type of #${i} in ${field} should be ${t}`;
                 }              
@@ -432,7 +432,7 @@ function _validateParameter(field, validator, argv) {
         return errMsg;
     }
     switch(validator.type) {
-        case 'ObjectId':
+        case 'ObjectID':
             if (!ObjectId.isValid(argv) && validator.allowNull !== true) {
                 errMsg = `Invalid ObjectId value: ${field}!`;
             }
