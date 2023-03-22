@@ -132,7 +132,7 @@ class Repository extends EventObject {
                     logger.error(msg);
                     return callback({
                         code: eRetCodes.DB_INSERT_ERR,
-                        message: msg
+                        message: err.code === 11000? `Create failed, ${this.modelName} Already exists!` : msg
                     });
                 }
                 return callback(null, doc);

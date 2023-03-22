@@ -92,9 +92,9 @@ function _publishEvents(options, callback) {
         },
         body: options.data
     }, domainEvent.success);
-    if (typeof domainEvent.select === 'string') {
+    if (typeof domainEvent.select === 'string') { // Remove not-allowed properties
         domainEvent.select.split(' ').forEach(key => {
-            if (_reNotAllowed.test(key)) {
+            if (_reNotAllowed.test(key)) {  
                 delete evt.body[key.slice(1)]
             }
         });
