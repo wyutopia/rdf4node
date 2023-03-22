@@ -590,27 +590,39 @@ class EntityController extends ControllerBase {
                             return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                         }
                         //
-                        let options = {
-                            filter: tools.deepAssign({
+                        repo.updateOne({
+                            filter: {
                                 _id: args.id
-                            }, this._deleteOptions || {})
-                        }
-                        this._beforeDeleteOne(options);
-                        repo.remove(options, (err, result) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            if (result.deletedCount === 0) {
-                                return res.sendRsp(eRetCodes.ACCEPTED, 'No document deleted!');
-                            }
-                            _publishEvents.call(this, {
-                                method: 'deleteOne',
-                                data: {
-                                    id: args.id,
-                                    dsName: dsName
+                            },
+                            updates: {
+                                $set: {
+                                    status: sysdefs.eStatus.DEL_PENDING,
+                                    updateAt: new Date()
                                 }
-                            }, () => {
-                                return res.sendSuccess(result);
+                            }
+                        }, (err, doc) => {
+                            if (err) {
+                                return res.sendRsp(err.code, 'Set del-pending error!');
+                            }
+                            let options = {
+                                filter: tools.deepAssign({
+                                    _id: args.id
+                                }, this._deleteOptions || {})
+                            }
+                            this._beforeDeleteOne(options);
+                            repo.remove(options, (err, result) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                if (result.deletedCount === 0) {
+                                    return res.sendRsp(eRetCodes.ACCEPTED, 'No document deleted!');
+                                }
+                                _publishEvents.call(this, {
+                                    method: 'deleteOne',
+                                    data: doc
+                                }, () => {
+                                    return res.sendSuccess(result);
+                                });
                             });
                         });
                     });
