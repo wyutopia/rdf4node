@@ -138,6 +138,40 @@ class Repository extends EventObject {
                 return callback(null, doc);
             });
         };
+        this.insert = (options, callback) => {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            }
+            if (!options.filter || !options.updates) {
+                return callback({
+                    code: eRetCodes.DB_ERROR,
+                    message: 'Bad request! filter and updates are mandatory.'
+                });
+            }
+            if (!this._model) {
+                return callback({
+                    code: eRetCodes.DB_ERROR,
+                    message: 'Model should be initialized before using!'
+                });
+            }
+            logger.debug(`findOneAndUpdate with upsert=true: ${tools.inspect(options)}`);
+            let filter = options.filter || {};
+            return this._model.fidnOneAndUpdate(filter, updates, {
+                upsert: true,
+                setDefaultsOnInsert: true
+            }, (err, doc) => {
+                if (err) {
+                    let msg = `Insert error! - ${err.message}`;
+                    logger.error(msg);
+                    return callback({
+                        code: eRetCodes.DB_ERROR,
+                        message: msg
+                    })
+                }
+                return callback(null, doc);
+            });
+        };
         // Find one document
         this.findOne = (options, callback) => {
             if (typeof options === 'function') {
