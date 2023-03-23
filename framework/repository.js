@@ -156,8 +156,7 @@ class Repository extends EventObject {
                 });
             }
             logger.debug(`findOneAndUpdate with upsert=true: ${tools.inspect(options)}`);
-            let filter = options.filter || {};
-            return this._model.fidnOneAndUpdate(filter, updates, {
+            return this._model.fidnOneAndUpdate(options.filter, options.updates, {
                 upsert: true,
                 setDefaultsOnInsert: true
             }, (err, doc) => {
