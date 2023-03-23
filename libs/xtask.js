@@ -4,17 +4,15 @@
  */
 const assert = require('assert');
 const async = require('async');
-const EventEmitter = require('events');
 const schedule = require('node-schedule');
-
+// 
 const sysdefs = require('../include/sysdefs');
-const {CommonModule} = require('../include/common');
-
 const theApp = require('../bootstrap');
 const tools = require('../utils/tools');
 const { WinstonLogger } = require('./base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'xtask');
 const mntService = require('./base/prom.wrapper');
+const { EventObject, EventModule} = require('../include/events');
 
 // the cron format:
 // second minute hour dayOfMonth month dayOfWeek
@@ -34,7 +32,7 @@ const metricCollector = mntService.regMetrics({
 });
 
 //
-class XTaskManager extends CommonModule {
+class XTaskManager extends EventModule {
     constructor(props) {
         super(props)
         //
@@ -72,7 +70,7 @@ const taskMng = new XTaskManager({
 });
 
 // The interval task wrapper
-class XTask extends EventEmitter {
+class XTask extends EventObject {
     constructor(props) {
         assert(props !== undefined);
         super(props);
