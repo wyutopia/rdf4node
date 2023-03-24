@@ -11,14 +11,14 @@ const bootstrapConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 // Framework libs
 const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY;
 const eRetCodes = require('../include/retcodes');
-const {EventModule, EventObject, sysEvents} = require('../include/events');
-const {winstonWrapper: {WinstonLogger}} = require('../libs');
+const { EventModule, EventObject, sysEvents } = require('../include/events');
+const { winstonWrapper: { WinstonLogger } } = require('../libs');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 //
 const dsFactory = require('./data-source');
 
-function _uniQuery (query, options, callback) {
+function _uniQuery(query, options, callback) {
     ['select', 'sort', 'skip', 'limit', 'populate'].forEach(method => {
         if (options[method]) {
             query[method](options[method]);
@@ -57,7 +57,7 @@ function _updateOne(params, callback) {
     //
     let filter = params.filter || {};
     let updates = params.updates || {};
-    let options = params.options || {new: true};
+    let options = params.options || { new: true };
     if (Object.keys(updates).length === 0) {
         let msg = `Empty updates! - ${tools.inspect(updates)}`;
         logger.debug(msg);
@@ -107,7 +107,7 @@ class Repository extends EventObject {
         this.modelSchema = props.modelSchema || {};
         this.modelRefs = props.modelRefs || [];
         this.dsName = props.dsName || 'default';
-        this.allowCache = props.allowCache === true? true : false;
+        this.allowCache = props.allowCache === true ? true : false;
         this._model = null;
         this._cache = {};
         this.getModel = () => {
@@ -132,7 +132,7 @@ class Repository extends EventObject {
                     logger.error(msg);
                     return callback({
                         code: eRetCodes.DB_INSERT_ERR,
-                        message: err.code === 11000? `Create failed, ${this.modelName} Already exists!` : msg
+                        message: err.code === 11000 ? `Create failed, ${this.modelName} Already exists!` : msg
                     });
                 }
                 return callback(null, doc);
@@ -354,7 +354,7 @@ class Repository extends EventObject {
                 });
             }
             let filter = options.filter || {};
-            let methodName = options.allowRealCount === true? 'countDocuments' : 'estimatedDocumentCount';
+            let methodName = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
             logger.debug(`Count ${this.name} by ${methodName} with filter: ${tools.inspect(filter)}`);
             this._model[methodName](filter, (err, count) => {
                 if (err) {
@@ -378,8 +378,8 @@ class Repository extends EventObject {
                 });
             }
             //
-            let filter = options.filter || {bulkDeleteIsNotAllowed: true};
-            let methodName = options.multi === true? 'deleteMany' : 'deleteOne';
+            let filter = options.filter || { bulkDeleteIsNotAllowed: true };
+            let methodName = options.multi === true ? 'deleteMany' : 'deleteOne';
             logger.debug(`Remove ${this.name} by ${methodName} with filter: ${tools.inspect(filter)}`);
             this._model[methodName](filter, (err, result) => {
                 if (err) {
@@ -425,23 +425,21 @@ class RepositoryFactory extends EventModule {
                 logger.error(`modelSpec: ${modelName} not registered.`);
                 return null;
             }
-            if (this._repos[repoKey] === undefined) {
-                // Create all relative repoes
-                [modelName].concat(modelSpec.refs).forEach(name => {
-                    let spec = this._modelSpecs[name];
-                    let key = `${name}@${dsName}`;
-                    if (spec !== undefined && this._repos[key] === undefined) {
-                        this._repos[key] = new Repository({
-                            name: key,
-                            //
-                            modelName: name,
-                            modelSchema: spec.schema,
-                            dsName: dsName
-                        });
-                        logger.info(`>>> New repository: ${key} created. <<<`);
-                    }
-                });
-            }
+            // Create all relative repoes
+            [modelName].concat(modelSpec.refs).forEach(name => {
+                let spec = this._modelSpecs[name];
+                let key = `${name}@${dsName}`;
+                if (spec !== undefined && this._repos[key] === undefined) {
+                    this._repos[key] = new Repository({
+                        name: key,
+                        //
+                        modelName: name,
+                        modelSchema: spec.schema,
+                        dsName: dsName
+                    });
+                    logger.info(`>>> New repository: ${key} created. <<<`);
+                }
+            });
             return this._repos[repoKey];
         };
         this.getRepos = (modelNames, dsName = 'default') => {
