@@ -403,6 +403,31 @@ class Repository extends EventObject {
     }
 }
 
+function _deepGetRefs(key, totalRefs) {
+    let spec = this._modelSpecs[key];
+    if (!spec) {
+        // Ignore no spec model
+        return;
+    }
+    if (totalRefs.indexOf(key) === -1) {
+        totalRefs.push(key);
+    }
+    let refs = spec.refs;
+    if (!refs || !Array.isArray(refs)) {
+        // Ignore no refs model
+        return;
+    }
+    let nextKeys = [];
+    refs.forEach (refKey => {
+        if (totalRefs.indexOf(refKey) === -1) {
+            nextKeys.push(refKey);
+        }
+    });
+    nextKeys.forEach( nextKey => {
+        _deepGetRefs.call(this, nextKey, totalRefs);
+    });
+}
+
 // The repository-factory
 class RepositoryFactory extends EventModule {
     constructor(props) {
@@ -425,8 +450,16 @@ class RepositoryFactory extends EventModule {
                 logger.error(`modelSpec: ${modelName} not registered.`);
                 return null;
             }
-            // Create all relative repoes
-            [modelName].concat(modelSpec.refs).forEach(name => {
+            // Begin deeply load reference models
+            if (this._repos[repoKey]) {
+                return this._repos[repoKey];
+            }            
+            let totalRefModels = [];
+            _deepGetRefs.call(this, modelName, totalRefModels);
+            totalRefModels.forEach(name => {
+            // End 
+            // Note: uncomment next line and comment up section between begin and end to init reference models each time get repository
+//            [modelName].concat(modelSpec.refs).forEach(name => {
                 let spec = this._modelSpecs[name];
                 let key = `${name}@${dsName}`;
                 if (spec !== undefined && this._repos[key] === undefined) {
