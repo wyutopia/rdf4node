@@ -43,7 +43,6 @@ if (config.security) {
 if (config.mongodb || config.dbTypes.indexOf('mongo') !== -1) {
     exports.mongoose = require('./libs/common/mongoose.wrapper');
     exports.mongoSession = require('./libs/common/mongo-session.wrapper');
-    exports.dbHelper = require('./utils/db-helper');
 }
 if (config.influxdb || config.dbTypes.indexOf('influxdb') !== -1) {
     exports.influxDbWrapper = require('./libs/common/influxdb.wrapper');
