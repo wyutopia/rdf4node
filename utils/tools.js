@@ -453,7 +453,7 @@ function _validateTypedList (field, validator, args) {
 function _validateNumber (field, validator, argv, options = {}) {
     let fullField = options.fieldPrefix === undefined? field : `${options.fieldPrefix}.${field}`;
     let errMsg = null;
-    if (Number.isNaN(argv)) {
+    if (typeof argv === 'string' || Number.isNaN(argv)) {
         errMsg = `Value type of ${fullField} Should be Number!`;
     }
     if (!errMsg && validator.min !== undefined) {
