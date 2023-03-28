@@ -317,7 +317,7 @@ function _validateString (field, validator, argv) {
     return errMsg;
 }
 
-const typeExtractRe = new RegExp("String|Number|ObjectID");
+const typeExtractRe = new RegExp("String|Number|ObjectID|EmbeddedObject");
 function _validateTypedArray(field, validator, args) {
     let errMsg = null;
     if (!Array.isArray(args)) {
@@ -343,12 +343,75 @@ function _validateTypedArray(field, validator, args) {
                     errMsg = `type of #${i} in ${field} should be ${t}`;
                 }
                 break;
+            case 'EmbeddedObject':
+                errMsg = _validateEmbeddedObject(field, validator, args);
+                break;
         }
         if (errMsg) {
             break;
         }
     }
     return errMsg
+}
+
+function _validateEmbeddedObject(field, validator, args) {
+    let errMsg = null;
+    let vals = validator.$embeddedValidators;
+    if (!vals) {
+        return errMsg;
+    }
+    let valKeys = Object.keys(vals);
+    if (valKeys.length === 0) {
+        return errMsg;
+    }
+    for (let i = 0; i < args.length; i++) {
+        for (let j = 0; j < valKeys.length; j++) {
+            let valKey = valKeys[j];
+            let val = vals[valKey];
+            let argv = args[i][valKey];
+            //
+            if (val.required === true && argv === undefined) {
+                errMsg = `${field}.${valKey} is required!`;
+                break;
+            }
+            if (val.enum) {
+                let enumValues = _isTypeOfArray(val.enum)? val.enum : Object.values(val.enum);
+                if (enumValues.indexOf(argv) === -1) {
+                    errMsg = `${field} value not allowed! - Should be one of ${_inspect(enumValues)}`;
+                }
+            }
+            if (!errMsg) {
+                switch(val.type) {
+                    case 'ObjectID':
+                        if (!ObjectId.isValid(argv) && val.allowNull !== true) {
+                            errMsg = `Invalid ObjectId value: ${field}.${valKey}!`;
+                        }
+                        break;
+                    case 'Number':
+                        errMsg = _validateNumber(valKey, val, argv);
+                        break;
+                    case 'String':
+                        errMsg = _validateString(valKey, val, argv);
+                        break;
+                    case 'Boolean':
+                        if (typeof argv !== 'boolean') {
+                            errMsg = `Should be Boolean for ${field}.${valKey}`;
+                        }
+                        break;
+                    case 'Date':
+                        errMsg = _validateDate(valKey, val, argv);
+                        break;
+                }
+            }
+            if (errMsg) {
+                break;
+            }
+        }
+        if (errMsg) {
+            break;
+        }
+    }
+    return errMsg;
 }
 
 function _validateTypedList (field, validator, args) {
@@ -409,7 +472,7 @@ function _validateDate (field, validator, argv) {
     return errMsg;
 }
 
-const typedArrayRe = new RegExp("^Array<(String|Number|ObjectID)>$");
+const typedArrayRe = new RegExp("^Array<(String|Number|ObjectID|EmbeddedObject)>$");
 const typedListRe = new RegExp("^List<(String|Number|ObjectID)>$");
 function _validateParameter(field, validator, argv) {
     //logger.debug(`Perform validation: ${field} - ${_inspect(validator)} - ${_inspect(argv)}`);
@@ -426,9 +489,9 @@ function _validateParameter(field, validator, argv) {
     if (typedArrayRe.test(validator.type)) {
         errMsg = _validateTypedArray(field, validator, argv);
     }
-    if (typedListRe.test(validator.type)) {
-        errMsg = _validateTypedList(field, validator, argv);
-    }
+    // if (typedListRe.test(validator.type)) {
+    //     errMsg = _validateTypedList(field, validator, argv);
+    // }
     if (errMsg !== null) {
         return errMsg;
     }

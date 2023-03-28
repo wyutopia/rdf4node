@@ -439,6 +439,41 @@ class RepositoryFactory extends EventModule {
         this.registerSchema = (modelName, modelSpec) => {
             this._modelSpecs[modelName] = modelSpec;
         };
+        this._$getRepo2 = (modelName, options = {}) => {
+            assert(modelName !== undefined);
+            let dsName = options.dsName || 'default';
+            let allowCache = options.allowCache !== undefined? options.allowCache : false;
+            let repoKey = `${modelName}@${dsName}`;
+            if (repoKey === 'test@default') {
+                logger.error(`Using ${key} repository is not recommended in real project!`);
+            }
+            let modelSpec = this._modelSpecs[modelName];
+            if (!modelSpec) {
+                logger.error(`modelSpec: ${modelName} not registered.`);
+                return null;
+            }
+            if (this._repos[repoKey]) {
+                return this._repos[repoKey];
+            }            
+            let totalRefModels = [];
+            _deepGetRefs.call(this, modelName, totalRefModels);
+            totalRefModels.forEach(name => {
+                let spec = this._modelSpecs[name];
+                let key = `${name}@${dsName}`;
+                if (spec !== undefined && this._repos[key] === undefined) {
+                    this._repos[key] = new Repository({
+                        name: key,
+                        //
+                        modelName: name,
+                        modelSchema: spec.schema,
+                        dsName: dsName,
+                        allowCache: allowCache
+                    });
+                    logger.info(`>>> New repository: ${key} created. <<<`);
+                }
+            });
+            return this._repos[repoKey];
+        };
         this.getRepo = (modelName, dsName = 'default') => {
             assert(modelName !== undefined);
             let repoKey = `${modelName}@${dsName}`;

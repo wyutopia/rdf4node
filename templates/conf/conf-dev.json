@@ -16,7 +16,8 @@
     },
     "security": {
       "allowOrigin": "*",
-      "allowRateLimit": false
+      "enableRateLimit": false,
+      "enableAuthorization": false
     },
     "httpMonitor": true,
     "dataSources": {

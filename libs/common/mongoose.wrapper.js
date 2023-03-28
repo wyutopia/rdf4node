@@ -15,10 +15,11 @@ Schema.prototype.extractValidators = function (keys, options = {isSearch: false}
             return;
         }
         let pathType = path.instance;
-        let pathValidators = path.validators || [];
+        let pathValidators = path.validators;
         if (pathType === 'Array') {
-            pathType = options.isSearch? path.$embeddedSchemaType.instance : `Array<${path.$embeddedSchemaType.instance}>`;
-            pathValidators = path.$embeddedSchemaType.validators || [];
+            let embeddedSchemaType = path.$embeddedSchemaType.instance || 'Object';
+            pathType = options.isSearch? embeddedSchemaType : `Array<${embeddedSchemaType}>`;
+            pathValidators = path.$embeddedSchemaType.validators;
         }
         let validator = {
             type: pathType

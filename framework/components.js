@@ -465,8 +465,10 @@ class EntityController extends ControllerBase {
         this.addOne = (req, res) => {
             let validator = tools.deepAssign({}, this._addVal);
             this._mandatoryAddKeys.forEach( key => {
-                if (validator[key]) {
-                    validator[key].required = true;
+                let path = key.replace('.', '.$embeddedValidators.');
+                let val = tools.safeGetJsonValue(validator, path);
+                if (val) {
+                    val.required = true;
                 }
             });
             tools.parseParameter2(req.body, validator, (err, args) => {
