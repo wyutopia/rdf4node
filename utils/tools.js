@@ -388,7 +388,9 @@ function _validateEmbeddedObject(field, validator, args) {
                         }
                         break;
                     case 'Number':
-                        errMsg = _validateNumber(valKey, val, argv);
+                        errMsg = _validateNumber(valKey, val, argv, {
+                            fieldPrefix: `${field}.${i}`
+                        });
                         break;
                     case 'String':
                         errMsg = _validateString(valKey, val, argv);
@@ -399,7 +401,9 @@ function _validateEmbeddedObject(field, validator, args) {
                         }
                         break;
                     case 'Date':
-                        errMsg = _validateDate(valKey, val, argv);
+                        errMsg = _validateDate(valKey, val, argv, {
+                            fieldPrefix: `${field}.${i}`
+                        });
                         break;
                 }
             }
@@ -446,28 +450,30 @@ function _validateTypedList (field, validator, args) {
     return errMsg;
 }
 
-function _validateNumber (field, validator, argv) {
+function _validateNumber (field, validator, argv, options = {}) {
+    let fullField = options.fieldPrefix === undefined? field : `${options.fieldPrefix}.${field}`;
     let errMsg = null;
     if (Number.isNaN(argv)) {
-        errMsg = `Should be Number for ${field}!`;
+        errMsg = `Value type of ${fullField} Should be Number!`;
     }
     if (!errMsg && validator.min !== undefined) {
         if (argv < validator.min) {
-            errMsg = `${field} should great than ${validator.min} !`;
+            errMsg = `Value of ${fullField} should be great than ${validator.min} !`;
         }
     }
     if (!errMsg && validator.max !== undefined) {
         if (argv > validator.max) {
-            errMsg = `${field} should less than ${validator.max} !`;
+            errMsg = `Value of ${fullField} should be less than ${validator.max} !`;
         }
     }
     return errMsg;
 }
 
-function _validateDate (field, validator, argv) {
+function _validateDate (field, validator, argv, options = {}) {
+    let fullField = options.fieldPrefix === undefined? field : `${options.fieldPrefix}.${field}`;
     let errMsg = null;
     if (Date.parse(argv) === NaN) {
-        errMsg = `Invalid Date format for ${field}!`;
+        errMsg = `Value format of ${fullField} should be Date!`;
     }
     return errMsg;
 }
