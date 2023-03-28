@@ -377,14 +377,14 @@ function _validateEmbeddedObject(field, validator, args) {
             if (val.enum) {
                 let enumValues = _isTypeOfArray(val.enum)? val.enum : Object.values(val.enum);
                 if (enumValues.indexOf(argv) === -1) {
-                    errMsg = `${field} value not allowed! - Should be one of ${_inspect(enumValues)}`;
+                    errMsg = `Value of ${field}.${i}.${valKey} is not allowed! - Should be one of ${_inspect(enumValues)}`;
                 }
             }
             if (!errMsg) {
                 switch(val.type) {
                     case 'ObjectID':
                         if (!ObjectId.isValid(argv) && val.allowNull !== true) {
-                            errMsg = `Invalid ObjectId value: ${field}.${valKey}!`;
+                            errMsg = `Invalid ObjectId value: ${field}.${i}.${valKey}!`;
                         }
                         break;
                     case 'Number':
@@ -395,7 +395,7 @@ function _validateEmbeddedObject(field, validator, args) {
                         break;
                     case 'Boolean':
                         if (typeof argv !== 'boolean') {
-                            errMsg = `Should be Boolean for ${field}.${valKey}`;
+                            errMsg = `Should be Boolean for ${field}.${i}.${valKey}`;
                         }
                         break;
                     case 'Date':
