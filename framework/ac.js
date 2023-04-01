@@ -3,9 +3,9 @@
  */
 const jsonwebtoken = require('jsonwebtoken');
 //
-const eRetCodes = require('../../include/retcodes');
-const tools = require('../../utils/tools');
-const { WinstonLogger } = require('../base/winston.wrapper');
+const eRetCodes = require('../include/retcodes');
+const tools = require('../utils/tools');
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE);
 //
 const sysConf = require('./config');
@@ -62,7 +62,7 @@ function _authenticate(authType, req, callback) {
     return callback();
 }
 
-function _authorize(req, res, callback) {
+function _authorize(req, callback) {
     if (config.enableAuthorization !== true) {
         // Ignore AUTHORIZATION
         return callback();
@@ -75,7 +75,12 @@ function _accessAuth(authType, req, res, next) {
         if (err) {
             return res.sendRsp(err.code, err.message);
         }
-        return _authorize(req, res, next);
+        _authorize(req, err => {
+            if (err) {
+                return res.sendRsp(err.code, err.message);
+            }
+            return next();
+        });
     });
 }
 
