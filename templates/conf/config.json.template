@@ -15,7 +15,10 @@
     "port": 3000
   },
   "security": {
-    "allowOrigin": "*"
+    "allowOrigin": "*",
+    "enableRateLimit": false,
+    "enableAuthentication": false,
+    "enableAuthorization": false
   },
   "httpMonitor": true,
   "consul": {

@@ -264,6 +264,7 @@ exports.getMutableFields = _getMutableFields;
 const eRequestAuthType = {
     NONE     : 'none',
     JWT      : 'jwt',
+    COOKIE   : 'cookie',
     AKSK     : 'aksk' 
 };
 exports.eRequestAuthType = eRequestAuthType;
