@@ -155,7 +155,13 @@ const _defaultCtlSpec = {
     //
     allowAdd: function (req, args, callback) { return callback(); },
     beforeAdd: function (args, repo, callback) { return callback(null, args); },
-    afterAdd: function (doc) { return doc; },
+    beforeInsert: function (args, repo, callback) { 
+        return callback(null, {
+            filter: args,
+            updates: args
+        }); 
+    },
+    afterAdd: function (doc, callback) { return callback(null, doc); },
     //
     beforeUpdateOne: tools.noop,
     afterUpdateOne: function (doc) { return doc; },
@@ -511,12 +517,17 @@ class EntityController extends ControllerBase {
                                 if (err) {
                                     return res.sendRsp(err.code, err.message);
                                 }
+                                let obj = doc.toObject();
                                 _publishEvents.call(this, {
                                     method: 'addOne',
-                                    data: doc.toObject()
+                                    data: obj
                                 }, () => {
-                                    let result = this._afterAdd(doc);
-                                    return res.sendSuccess(result);
+                                    this._afterAdd(obj, (err, result) => {
+                                        if (err) {
+                                            return res.sendRsp(err.code, err.message);
+                                        }
+                                        return res.sendSuccess(result);
+                                    });
                                 });
                             });
                         });
@@ -539,16 +550,26 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    repo.insert(data, (err, doc) => {
+                    this._beforeInsert(args, repo, (err, options) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        _publishEvents.call(this, {
-                            method: 'addOne',
-                            data: doc
-                        }, () => {
-                            let result = this._afterAdd(doc);
-                            return res.sendSuccess(result);
+                        repo.insert(options, (err, doc) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            let obj = doc.toObject();
+                            _publishEvents.call(this, {
+                                method: 'inertOne',
+                                data: obj
+                            }, () => {
+                                this._afterAdd(obj, (err, result) => {
+                                    if (err) {
+                                        return res.sendRsp(err.code, err.message);
+                                    }
+                                    return res.sendSuccess(result);
+                                });
+                            });
                         });
                     });
                 });
