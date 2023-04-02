@@ -50,6 +50,11 @@ function _validateJwt(req, callback) {
 
 function _authenticate(authType, req, callback) {
     if (config.enableAuthentication !== true) {
+        if (req.jwt === undefined) {
+            req.jwt = {};
+        } else {
+            req['x-jwt'] = {};
+        }
         return callback();
     }
     if (authType === 'jwt') {
