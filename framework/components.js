@@ -149,9 +149,9 @@ const _defaultCtlSpec = {
     beforeFindByUser: tools.noop,
     beforeFindPartial: tools.noop,
     //
-    afterFindOne: function (doc) { return doc; },      // For only one document
-    afterFindMany: function (docs) { return docs; },     // For one or array results
-    afterFindPartial: tools.noop,  // For pagination results
+    afterFindOne: function (doc, callback) { return callback(null, doc); },      // For only one document
+    afterFindMany: function (docs, callback) { return callback(null, docs); },     // For one or array results
+    afterFindPartial: function (results, callback) { return callback(null, results); },  // For pagination results
     //
     allowAdd: function (req, args, callback) { return callback(); },
     beforeAdd: function (args, repo, callback) { return callback(null, args); },
@@ -311,8 +311,12 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        let results = this._afterFindMany(docs);
-                        return res.sendSuccess(results);
+                        this._afterFindMany(docs, (err, results) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            return res.sendSuccess(results);
+                        });
                     });
                 });
             });
@@ -337,8 +341,12 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        let result = this._afterFindOne(doc);
-                        return res.sendSuccess(result);
+                        this._afterFindOne(doc, (err, result) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            return res.sendSuccess(result);
+                        });
                     });
                 });
             });
@@ -359,8 +367,12 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        let result = this._afterFindOne(doc);
-                        return res.sendSuccess(result);
+                        this._afterFindOne(doc, (err, result) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            return res.sendSuccess(result);
+                        });
                     });
                 });
             });
@@ -383,12 +395,11 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        _publishEvents.call(this, {
-                            method: 'findAll',
-                            data: results
-                        }, () => {
-                            this._afterFindPartial(results);
-                            return res.sendSuccess(results);
+                        this._afterFindPartial(results, (err, outcomes) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            return res.sendSuccess(outcomes);
                         });
                     });
                 });
@@ -423,8 +434,12 @@ class EntityController extends ControllerBase {
                             method: 'findByProject',
                             data: docs
                         }, () => {
-                            let results = this._afterFindMany(docs);
-                            return res.sendSuccess(results);
+                            this._afterFindMany(docs, (err, results) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                return res.sendSuccess(results);
+                            });
                         });
                     });
                 });
@@ -456,8 +471,12 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        let results = this._afterFindMany(docs);
-                        return res.sendSuccess(results);
+                        this._afterFindMany(docs, (err, results) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            return res.sendSuccess(results);
+                        });
                     });
                 });
             });
