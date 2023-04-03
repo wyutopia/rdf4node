@@ -24,19 +24,24 @@ const {
 
 // Local variables
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
-const bootstrapConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
+const bsConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 
 function _initFramework() {
     logger.info('++++++ Step 1: Initializing framwork ++++++');
 }
 
-function _loadModels() {
-    let modelDir = path.join(appRoot.path, bootstrapConf.modelDir);
-    logger.info(`++++++ Step 2: Load all database model schemas from ${modelDir} ++++++`);
+function _loadDatabaseSchemas() {
+    let modelDir = path.join(appRoot.path, bsConf.modelDir);
+    logger.info(`++++++ Step 2: Load all database schemas from ${modelDir} ++++++`);
     let allModels = [];
-    let modelFiles = fs.readdirSync(modelDir);
-    modelFiles.forEach(filename => {
-        let filePath = path.join(modelDir, filename);
+    let entries = fs.readdirSync(modelDir, {
+        withFileTypes: true
+    });
+    entries.forEach(dirent => {
+        if (dirent.isDirectory()) { // Ignore directory
+            return null;
+        }
+        let filePath = path.join(modelDir, dirent.name);
         try {
             let modelSpec = require(filePath);
             let modelName = modelSpec.modelName;
@@ -48,36 +53,38 @@ function _loadModels() {
                 allModels.push(modelName);
             }
         } catch (ex) {
-            logger.error(`Load database schema from: ${filename} error! - ${ex.message}`);
+            logger.error(`Load database schema from: ${dirent.name} error! - ${ex.message}`);
         }
     });
     logger.debug(`>>> Registered database schemas: ${tools.inspect(allModels)}`);
 }
-_loadModels();
+_loadDatabaseSchemas();
 
-const allowedServices = bootstrapConf.allowedServices || [];
+const allowedServices = bsConf.allowedServices || [];
 function _loadServices() {
-    let serviceDir = path.join(appRoot.path, bootstrapConf.serviceDir);
+    let serviceDir = path.join(appRoot.path, bsConf.serviceDir);
     logger.info(`++++++ Step 3: Load all services module from ${serviceDir} ++++++`);
     let allServices = [];
-    let svcFiles = fs.readdirSync(serviceDir);
-    svcFiles.forEach( filename => {
-        if (allowedServices.indexOf(filename) === -1) {
+    let entries = fs.readdirSync(serviceDir, {
+        withFileTypes: true
+    });
+    entries.forEach( dirent => {
+        if (dirent.isDirectory() || allowedServices.indexOf(dirent.name) === -1) {
             return null;
         }
-        let filePath = path.join(serviceDir, filename);
+        let filePath = path.join(serviceDir, dirent.name);
         try {
             let svc = require(filePath);
             let svcName = registry.register(svc);
             allServices.push(svcName);
         } catch (ex) {
-            logger.error(`Load service: ${filename} error! - ${ex.message}`);
+            logger.error(`Load service: ${dirent.name} error! - ${ex.message}`);
         }
     });
     logger.debug(`>>> All available services: ${tools.inspect(allServices)}`);
 }
 _loadServices();
 
-function _loadEndpoint() { // Only http endpoint is supported currently
+function _createEndpoint() { // Only http endpoint is supported currently
 
 }
