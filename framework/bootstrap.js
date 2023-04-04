@@ -14,14 +14,11 @@ const path = require('path');
 const async = require('async');
 const appRoot = require('app-root-path');
 // Framework libs
-const {
-    tools,
-    winstonWrapper: {WinstonLogger},
-    repository: {repoFactory},
-    registry
-} = require('@icedeer/rdf4node');
-// Project libs
-
+const tools = require('../utils/tools');
+const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const {repoFactory} = require('./repository');
+const registry = require('./registry');
+const {cacheFactory} = require('./cache');
 // Local variables
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
 const bsConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
