@@ -27,7 +27,7 @@ function _initFramework() {
     logger.info('++++++ Step 1: Initializing framwork ++++++');
 }
 
-function _loadDatabaseSchemas() {
+function _loadDatabaseSchemas(callback) {
     let modelDir = path.join(appRoot.path, bsConf.modelDir);
     logger.info(`++++++ Step 2: Load all database schemas from ${modelDir} ++++++`);
     let allModels = [];
@@ -54,11 +54,13 @@ function _loadDatabaseSchemas() {
         }
     });
     logger.debug(`>>> Registered database schemas: ${tools.inspect(allModels)}`);
+    if (callback) {
+        return callback();
+    }
 }
-_loadDatabaseSchemas();
 
 const allowedServices = bsConf.allowedServices || [];
-function _loadServices() {
+function _loadServices(callback) {
     let serviceDir = path.join(appRoot.path, bsConf.serviceDir);
     logger.info(`++++++ Step 3: Load all services module from ${serviceDir} ++++++`);
     let allServices = [];
@@ -79,9 +81,29 @@ function _loadServices() {
         }
     });
     logger.debug(`>>> All available services: ${tools.inspect(allServices)}`);
+    if (callback) {
+        return callback();
+    }
 }
-_loadServices();
 
-function _createEndpoint() { // Only http endpoint is supported currently
-
+function _createEndpoints(callback) { // Only http endpoint is supported currently
+    return callback();
 }
+
+function _bootstrap(callback) {
+    async.series([
+        _loadDatabaseSchemas,
+        _loadServices,
+        _createEndpoints
+    ], () => {
+        return callback();
+    });
+}
+
+// Declaring module exports
+module.exports = exports = {
+    loadDatabaseSchemas: _loadDatabaseSchemas,
+    loadServices: _loadServices,
+    createEndpoints: _createEndpoints,
+    sysBootstrap: _bootstrap
+};
