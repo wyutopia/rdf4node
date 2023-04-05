@@ -59,7 +59,7 @@ function _loadDatabaseSchemas(callback) {
     }
 }
 
-const allowedServices = bsConf.allowedServices || [];
+const enabledServices = bsConf.enabledServices || [];
 function _loadServices(callback) {
     let serviceDir = path.join(appRoot.path, bsConf.serviceDir);
     logger.info(`++++++ Step 3: Load all services module from ${serviceDir} ++++++`);
@@ -86,6 +86,11 @@ function _loadServices(callback) {
     }
 }
 
+const enabledCaches = bsConf.enabledCaches || [];
+function _buildSysCache(callback) {
+    return callback();
+}
+
 function _createEndpoints(callback) { // Only http endpoint is supported currently
     return callback();
 }
@@ -94,6 +99,7 @@ function _bootstrap(callback) {
     async.series([
         _loadDatabaseSchemas,
         _loadServices,
+        _buildSysCache,
         _createEndpoints
     ], () => {
         return callback();
@@ -103,7 +109,5 @@ function _bootstrap(callback) {
 // Declaring module exports
 module.exports = exports = {
     loadDatabaseSchemas: _loadDatabaseSchemas,
-    loadServices: _loadServices,
-    createEndpoints: _createEndpoints,
     sysBootstrap: _bootstrap
 };

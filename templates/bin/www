@@ -3,18 +3,17 @@
 /**
  * Module dependencies.
  */
-const { sysBootstrap } = require('@icedeer/rdf4node/framework/boostrap');
-const {
-    sysConfig: config,
-    winstonWrapper: { WinstonLogger }
-} = require('@icedeer/rdf4node');
-require('../common/extensions');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'www');
-let app = require('../app');
-let http = require('http');
-
-//
+const {sysBootstrap} = require('@icedeer/rdf4node/framework/bootstrap');
 sysBootstrap(err => {
+    const {
+        sysConfig: config,
+        winstonWrapper: {WinstonLogger}
+    } = require('@icedeer/rdf4node');
+    require('../common/extensions');
+    const logger = WinstonLogger(process.env.SRV_ROLE || 'www');
+    let app = require('../app');
+    let http = require('http');
+
     /**
      * Get port from environment and store in Express.
      */
@@ -95,4 +94,5 @@ sysBootstrap(err => {
             : 'port ' + addr.port;
         logger.info('Listening on ' + bind);
     }
+
 });
