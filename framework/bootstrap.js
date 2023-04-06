@@ -68,7 +68,7 @@ function _loadServices(callback) {
         withFileTypes: true
     });
     entries.forEach( dirent => {
-        if (dirent.isDirectory() || allowedServices.indexOf(dirent.name) === -1) {
+        if (dirent.isDirectory() || enabledServices.indexOf(dirent.name) === -1) {
             return null;
         }
         let filePath = path.join(serviceDir, dirent.name);
