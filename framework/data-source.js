@@ -116,6 +116,8 @@ class DataSourceFactory extends EventModule {
     }
 }
 
-module.exports = exports = new DataSourceFactory({
-    name: _MODULE_NAME
-});
+module.exports = exports = {
+    dsFactory: new DataSourceFactory({
+        name: _MODULE_NAME
+    })
+};

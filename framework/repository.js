@@ -16,7 +16,7 @@ const { winstonWrapper: { WinstonLogger } } = require('../libs');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 //
-const dsFactory = require('./data-source');
+const {dsFactory} = require('./data-source');
 const cacheFactory = require('./cache');
 
 function _uniQuery(query, options, callback) {
@@ -110,9 +110,14 @@ class Repository extends EventObject {
         this.dsName = props.dsName || 'default';
         //
         this.allowCache = props.allowCache !== undefined? props.allowCache : false;
+        this.cacheSpec = props.cacheSpec || {
+            dataType: 'kv',
+            loadPolicy: 'setAfterFound',
+            keyName: 'name'
+        };
         // Declaring private member variables
         this._model = null;
-        this._cache = null;
+        this._cache = {};
         this.getModel = () => {
             return this._model;
         };
@@ -120,8 +125,21 @@ class Repository extends EventObject {
             return this._cache;
         };
         // Implementing cache methods
-        this.get = (k, callback) => {
-            return this._cache.get(k, callback);
+        this.cacheGet = (k, callback) => {
+            let v = this._cache[k];
+            if (v !== undefined) {
+                return callback(null, v);
+            }
+            let filter = {};
+            filter[this.cacheSpec.keyName] = k;
+            this.findOne({
+                filter: filter
+            }, (err, doc) => {
+                if (doc && this.cacheSpec.loadPolicy === 'setAfterFound') {
+                    this._cache[k] = doc;
+                }
+                return callback(err, doc);
+            });
         };
         // Create one or many documents
         this.create = (data, callback) => {
@@ -409,9 +427,9 @@ class Repository extends EventObject {
             if (ds) {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
-            if (this.allowCache === true) {
-                this._cache = cacheFactory.getCache(this.modelName, props.cacheSpec);
-            }
+            // if (this.allowCache === true) {
+            //     this._cache = cacheFactory.getCache(this.modelName, props.cacheSpec);
+            // }
         })();
     }
 }
@@ -452,16 +470,8 @@ class RepositoryFactory extends EventModule {
         this.registerSchema = (modelName, modelSpec) => {
             this._modelSpecs[modelName] = modelSpec;
         };
-        this.getRepo = (modelName, options = {}) => {
+        this.getRepo = (modelName, dsName = 'default') => {
             assert(modelName !== undefined);
-            if (typeof options === 'string') {
-                options = {
-                    dsName: options
-                }
-            }
-            let dsName = options.dsName || 'default';
-            let allowCache = options.allowCache !== undefined? options.allowCache : false;
-            let cacheSpec = options.cacheSpec || {};
             //
             let repoKey = `${modelName}@${dsName}`;
             if (repoKey === 'test@default') {
@@ -481,6 +491,8 @@ class RepositoryFactory extends EventModule {
                 let spec = this._modelSpecs[name];
                 let key = `${name}@${dsName}`;
                 if (spec !== undefined && this._repos[key] === undefined) {
+                    let allowCache = spec.allowCache !== undefined? spec.allowCache : false;
+                    let cacheSpec = spec.cacheSpec || {};
                     this._repos[key] = new Repository({
                         name: key,
                         // model spec
@@ -571,7 +583,6 @@ class RepositoryFactory extends EventModule {
                 return callback(null, results);
             });
         };
-
         this.findDistEntites = (distEntitiesOption, callback) => {
             return callback(null, {});
         }
