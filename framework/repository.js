@@ -17,6 +17,7 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 //
 const dsFactory = require('./data-source');
+const cacheFactory = require('./cache');
 
 function _uniQuery(query, options, callback) {
     ['select', 'sort', 'skip', 'limit', 'populate'].forEach(method => {
@@ -107,11 +108,20 @@ class Repository extends EventObject {
         this.modelSchema = props.modelSchema || {};
         this.modelRefs = props.modelRefs || [];
         this.dsName = props.dsName || 'default';
-        this.allowCache = props.allowCache === true ? true : false;
+        //
+        this.allowCache = props.allowCache !== undefined? props.allowCache : false;
+        // Declaring private member variables
         this._model = null;
-        this._cache = {};
+        this._cache = null;
         this.getModel = () => {
             return this._model;
+        };
+        this.getCache = () => {
+            return this._cache;
+        };
+        // Implementing cache methods
+        this.get = (k, callback) => {
+            return this._cache.get(k, callback);
         };
         // Create one or many documents
         this.create = (data, callback) => {
@@ -399,6 +409,9 @@ class Repository extends EventObject {
             if (ds) {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
+            if (this.allowCache === true) {
+                this._cache = cacheFactory.getCache(this.modelName, props.cacheSpec);
+            }
         })();
     }
 }
@@ -439,10 +452,17 @@ class RepositoryFactory extends EventModule {
         this.registerSchema = (modelName, modelSpec) => {
             this._modelSpecs[modelName] = modelSpec;
         };
-        this._$getRepo2 = (modelName, options = {}) => {
+        this.getRepo = (modelName, options = {}) => {
             assert(modelName !== undefined);
+            if (typeof options === 'string') {
+                options = {
+                    dsName: options
+                }
+            }
             let dsName = options.dsName || 'default';
             let allowCache = options.allowCache !== undefined? options.allowCache : false;
+            let cacheSpec = options.cacheSpec || {};
+            //
             let repoKey = `${modelName}@${dsName}`;
             if (repoKey === 'test@default') {
                 logger.error(`Using ${key} repository is not recommended in real project!`);
@@ -463,18 +483,20 @@ class RepositoryFactory extends EventModule {
                 if (spec !== undefined && this._repos[key] === undefined) {
                     this._repos[key] = new Repository({
                         name: key,
-                        //
+                        // model spec
                         modelName: name,
                         modelSchema: spec.schema,
                         dsName: dsName,
-                        allowCache: allowCache
+                        // cache 
+                        allowCache: allowCache,
+                        cacheSpec: cacheSpec
                     });
                     logger.info(`>>> New repository: ${key} created. <<<`);
                 }
             });
             return this._repos[repoKey];
         };
-        this.getRepo = (modelName, dsName = 'default') => {
+        this._$getRepo = (modelName, dsName = 'default') => {
             assert(modelName !== undefined);
             let repoKey = `${modelName}@${dsName}`;
             if (repoKey === 'test@default') {

@@ -13,6 +13,17 @@ const {winstonWrapper: {WinstonLogger}} = require('../libs');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 
+const eDataType = {
+    Kv              : 'kv',
+    List            : 'ls',
+    Set             : 'set',
+    Map             : 'map'
+};
+
+const eLoadPolicy = {
+    Bootstrap    : 'bs',
+};
+
 const _defaultCacheProps = {
     type: sysdefs.eCacheType.PROCMEM,   // Set default cache to local process memory
     prefix: null,                       // No default key prefix
@@ -77,7 +88,7 @@ class CacheFactory extends EventModule {
         super(props);
         //
         this._caches = {};
-        this.getCacheSync = (name, cacheSpecOptions) => {
+        this.getCache = (name, cacheSpecOptions, callback) => {
             let db = cacheSpecOptions.db || 0;
             let bktId = `${name}#${db}`;
             if (this._caches[bktId] === undefined) {
@@ -91,10 +102,11 @@ class CacheFactory extends EventModule {
     }
 };
 
-
 // Declaring cache singleton and set module exports
 module.exports = exports = {
-    __CACHE_DEFAULT_: 'default',
+    _CACHE_DEFAULT_: 'default',
+    eDataType: eDataType,
+    eLoadPolicy: eLoadPolicy,
     cacheFactory: new CacheFactory({
         name: _MODULE_NAME
     })
