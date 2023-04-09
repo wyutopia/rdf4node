@@ -209,7 +209,7 @@ class EventModule extends EventObject {
             if (handler === undefined) {
                 return ackOrNack(false);
             }
-            eventLogger.consume(msg, `${handler.name}@${this.name}`, () => {
+            eventLogger.consume(msg, `${handler.name}@${this.$name}`, () => {
                 return handler.call(this, msg, ackOrNack);
             });
         };
@@ -218,10 +218,10 @@ class EventModule extends EventObject {
         });
         // Perform initiliazing codes...
         (() => {
-            icp.register(this.name, this);
+            icp.register(this.$name, this);
             // Subscribe events
             let allEvents = Object.values(sysEvents).concat(Object.keys(this._eventHandlers));
-            icp.subscribe(allEvents, this.name);
+            icp.subscribe(allEvents, this.$name);
         })();
     }
 }

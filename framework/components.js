@@ -86,7 +86,7 @@ function _publishEvents(options, callback) {
     }
     let evt = tools.deepAssign({
         headers: {
-            source: this.name,
+            source: this.$name,
             modelName: this.modelName,
             dsName: options.dsName || _DS_DEFAULT_
         },

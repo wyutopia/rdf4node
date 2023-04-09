@@ -171,7 +171,7 @@
          assert(options !== undefined);
          super(options);
          // Declaring member variables
-         this.name = options.name || 'BaseEventModule';
+         this.$name = options.name || 'BaseEventModule';
          this.mandatory = options.mandatory || false;
          this.state = options.state || pubdefs.eModuleState.ACTIVE;
          this.verbose = options.verboseOn || false;
@@ -181,39 +181,39 @@
          this.logCount = 0;
          // Implementing member methods
          this.getName = () => {
-             return this.name;
+             return this.$name;
          }
          this.fsmConstructor = options.fsmConstructor || EventFsm;
  
          this.allocFsm = () => {
              if (this.maxThreads > 0 && Object.keys(this.fsm).length >= this.maxThreads) {
-                 logger.error(`${this.name}: Out of threads! Wait for a moment and re-try again!`);
+                 logger.error(`${this.$name}: Out of threads! Wait for a moment and re-try again!`);
                  return null;
              }
              try {
                  let pid = tools.uuidv4();
                  this.fsm[pid] = new this.fsmConstructor({
                      id: pid,
-                     mid: this.name,
+                     mid: this.$name,
                      state: FSMSTATE_IDLE
                  });
-                 //logger.info(__file, __line, this.name, ', new FSM allocated: ', pid);
+                 //logger.info(__file, __line, this.$name, ', new FSM allocated: ', pid);
                  return pid;
              } catch (err) {
-                 logger.error(`${this.name}: Allocate thread failed! - ${err.message}`);
+                 logger.error(`${this.$name}: Allocate thread failed! - ${err.message}`);
                  return null;
              }
          }
          this.redirFsm = () => {
-            logger.debug(`${this.name}: redirFsm called.`);
+            logger.debug(`${this.$name}: redirFsm called.`);
             return null;
         }
          this.freeFsm = (pid) => {
-            logger.debug(`${this.name}: freeFsm called, pid=${pid}`);
+            logger.debug(`${this.$name}: freeFsm called, pid=${pid}`);
             if (this.fsm[pid] !== undefined) {
                 delete this.fsm[pid];
             } else {
-                logger.error(`${this.name}: pid=${pid}, Fsm does not exists!`);
+                logger.error(`${this.$name}: pid=${pid}, Fsm does not exists!`);
             }
         }
          // event handlers
@@ -223,7 +223,7 @@
          //
          (() => {
              mntService.regMetrics({
-                 moduleName: this.name,
+                 moduleName: this.$name,
                  metrics: [{
                      name: 'active_fsm',
                      type: pubdefs.eMetricType.GAUGE,
@@ -238,9 +238,9 @@
      let ret = 0;
      this.logCount++;
      if (this.verbose) {
-        logger.debug(`${this.name}: OnMessage - ${tools.inspect(msg)}`);
+        logger.debug(`${this.$name}: OnMessage - ${tools.inspect(msg)}`);
      } else {
-        logger.debug(`${this.name}: OnMessage - ${tools.inspect(msg.host)}, ${tools.inspect(msg.sender)}, ${msg.primitive}`);
+        logger.debug(`${this.$name}: OnMessage - ${tools.inspect(msg.host)}, ${tools.inspect(msg.sender)}, ${msg.primitive}`);
      }
      let re = new RegExp(/^MODULE_/);
      if (re.test(msg.primitive)) {  // Handle MODULE_XX message first
@@ -261,7 +261,7 @@
          msg.host.pid = this.allocFsm();
      }
      if (!msg.host.pid) {
-         logger.error(`${this.name}: Invalid host-pid! discard message.`);
+         logger.error(`${this.$name}: Invalid host-pid! discard message.`);
          return null;
      }
      this.currFsm = this.fsm[msg.host.pid];
@@ -269,13 +269,13 @@
          this.currFsm.emit(msg.primitive, msg);
          ret = 1;
      } else {
-         logger.error(`${this.name}: Invalid fsm!`);
+         logger.error(`${this.$name}: Invalid fsm!`);
      }
      return ret;
  }
  
  function _onDisposeFsm(msg) {
-     //logger.debug(__file, __line, this.name, 'MODULE_FSM_DISPOSE received with options:', msg.data.pid);
+     //logger.debug(__file, __line, this.$name, 'MODULE_FSM_DISPOSE received with options:', msg.data.pid);
      //logger.debug(__file, __line, 'Before dispose:', tools.inspect(Object.keys(this.fsm)));
      let fsm = this.fsm[msg.data.pid];
      if (fsm !== undefined) {

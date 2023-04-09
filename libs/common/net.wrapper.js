@@ -105,34 +105,34 @@ class TcpClient extends EventObject {
                 port: options.port || 3000,
                 timeout: options.connectTimeoutMs || sysdefs.eInterval._3_SEC
             }, () => {
-                logger.debug(`${this.name}[${this.state}]: server connected.`);
+                logger.debug(`${this.$name}[${this.state}]: server connected.`);
                 this.client = client;
                 this.state = eClientState.Conn;
                 return callback();
             });
             client.on('error', err => {
                 if (this.state === eClientState.Init) {
-                    logger.error(`${this.name}[${this.state}]: Connecting failed! - ${err.message}`);
+                    logger.error(`${this.$name}[${this.state}]: Connecting failed! - ${err.message}`);
                     this.state = eClientState.ConnErr;
                     return callback(err);
                 }                     
-                logger.debug(`${this.name}[${this.state}]: Connection error! - ${err.message}`);
+                logger.debug(`${this.$name}[${this.state}]: Connection error! - ${err.message}`);
                 this.state = eClientState.ConnErr;
             });
             client.on('data', trunk => {
-                logger.debug(`${this.name}[${this.state}]: on [DATA] event: ${tools.inspect(trunk)}`);
+                logger.debug(`${this.$name}[${this.state}]: on [DATA] event: ${tools.inspect(trunk)}`);
                 if (typeof this.onData === 'function') {
                     setImmediate(this.onData.bind(this, trunk));                
                 }
             });
             client.on('end', () => {
-                logger.debug(`${this.name}[${this.state}]: on [END] event...`);
+                logger.debug(`${this.$name}[${this.state}]: on [END] event...`);
                 if (typeof this.onEnd === 'function') {
                     setImmediate(this.onEnd.bind(this));
                 }
             });
             client.on('close', () => {
-                logger.debug(`${this.name}[${this.state}]: on [CLOSE] event...`);
+                logger.debug(`${this.$name}[${this.state}]: on [CLOSE] event...`);
                 this.state = eClientState.Null;
                 this.client = null;
                 if (this.disposeCallback) {
@@ -145,7 +145,7 @@ class TcpClient extends EventObject {
             });
         }
         this.sendData = (data, callback) => {
-            logger.debug(`${this.name}[${this.state}]: send data - ${tools.inspect(data)}`);
+            logger.debug(`${this.$name}[${this.state}]: send data - ${tools.inspect(data)}`);
             if (this.state !== eClientState.Conn) {
                 return callback({
                     code: eRetCodes.METHOD_NOT_ALLOWED,

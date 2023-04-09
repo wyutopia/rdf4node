@@ -30,14 +30,14 @@ const metricCollector = mntService.regMetrics({
 })
 
 function _onConnectionEnd(clientId, parent) {
-    logger.info(`${this.name}: #${clientId} - connection closed.`);
+    logger.info(`${this.$name}: #${clientId} - connection closed.`);
     let client = this._clients[clientId];
     if (client !== undefined) {
         client.close();
         delete this._clients[clientId];
     }
     if (Object.keys(this._clients).length === 0) {
-        logger.info(`${this.name}: All connections closed.`);
+        logger.info(`${this.$name}: All connections closed.`);
     }
 }
 
@@ -47,7 +47,7 @@ function _assembleRealConfig(rawConf) {
         port: rawConf.port || 6379,
         reconnectStrategy: (retries) => {
             if (this.state === eClientState.Closing || retries > this.maxRetryTimes) {
-                logger.error(`${this.name}: Max retry times (${this.maxRetryTimes}) exceeded.`);
+                logger.error(`${this.$name}: Max retry times (${this.maxRetryTimes}) exceeded.`);
                 return new Error('Closing or Max retry times exceed.');
             }
             return this.retryInterval;
@@ -80,7 +80,7 @@ class RedisClient extends EventObject {
         super(props);
         //
         this.id = props.id;
-        this.name = props.name || props.id;
+        this.$name = props.name || props.id;
         this.config = _assembleRealConfig(props.config); // Refer to gClientConfig
         //this.maxRetryTimes = props.maxRetryTimes || 100;
         //this.retryInterval = props.retryInterval || 1000;
@@ -96,7 +96,7 @@ class RedisClient extends EventObject {
         }
         this.execute = (method, args, callback) => {
             if (!this.isConnected()) {
-                let msg = `${this.name}[${this.state}]: disconnected.`;
+                let msg = `${this.$name}[${this.state}]: disconnected.`;
                 logger.error(msg);
                 return callback({
                     code: eRetCodes.REDIS_CONN_ERR,
@@ -108,7 +108,7 @@ class RedisClient extends EventObject {
                 args = [];
             }
             if (typeof this._client[method] !== 'function') {
-                let msg = `${this.name}[${this.state}]: Invalid method - ${method}`;
+                let msg = `${this.$name}[${this.state}]: Invalid method - ${method}`;
                 logger.error(msg);
                 return callback({
                     code: eRetCodes.REDIS_METHOD_NOTEXISTS,
@@ -116,7 +116,7 @@ class RedisClient extends EventObject {
                 });
             }
             if (!tools.isTypeOfArray(args)) {
-                let msg = `${this.name}[${this.state}]: Invalid args format! - Should be array.`;
+                let msg = `${this.$name}[${this.state}]: Invalid args format! - Should be array.`;
                 logger.error(msg);
                 return callback({
                     code: eRetCodes.REDIS_BAD_REQUEST,
@@ -125,7 +125,7 @@ class RedisClient extends EventObject {
             }
             let argc = args.length;
             if (argc === 0) {
-                let msg = `${this.name}[${this.state}]: Empty args!`;
+                let msg = `${this.$name}[${this.state}]: Empty args!`;
                 logger.error(msg);
                 return callback({
                     code: eRetCodes.REDIS_BAD_REQUEST,
@@ -162,7 +162,7 @@ class RedisClient extends EventObject {
             if (argc === 10) {
                 return this._client[method](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], callback);
             }
-            let msg = `${this.name}[${this.state}]: Too many parameters - ${method} - ${tools.inspect(args)}`;
+            let msg = `${this.$name}[${this.state}]: Too many parameters - ${method} - ${tools.inspect(args)}`;
             logger.error(msg);
             return callback({
                 code: eRetCodes.REDIS_METHOD_TOOMANYPARAMS,
@@ -171,7 +171,7 @@ class RedisClient extends EventObject {
         }
         this.dispose = (callback) => {
             if (this.isConnected()) {
-                logger.info(`${this.name}[${this.state}]: disconnecting...`);
+                logger.info(`${this.$name}[${this.state}]: disconnecting...`);
                 this.state = eClientState.Closing;
                 this._client.disconnect();
                 this._client = null;
@@ -180,15 +180,15 @@ class RedisClient extends EventObject {
         }
         //
         (() => {
-            logger.info(`${this.name}[${this.state}]: Create client ...`);
+            logger.info(`${this.$name}[${this.state}]: Create client ...`);
             let client = createClient(this.config);
             this.state = eClientState.Init;
             client.connect();
             client.on('connect', () => {
                 if (this.state === eClientState.Init) {
-                    logger.info(`${this.name}[${this.state}]: Connecting...`);
+                    logger.info(`${this.$name}[${this.state}]: Connecting...`);
                 } else {
-                    logger.error(`${this.name}[${this.state}]: On [CONNECT] - Invalid state!`);
+                    logger.error(`${this.$name}[${this.state}]: On [CONNECT] - Invalid state!`);
                 }
             });
             client.on('ready', () => {
@@ -197,31 +197,31 @@ class RedisClient extends EventObject {
                 metricCollector[eMetricNames.activeConnection].inc();
                 //
                 let hostInfo = tools.safeGetJsonValue(this.config, 'socket.host') || this.config.url;
-                logger.info(`${this.name}[${this.state}]: Server<${hostInfo}> connected.`);
+                logger.info(`${this.$name}[${this.state}]: Server<${hostInfo}> connected.`);
             });
             client.on('error', (err) => {
                 switch (this.state) {
                     case eClientState.Init:
-                        logger.error(`${this.name}[${this.state}]: On [ERROR] - Connecting failed! - ${err.message}`);
+                        logger.error(`${this.$name}[${this.state}]: On [ERROR] - Connecting failed! - ${err.message}`);
                         //this.state = eClientState.Closing;
                         break;
                     case eClientState.Conn:
-                        logger.error(`${this.name}[${this.state}]: On [ERROR] - Connection error! - ${err.message}`);
+                        logger.error(`${this.$name}[${this.state}]: On [ERROR] - Connection error! - ${err.message}`);
                         this.state = eClientState.PClosing;
                         break;
                     case eClientState.Closing:
-                        logger.error(`${this.name}[${this.state}]: On [ERROR] - Connection closed! - ${err.message}`);
+                        logger.error(`${this.$name}[${this.state}]: On [ERROR] - Connection closed! - ${err.message}`);
                         break;
                     default:
-                        logger.error(`${this.name}[${this.state}]: On [ERROR] - Invalid state!`);
+                        logger.error(`${this.$name}[${this.state}]: On [ERROR] - Invalid state!`);
                         break;
                 }
             });
             client.on('reconnection', () => {
-                logger.debug(`${this.name}[${this.state}]: On [RECONNECTION].`);
+                logger.debug(`${this.$name}[${this.state}]: On [RECONNECTION].`);
             });
             client.on('end', () => {
-                logger.info(`${this.name}[${this.state}]: Connection closed!`);
+                logger.info(`${this.$name}[${this.state}]: Connection closed!`);
                 this.state = eClientState.Pending;
                 this.emit('end', this.id);
                 this.state = eClientState.Null;
@@ -249,7 +249,7 @@ class RedisWrapper extends EventModule {
          * @returns 
          */
         this.createClient = (options) => {
-            logger.info(`${this.name}: Create client with options - ${tools.inspect(options)}`);
+            logger.info(`${this.$name}: Create client with options - ${tools.inspect(options)}`);
             let name = options.name || 'global';
             let config = options.config || {};
             let db = config.database || 0;
@@ -262,7 +262,7 @@ class RedisWrapper extends EventModule {
                     config: options
                 });
                 client.on('end', (clientId) => {
-                    logger.info(`${this.name}: On client end. - ${clientId}`);
+                    logger.info(`${this.$name}: On client end. - ${clientId}`);
                     if (this.isActive()) {
                         delete this._clients[clientId];
                     }
@@ -272,7 +272,7 @@ class RedisWrapper extends EventModule {
         }
         this.dispose = (callback) => {
             this.state = sysdefs.eModuleState.STOP_PENDING;
-            logger.info(`${this.name}: Closing all client connections ...`);
+            logger.info(`${this.$name}: Closing all client connections ...`);
             let keys = Object.keys(this._clients);
             async.eachLimit(keys, 4, (key, next) => {
                 let client = this._clients[key];
@@ -281,7 +281,7 @@ class RedisWrapper extends EventModule {
                 }
                 return client.dispose(next);
             }, () => {
-                logger.info(`${this.name}: All connections closed.`);
+                logger.info(`${this.$name}: All connections closed.`);
                 return callback();
             });
         }

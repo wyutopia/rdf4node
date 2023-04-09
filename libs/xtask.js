@@ -43,7 +43,7 @@ class XTaskManager extends EventModule {
             metricCollector[eMetricNames.activeTasks].inc(1);
         },
         this.dispose = (callback) => {
-            logger.info(`${this.name}: Stop all tasks ...`);
+            logger.info(`${this.$name}: Stop all tasks ...`);
             let keys = Object.keys(this.tasks);
             async.eachLimit(keys, 4, (key, next) => {
                 let task = this.tasks[key];
@@ -52,7 +52,7 @@ class XTaskManager extends EventModule {
                 }
                 return process.nextTick(next);
             }, () => {
-                logger.info(`${this.name}: All tasks stopped.`);
+                logger.info(`${this.$name}: All tasks stopped.`);
                 return callback();
             });
         }
@@ -63,7 +63,7 @@ class XTaskManager extends EventModule {
     }
 }
 const taskMng = new XTaskManager({
-    name: MODULE_NAME,
+    $name: MODULE_NAME,
     mandatory: true,
     state: sysdefs.eModuleState.ACTIVE,
     type: sysdefs.eModuleType.TASK

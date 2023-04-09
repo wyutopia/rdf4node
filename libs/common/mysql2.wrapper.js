@@ -344,14 +344,14 @@ class MysqlWrapper extends EventModule {
             return conn;
         }
         this.on('pool_inact', id => {
-            logger.debug(`${this.name}: On pool_inact - remove inactive pool - ${id}`);
+            logger.debug(`${this.$name}: On pool_inact - remove inactive pool - ${id}`);
             delete this._pools[id];
             metricsCollector[eMetricsName.poolActive].dec(1);
         });
         this.dispose = (callback) => {
-            logger.info(this.name, 'perform cleaning ...');
+            logger.info(this.$name, 'perform cleaning ...');
             if (this.state !== sysdefs.eModuleState.ACTIVE) {
-                logger.warn(this.name, 'method re-entry!');
+                logger.warn(this.$name, 'method re-entry!');
                 return callback();
             }
             this.state = sysdefs.eModuleState.STOP_PENDING;
@@ -361,7 +361,7 @@ class MysqlWrapper extends EventModule {
                 return pool.dispose(next);
             }, () => {
                 this.state = sysdefs.eModuleState.INIT;
-                logger.info(this.name, 'All connection closed.');
+                logger.info(this.$name, 'All connection closed.');
                 return callback();
             });
         }
@@ -373,7 +373,7 @@ class MysqlWrapper extends EventModule {
 }
  
  const mysqlWrapper = new MysqlWrapper({
-     name: MODULE_NAME,
+     $name: MODULE_NAME,
      type: sysdefs.eModuleType.CONN,
      mandatory: true,
      state: sysdefs.eModuleState.ACTIVE,

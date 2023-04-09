@@ -65,7 +65,7 @@ class ProtoDescriptor {
         let pkgDef = protoLoader.loadSync(options.file, LOAD_OPTIONS);
         // Declaring member variables
         this.id = options.key;
-        this.name = `${MODULE_NAME_PREFIX}_${this.id}`;
+        this.$name = `${MODULE_NAME_PREFIX}_${this.id}`;
         this.mandatory = false;
         //
         this.pd = grpc.loadPackageDefinition(pkgDef);
@@ -127,7 +127,7 @@ class ProtoDescriptor {
             return client;
         }
         this.dispose = (callback) => {
-            logger.info(this.name, 'Start cleaning...');
+            logger.info(this.$name, 'Start cleaning...');
             async.parallel([
                 // Stop server
                 (next) => {
@@ -137,7 +137,7 @@ class ProtoDescriptor {
                 (next) => {
                     let keys = Object.keys(this.clients);
                     let count = 0;
-                    logger.info(this.name, 'Total', keys.length, 'clients need to be closed.');
+                    logger.info(this.$name, 'Total', keys.length, 'clients need to be closed.');
                     async.each(keys, (key, cb) => {
                         let client = this.clients[key];
                         client.service.close();
@@ -149,12 +149,12 @@ class ProtoDescriptor {
                         count++;
                         return process.nextTick(cb);
                     }, () => {
-                        logger.info(this.name, count, 'clients has been closed.');
+                        logger.info(this.$name, count, 'clients has been closed.');
                         return next();
                     })
                 }
             ], () => {
-                logger.info(this.name, 'Cleaning succeed.');
+                logger.info(this.$name, 'Cleaning succeed.');
                 return callback();
             });
         }

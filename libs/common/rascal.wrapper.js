@@ -30,7 +30,7 @@ class RascalClientMangager extends EventModule {
             return client;
         }
         this.dispose = (callback) => {
-            logger.info(`${this.name}: Destroy all amqp clients ...`);
+            logger.info(`${this.$name}: Destroy all amqp clients ...`);
             let ids = Object.keys(this._clients);
             async.eachLimit(ids, 4, (id, next) => {
                 let client = this._clients[id];
@@ -39,13 +39,13 @@ class RascalClientMangager extends EventModule {
                 }
                 return client.dispose(next);
             }, () => {
-                logger.info(`${this.name}: All amqp clients have been destroyed.`);
+                logger.info(`${this.$name}: All amqp clients have been destroyed.`);
                 return callback();
             });
         }
         // Implementing event handle
         this.on('end', (clientId, err) => {
-            logger.info(`${this.name}: On client [END] - ${clientId} - ${tools.inspect(err)}`);
+            logger.info(`${this.$name}: On client [END] - ${clientId} - ${tools.inspect(err)}`);
             delete this._clients[clientId];
         });
         //         
@@ -74,7 +74,7 @@ function assembleTotalConfig({ vhost, conn, params }) {
 }
 
 function onMessage(content = {}) {
-    logger.debug(`${this.name}: Content = ${tools.inspect(content)}`);
+    logger.debug(`${this.$name}: Content = ${tools.inspect(content)}`);
 }
 
 class RascalClient {
@@ -82,7 +82,7 @@ class RascalClient {
         // Declaring member variables
         this.parent = props.parent;
         this.id = props.id || tools.uuidv4();
-        this.name = props.name || `rascalClient#${this.id}`;
+        this.$name = props.name || `rascalClient#${this.id}`;
         this.broker = null;
         this.state = eClientState.Null;
         this.pubKeys = [];
@@ -100,9 +100,9 @@ class RascalClient {
             this.state = eClientState.Closing;
             this.broker.shutdown(err => {
                 if (err) {
-                    logger.error(`${this.name}[${this.state}]: shutdown error! - ${err.message}`);
+                    logger.error(`${this.$name}[${this.state}]: shutdown error! - ${err.message}`);
                 } else {
-                    logger.info(`${this.name}[${this.state}]: shutdown succeed.`);
+                    logger.info(`${this.$name}[${this.state}]: shutdown succeed.`);
                     this.state = eClientState.Null;
                 }
                 return callback();
@@ -110,9 +110,9 @@ class RascalClient {
         };
         // Perform publish
         this.publish = (pubKey, data, options, callback) => {
-            logger.info(`${this.name}[${this.state}]: Publish - ${pubKey}, ${tools.inspect(data)}, ${tools.inspect(options)}`);
+            logger.info(`${this.$name}[${this.state}]: Publish - ${pubKey}, ${tools.inspect(data)}, ${tools.inspect(options)}`);
             if (this.state !== eClientState.Conn) {
-                let msg = `${this.name}[${this.state}]: Please execute initializing before use.`
+                let msg = `${this.$name}[${this.state}]: Please execute initializing before use.`
                 logger.error(msg);
                 return callback({
                     code: 6666,
@@ -120,7 +120,7 @@ class RascalClient {
                 });
             }
             if (this.pubKeys.indexOf(pubKey) === -1) {
-                let msg = `${this.name}[${this.state}]: Invalid publication configure! - key=${pubKey}`;
+                let msg = `${this.$name}[${this.state}]: Invalid publication configure! - key=${pubKey}`;
                 logger.error(msg);
                 return callback({
                     code: 6666,
@@ -129,7 +129,7 @@ class RascalClient {
             }
             this.broker.publish(pubKey, data, options, (err, pubSession) => {
                 if (err) {
-                    let msg = `${this.name}[${this.state}]: Publish error! - ${err.message}`;
+                    let msg = `${this.$name}[${this.state}]: Publish error! - ${err.message}`;
                     logger.error(msg);
                     return callback({
                         code: 6666,
@@ -137,14 +137,14 @@ class RascalClient {
                     });
                 }
                 pubSession.on('error', err => {
-                    logger.error(`${this.name}[${this.state}]: PubSession on [ERROR]! - ${err.message}`);
+                    logger.error(`${this.$name}[${this.state}]: PubSession on [ERROR]! - ${err.message}`);
                 });
                 pubSession.on('success', (msgId) => {
-                    logger.debug(`${this.name}[${this.state}]: PubSession on [SUCCESS] - ${msgId}`);
+                    logger.debug(`${this.$name}[${this.state}]: PubSession on [SUCCESS] - ${msgId}`);
                     return callback(null, pubSession);
                 });
                 pubSession.on('return', (message) => {
-                    logger.debug(`${this.name}[${this.state}]: PubSession on [RETURN] - ${tools.inspect(message)}`);
+                    logger.debug(`${this.$name}[${this.state}]: PubSession on [RETURN] - ${tools.inspect(message)}`);
                     //TODO: 
                 });
             });
@@ -155,7 +155,7 @@ class RascalClient {
         (() => {
             let config = props.config;
             let realCfg = assembleTotalConfig(config);
-            logger.info(`${this.name}: Create new RacalClient with ${tools.inspect(realCfg)}`);
+            logger.info(`${this.$name}: Create new RacalClient with ${tools.inspect(realCfg)}`);
             this.state = eClientState.Init;
             let self = this;
             Broker.create(realCfg, (err, broker) => {
@@ -249,7 +249,7 @@ class RascalClient {
 }
 
 module.exports = exports = new RascalClientMangager({
-    name: MODULE_NAME,
+    $name: MODULE_NAME,
     mandatory: true,
     state: sysdefs.eModuleState.ACTIVE,
     type: sysdefs.eModuleType.CONN
