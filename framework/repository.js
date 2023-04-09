@@ -564,8 +564,6 @@ class RepositoryFactory extends EventModule {
                 let spec = this._modelSpecs[name];
                 let key = `${name}@${dsName}`;
                 if (spec !== undefined && this._repos[key] === undefined) {
-                    let allowCache = spec.allowCache !== undefined? spec.allowCache : false;
-                    let cacheSpec = spec.cacheSpec || {};
                     this._repos[key] = new Repository({
                         name: key,
                         // model spec
@@ -573,8 +571,8 @@ class RepositoryFactory extends EventModule {
                         modelSchema: spec.schema,
                         dsName: dsName,
                         // cache 
-                        allowCache: allowCache,
-                        cacheSpec: cacheSpec
+                        allowCache: spec.allowCache,
+                        cacheSpec: spec.cacheSpec
                     });
                     logger.info(`>>> New repository: ${key} created. <<<`);
                 }

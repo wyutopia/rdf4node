@@ -6,7 +6,7 @@ const sysdefs = require('./sysdefs');
 
 function _objectInit(props) {
     this.id = props.id || tools.uuidv4();
-    this.name = props.name || `Untitled-${this.id}`;
+    this.name = props.$Name || `Untitled-${this.id}`;
     this.type = props.type || sysdefs.eModuleType.OBJ;
 }
 exports.objectInit = _objectInit;

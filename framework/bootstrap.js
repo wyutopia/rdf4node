@@ -45,7 +45,10 @@ function _loadDatabaseSchemas(callback) {
             if (modelName) {
                 repoFactory.registerSchema(modelName, {
                     schema: modelSpec.modelSchema,
-                    refs: modelSpec.modelRefs || []
+                    refs: modelSpec.modelRefs || [],
+                    // Cache options
+                    allowCache: modelSpec.allowCache,
+                    cacheSpec: modelSpec.cacheSpec
                 });
                 allModels.push(modelName);
             }
