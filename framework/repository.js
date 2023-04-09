@@ -17,7 +17,7 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 //
 const {dsFactory} = require('./data-source');
-const cacheFactory = require('./cache');
+const {eDataType, eLoadPolicy, cacheFactory} = require('./cache');
 
 function _uniQuery(query, options, callback) {
     ['select', 'sort', 'skip', 'limit', 'populate'].forEach(method => {
@@ -95,7 +95,47 @@ function _updateOne(params, callback) {
                 message: msg
             });
         }
-        return callback(null, doc);
+        // Append cache
+        _appendCache.call(this, doc, () => {
+            return callback(null, doc);
+        });
+    });
+}
+
+function _$fillCacheFilter (template, k, filter) {
+    let keys = template.split(':');
+    let values = k.split(':');
+    for (let i = 0; i < keys.length; i++) {
+        if (values[i] !== '*') {
+            filter[keys[i]] = values[i];
+        }
+    }
+}
+
+function _$packCacheKeyName (template, doc) {
+    let keyName = ''
+    let fields = template.splic(':');
+    for (let i = 0; i < fields.length; i++) {
+        let field = fields[i];
+        let nameUnit = doc[field] !== undefined? doc[field] : '*';
+        keyName += nameUnit;
+    }
+    return keyName;
+}
+
+function _appendCache(data, callback) {
+    if (this.allowCache === false || !data) {
+        return callback(null, data);
+    }
+    let docs = Array.isArray(data)? data : [data];
+    //
+    async.each(docs, (doc, next) => {
+        let keyName = this.cacheSpec.keyName? this.cacheSpec.keyName : _$packCacheKeyName(this.cacheSpec.keyNameTemplate, doc);
+        let cacheKey = doc[keyName];
+        this._cache[cacheKey] = doc;    // TODO: replace with cacheRepository opeartions
+        return process.nextTick(next);
+    }, () => {
+        return callback();
     });
 }
 
@@ -111,9 +151,9 @@ class Repository extends EventObject {
         //
         this.allowCache = props.allowCache !== undefined? props.allowCache : false;
         this.cacheSpec = props.cacheSpec || {
-            dataType: 'kv',
-            loadPolicy: 'setAfterFound',
-            keyName: 'name'
+            dataType: eDataType.Kv,
+            loadPolicy: eLoadPolicy.SetAfterFound,
+            keyName: '_id'
         };
         // Declaring private member variables
         this._model = null;
@@ -126,16 +166,32 @@ class Repository extends EventObject {
         };
         // Implementing cache methods
         this.cacheGet = (k, callback) => {
+            if (this.allowCache === false) {
+                return callback({
+                    code: eRetCodes.METHOD_NOT_ALLOWED,
+                    message: 'Set allowCache=true before using.'
+                });
+            }
             let v = this._cache[k];
             if (v !== undefined) {
                 return callback(null, v);
             }
             let filter = {};
-            filter[this.cacheSpec.keyName] = k;
+            if (this.cacheSpec.keyName !== undefined) {
+                filter[this.cacheSpec.keyName] = k;
+            } else if (this.cacheSpec.keyNameTemplate !== undefined) {
+                _$fillCacheFilter(this.cacheSpec.keyNameTemplate, k, filter);
+            }
+            if (Object.keys(filter).length === 0) {
+                return callback({
+                    code: eRetCodes.BAD_REQUEST,
+                    message: 'Invalid cache key!'
+                });
+            }
             this.findOne({
                 filter: filter
             }, (err, doc) => {
-                if (doc && this.cacheSpec.loadPolicy === 'setAfterFound') {
+                if (doc && this.cacheSpec.loadPolicy === eLoadPolicy.SetAfterFound) {
                     this._cache[k] = doc;
                 }
                 return callback(err, doc);
@@ -153,7 +209,7 @@ class Repository extends EventObject {
                     message: 'Model should be initialized before using!'
                 });
             }
-            logger.debug(`Create ${this.modelName} with data: ${tools.inspect(data)}`);
+            //logger.debug(`Create ${this.modelName} with data: ${tools.inspect(data)}`);
             this._model.create(data, (err, doc) => {
                 if (err) {
                     let msg = `Create ${this.modelName} error! - ${err.message}`;
@@ -163,7 +219,10 @@ class Repository extends EventObject {
                         message: err.code === 11000 ? `Create failed, ${this.modelName} Already exists!` : msg
                     });
                 }
-                return callback(null, doc);
+                // Append cache
+                _appendCache.call(this, doc, () => {
+                    return callback(null, doc);
+                });
             });
         };
         this.insert = (options, callback) => {
@@ -197,7 +256,10 @@ class Repository extends EventObject {
                         message: msg
                     })
                 }
-                return callback(null, doc);
+                // Append cache
+                _appendCache.call(this, doc, () => {
+                    return callback(null, doc);
+                });
             });
         };
         // Find one document
@@ -215,7 +277,11 @@ class Repository extends EventObject {
             logger.debug(`${this.modelName} - options: ${tools.inspect(options)}`);
             //
             let query = this._model.findOne(options.filter || {});
-            return _uniQuery(query, options, callback);
+            return _uniQuery(query, options, (err, doc) => {
+                _appendCache.call(this, doc, () => {
+                    return callback(err, doc);
+                });
+            });
         };
         // Find all documents
         this.findMany = (options, callback) => {
@@ -232,7 +298,11 @@ class Repository extends EventObject {
             logger.debug(`${this.name} - options: ${tools.inspect(options)}`);
             //
             let query = this._model.find(options.filter || {});
-            return _uniQuery(query, options, callback);
+            return _uniQuery(query, options, (err, docs) => {
+                _appendCache.call(this, docs, () => {
+                    return callback(err, docs);
+                });
+            });
         };
         // Paginating find documents
         this.findPartial = (options, callback) => {
@@ -289,7 +359,10 @@ class Repository extends EventObject {
                         });
                     }
                     results.values = docs;
-                    return callback(null, results);
+                    // Append cache
+                    _appendCache.call(this, docs, () => {
+                        return callback(null, results);
+                    });
                 });
             });
         };

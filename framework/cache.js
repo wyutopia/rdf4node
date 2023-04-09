@@ -21,7 +21,8 @@ const eDataType = {
 };
 
 const eLoadPolicy = {
-    Bootstrap    : 'bs',
+    Bootstrap      : 'bootstrap',
+    SetAfterFound  : 'setAfterFound'
 };
 
 const _defaultCacheProps = {
