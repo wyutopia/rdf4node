@@ -96,12 +96,16 @@ class DataSourceFactory extends EventModule {
         (() => {
             let dsConf = sysConf.dataSources || {};
             Object.keys(dsConf).forEach(dsName => {
-                this._ds[dsName] = new DataSource({
-                    name: dsName,
-                    //
-                    dbType: dsConf[dsName].type,
-                    conf: dsConf[dsName].config
-                });
+                if (dsConf[dsName].enabled === true) {
+                    this._ds[dsName] = new DataSource({
+                        name: dsName,
+                        //
+                        dbType: dsConf[dsName].type,
+                        conf: dsConf[dsName].config
+                    });
+                } else {
+                    logger.info(`DataSource: ${dsName} is disabled!`);
+                }
             });
             //
             if (this._ds['default'] === undefined) {
