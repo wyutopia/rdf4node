@@ -17,7 +17,7 @@ class Registry extends CommonObject {
         this.register = (moduleRef) => {
             assert(moduleRef !== null && moduleRef !== undefined);
             //
-            let name = moduleRef.name || tools.uuidv4();
+            let name = moduleRef.$name || tools.uuidv4();
             if (this._modules[name] !== undefined) {
                 logger.error(`module: ${name} already exists! overrided!!!`);
             }
@@ -30,12 +30,12 @@ class Registry extends CommonObject {
         };
 
         this.dispose = (callback) => {
-
+            return callback()
         };
     }
 }
 
 // Declaring module exports
 module.exports = exports = new Registry({
-    name: _MODULE_NAME
+    $name: _MODULE_NAME
 });

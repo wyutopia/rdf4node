@@ -169,11 +169,11 @@ class TheApp extends EventEmitter {
          * @param mod
          */
         this.regModule = (mod) => {
-            logger.info(`New module registry: ${mod.name} - ${mod.mandatory} - ${mod.state}`);
-            if (this._modules[mod.name] !== undefined) {
+            logger.info(`New module registry: ${mod.$name} - ${mod.mandatory} - ${mod.state}`);
+            if (this._modules[mod.$name] !== undefined) {
                 logger.error(`>>>>>> Conflict! ${mod.name} already exists.`)
             } else {
-                this._modules[mod.name] = mod;
+                this._modules[mod.$name] = mod;
                 // Add to clean up chain
                 let layer = mod.type || pubdefs.eModuleType.OBJ;
                 this._arch[layer].push(mod);

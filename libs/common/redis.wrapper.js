@@ -294,7 +294,7 @@ class RedisWrapper extends EventModule {
 }
 
 const redisWrapper = new RedisWrapper({
-    name: MODULE_NAME,
+    $name: MODULE_NAME,
     mandatory: true,
     type: sysdefs.eModuleType.CONN,
     state: sysdefs.eModuleState.ACTIVE
