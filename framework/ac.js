@@ -67,11 +67,49 @@ function _authenticate(authType, req, callback) {
     return callback();
 }
 
+const privilegeUrls = config.privilegeUrls || [];
+//
+// [
+//     '/monitor/metrics',
+//     '/monitor/health',
+//     'admin/login',
+//     'admin/logout',
+//     'admin/chgpwd',
+//     'users/login',
+//     'users/logout',
+//     'users/chgpwd',
+//     'users/update'
+// ];
+const gVerbsRe = new RegExp(/(add|create|get|find|list|watch|update|patch|push|move|assign|sort|schedule|delete|remove)/);
+function _parseUrl(originUrl) {
+    let result = {};
+    let url = originUrl.replace('\/v1\/', '').split(':')[0].replace(/\/$/, '');
+    if (privilegeUrls.indexOf(url) !== -1) {
+        result.resource = url;
+        result.verb = '*';
+        return result;
+    }
+    let found = gVerbsRe.exec(url);
+    if (found) {
+        result.resource = url.slice(0, index).replace(/\/$/, '');
+        result.verb = found[0];
+    }
+    return result;
+}
+
 function _authorize(req, callback) {
     if (config.enableAuthorization !== true) {
         // Ignore AUTHORIZATION
         return callback();
     }
+    let acl = _parseUrl(req.url);
+    if (acl.resource === undefined) {
+        return callback({
+            code: eRetCodes.UNAUTHORIZED,
+            message: 'Unknown request url'
+        });
+    }
+    //TODO: Add 
     return callback();
 };
 
@@ -82,7 +120,7 @@ function _accessAuth(authType, req, res, next) {
         }
         _authorize(req, err => {
             if (err) {
-                return res.sendRsp(err.code, err.message);
+                return res.send(err.code);
             }
             return next();
         });

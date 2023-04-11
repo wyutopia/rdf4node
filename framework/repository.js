@@ -565,7 +565,7 @@ class RepositoryFactory extends EventModule {
                 let key = `${name}@${dsName}`;
                 if (spec !== undefined && this._repos[key] === undefined) {
                     this._repos[key] = new Repository({
-                        name: key,
+                        $name: key,
                         // model spec
                         modelName: name,
                         modelSchema: spec.schema,
@@ -671,6 +671,6 @@ module.exports = exports = {
         }
     },
     repoFactory: new RepositoryFactory({
-        name: _MODULE_NAME
+        $name: _MODULE_NAME
     })
 }

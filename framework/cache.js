@@ -94,7 +94,7 @@ class CacheFactory extends EventModule {
             let bktId = `${name}#${db}`;
             if (this._caches[bktId] === undefined) {
                 this._caches[bktId] = new Cache({
-                    name: name,
+                    $name: name,
                     specOptions: cacheSpecOptions
                 });
             }
@@ -109,6 +109,6 @@ module.exports = exports = {
     eDataType: eDataType,
     eLoadPolicy: eLoadPolicy,
     cacheFactory: new CacheFactory({
-        name: _MODULE_NAME
+        $name: _MODULE_NAME
     })
 };
