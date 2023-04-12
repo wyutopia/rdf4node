@@ -120,7 +120,7 @@ function _accessAuth(authType, req, res, next) {
         }
         _authorize(req, err => {
             if (err) {
-                return res.send(err.code);
+                return res.sendStatus(err.code);
             }
             return next();
         });
