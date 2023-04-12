@@ -91,7 +91,7 @@ function _parseUrl(originUrl) {
     }
     let found = gVerbsRe.exec(url);
     if (found) {
-        result.resource = url.slice(0, index).replace(/\/$/, '');
+        result.resource = url.slice(0, found).replace(/\/$/, '');
         result.verb = found[0];
     }
     return result;
