@@ -147,6 +147,8 @@ function _accessAuth(authType, req, res, next) {
 
 // Declaring module exports
 module.exports = exports = {
+    packUserTokenSeed: _packUserTokenSeed,
+    packAdminTokenSeed: _packAdminTokenSeed,
     genJwtToken: _genJwtToken,
     accessAuth: _accessAuth
 };
