@@ -298,7 +298,7 @@ exports.parseParameters = function (params, options, callback) {
 
 function _validateString (field, validator, argv) {
     let errMsg = null;
-    if (!argv && validator.allowNull) {
+    if (!argv && validator.allowEmpty) {
         return errMsg;
     }
     if (validator.regexp && !validator.regexp.test(argv)) {
@@ -383,7 +383,7 @@ function _validateEmbeddedObject(field, validator, args) {
             if (!errMsg) {
                 switch(val.type) {
                     case 'ObjectID':
-                        if (!ObjectId.isValid(argv) && val.allowNull !== true) {
+                        if (!ObjectId.isValid(argv) && val.allowEmpty !== true) {
                             errMsg = `Invalid ObjectId value: ${field}.${i}.${valKey}!`;
                         }
                         break;
@@ -503,7 +503,7 @@ function _validateParameter(field, validator, argv) {
     }
     switch(validator.type) {
         case 'ObjectID':
-            if (!ObjectId.isValid(argv) && validator.allowNull !== true) {
+            if (!ObjectId.isValid(argv) && validator.allowEmpty !== true) {
                 errMsg = `Invalid ObjectId value: ${field}!`;
             }
             break;
