@@ -13,6 +13,24 @@ const config = sysConf.security || {};
 const ENCRYPT_KEY = config.encryptKey || 'abcd1234';
 const EXPIRES_IN = config.expiresIn || '120s';
 
+function _packAdminTokenSeed (aid, admin) {
+    return {
+        id: aid,
+        username: admin.username,
+        issuedAt: new Date().valueOf()
+    }
+}
+
+function _packUserTokenSeed (uid, user) {
+    return {
+        id: uid,
+        username: user.username,
+        activeGroup: user.activeGroup,
+        activeTenant: user.activeTenant,
+        issuedAt: new Date().valueOf()
+    }
+}
+
 function _genJwtToken(seed) {
     return {
         token: jsonwebtoken.sign(seed, ENCRYPT_KEY, { expiresIn: EXPIRES_IN }),
