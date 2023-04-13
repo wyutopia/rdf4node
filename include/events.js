@@ -14,9 +14,11 @@ const _MODULE_NAME = sysdefs.eFrameworkModules.ICP
 const {objectInit, moduleInit, CommonModule, CommonObject} = require('./common');
 const eRetCodes = require('./retcodes');
 const {
-    sysConf: {icp: icpConf}, 
+    sysConf, 
     winstonWrapper: {WinstonLogger}
 } = require('../libs');
+const icpConf = sysConf.icp || {};
+const disabledEvents = icpConf.disabledEvents || [];
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 
@@ -141,7 +143,11 @@ class InterCommPlatform extends CommonModule {
                 callback = options;
                 options = {};
             }
-            // 
+            //
+            if (disabledEvents.indexOf(event.code) !== -1) {
+                logger.debug(`Ignore event: ${event.code}`);
+                return callback();
+            }
             return eventLogger.publish(event, options, () => {
                 let err = null;
                 //
