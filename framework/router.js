@@ -17,9 +17,14 @@ const securityConf = config.security || {};
 /**
  * Middleware to Support CORS
  */
+const _commonHeaders = [
+    'Content-Type', 'Content-Length', 'Authorization', 'Accept', 'X-Requested-With', 'X-Active-Group', 'X-Active-Tenant'
+];
+const allowHeaders = securityConf.allowHeaders? _commonHeaders.concat(securityConf.allowHeaders) : _commonHeaders;
+
 router.all('*', (req, res, next) => {
     res.header('Access-Control-Allow-Origin', securityConf.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
-    res.header('Access-Control-Allow-Headers', securityConf.allowHeaders || 'Content-Type, Content-Length, Authorization, Accept, X-Requested-With, Rabbit-Token, Rabbit-Rand');
+    res.header('Access-Control-Allow-Headers', allowHeaders.join(', '));
     res.header('Access-Control-Allow-Methods', securityConf.allowMethods || 'POST, GET, OPTIONS');
     if (req.method === 'OPTIONS') {
         return res.sendStatus(200);
