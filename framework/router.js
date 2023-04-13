@@ -18,7 +18,7 @@ const securityConf = config.security || {};
  * Middleware to Support CORS
  */
 const _commonHeaders = [
-    'Content-Type', 'Content-Length', 'Authorization', 'Accept', 'X-Requested-With', 'X-Active-Group', 'X-Active-Tenant'
+    'Content-Type', 'Content-Length', 'Authorization', 'Accept', 'X-Requested-With', 'ActiveGroup', 'ActiveTenant', 'AuthToken'
 ];
 const allowHeaders = securityConf.allowHeaders? _commonHeaders.concat(securityConf.allowHeaders) : _commonHeaders;
 
