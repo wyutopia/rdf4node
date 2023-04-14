@@ -142,7 +142,7 @@ const _defaultCtlSpec = {
     sort: null,                 // For sort
     select: null,               // For select 
     deleteOptions: null,        // For additional delete criterias
-    inventorySelect: 'name',    // For inventory query
+    briefSelect: 'name',        // For brief query
     // For overridable query operations
     beforeFind: tools.noop,
     beforeFindByProject: tools.noop,
@@ -187,11 +187,11 @@ function _prepareFindOption (args) {
         filter._id = filter.id;
         delete filter.id;
     }
-    delete filter.inventory;
+    delete filter.brief;
     let options = {
         filter: filter
     };
-    if (!args.inventory && this._populate) {
+    if (!args.brief && this._populate) {
         options.populate = this._populate;
     }
     if (this._select) {
@@ -200,8 +200,8 @@ function _prepareFindOption (args) {
     if (this._sort) {
         options.sort = this._sort;
     }
-    if (args.inventory) {
-        options.select = this._inventorySelect;
+    if (args.brief) {
+        options.select = this._briefSelect;
     }
     return options;
 }
@@ -419,7 +419,7 @@ class EntityController extends ControllerBase {
                     required: true,
                     transKey: 'project'
                 },
-                inventory: {}
+                brief: {}
             }, this._searchVal);
             tools.parseParameter2(params, validator, (err, args) => {
                 if (err) {
@@ -459,7 +459,7 @@ class EntityController extends ControllerBase {
                     required: true,
                     transKey: 'user'
                 },
-                inventory: {}
+                brief: {}
             }, this._searchVal);
             tools.parseParameter2(params, validator, (err, args) => {
                 if (err) {
@@ -482,6 +482,50 @@ class EntityController extends ControllerBase {
                                 return res.sendRsp(err.code, err.message);
                             }
                             return res.sendSuccess(results);
+                        });
+                    });
+                });
+            });
+        };
+        this.findByGroup = (req, res) => {
+            let validator = Object.assign({
+                id: {
+                    type: 'ObjectId',
+                    required: true,
+                    transKey: 'group'
+                },
+                brief: {}
+            }, this._searchVal);
+            this._findBy(validator, req, (err, results) => {
+                if (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
+                return res.sendRsp(results);
+            });
+        };
+        this._findBy = (validator, req, callback) => {
+            let params = Object.assign({}, req.params, req.query);
+            tools.parseParameter2(params, validator, (err, args) => {
+                if (err) {
+                    return callback(err);
+                }
+                this._getRepo(req.dataSource, (err, repo) => {
+                    if (err) {
+                        return callback(err);
+                    }
+                    //
+                    let options = _prepareFindOption.call(this, args);
+                    this._beforeFind(options);
+                    this._beforeFindByUser(options);
+                    repo.findMany(options, (err, docs) => {
+                        if (err) {
+                            return callback(err);
+                        }
+                        this._afterFindMany(docs, (err, results) => {
+                            if (err) {
+                                return callback(err);
+                            }
+                            return callback(null, results);
                         });
                     });
                 });
