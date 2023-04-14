@@ -145,6 +145,7 @@ const _defaultCtlSpec = {
     briefSelect: 'name',        // For brief query
     // For overridable query operations
     beforeFind: tools.noop,
+    beforeFindByGroup: tools.noop,
     beforeFindByProject: tools.noop,
     beforeFindByUser: tools.noop,
     beforeFindPartial: tools.noop,
@@ -488,6 +489,7 @@ class EntityController extends ControllerBase {
             });
         };
         this.findByGroup = (req, res) => {
+            let params = Object.assign({}, req.params, req.query);
             let validator = Object.assign({
                 id: {
                     type: 'ObjectId',
@@ -496,11 +498,30 @@ class EntityController extends ControllerBase {
                 },
                 brief: {}
             }, this._searchVal);
-            this._findBy(validator, req, (err, results) => {
+            tools.parseParameter2(params, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
-                return res.sendRsp(results);
+                this._getRepo(req.dataSource, (err, repo) => {
+                    if (err) {
+                        return res.sendRsp(err.code, err.message);
+                    }
+                    //
+                    let options = _prepareFindOption.call(this, args);
+                    this._beforeFind(options);
+                    this._beforeFindByGroup(options);
+                    repo.findMany(options, (err, docs) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        this._afterFindMany(docs, (err, results) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            return res.sendSuccess(results);
+                        });
+                    });
+                });
             });
         };
         this._findBy = (validator, req, callback) => {
