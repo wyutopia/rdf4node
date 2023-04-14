@@ -509,7 +509,7 @@ class EntityController extends ControllerBase {
                     //
                     let options = _prepareFindOption.call(this, args);
                     this._beforeFind(options);
-                    this._beforeFindByGroup(options);
+                    this.emit('before_findby_group', options);
                     repo.findMany(options, (err, docs) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
