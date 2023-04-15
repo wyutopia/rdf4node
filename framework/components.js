@@ -155,8 +155,8 @@ const _defaultCtlSpec = {
     afterFindPartial: function (results, callback) { return callback(null, results); },  // For pagination results
     //
     allowAdd: function (req, args, callback) { return callback(); },
-    beforeAdd: function (args, repo, callback) { return callback(null, args); },
-    beforeInsert: function (args, repo, callback) { 
+    beforeAdd: function (req, args, callback) { return callback(null, args); },
+    beforeInsert: function (req, args, callback) { 
         return callback(null, {
             filter: args,
             updates: args
@@ -288,7 +288,7 @@ class EntityController extends ControllerBase {
             if (dataSourceOption === undefined) {
                 dataSourceOption = {};
             }
-            let dsName = dataSourceOption.dsName || DS_DEFAULT;
+            let dsName = dataSourceOption.dsName || _DS_DEFAULT_;
             let repo = this._entityRepos[dsName];
             if (repo !== undefined) {
                 return repo;
@@ -574,7 +574,7 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._beforeAdd(args, repo, (err, data) => {
+                        this._beforeAdd(req, args, (err, data) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
@@ -615,7 +615,7 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeInsert(args, repo, (err, options) => {
+                    this._beforeInsert(req, args, (err, options) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
