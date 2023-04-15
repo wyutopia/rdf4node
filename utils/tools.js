@@ -744,3 +744,14 @@ function _packMongoUri (config) {
     return uri;
 }
 exports.packMongoUri = _packMongoUri;
+
+exports.deleteFromArray = function (arr, item) {
+    if (!Array.isArray(arr) || item === undefined) {
+        return null;
+    }
+    let index = arr.indexOf(item);
+    if (index !== -1) {
+        arr.splice(index, 1);
+    }
+    return null;
+};

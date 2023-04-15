@@ -7,6 +7,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const appRoot = require('app-root-path');
+const ObjectId = require('mongoose').Types.ObjectId;
 const bootstrapConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 // Framework libs
 const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY;
@@ -103,7 +104,7 @@ function _updateOne(params, callback) {
 }
 
 function _$parseCacheKey (doc, cacheSpec) {
-    if (typeof doc === 'string') {
+    if (tools.isTypeOfPrimitive(doc)) {
         return doc;
     }
     if (cacheSpec.keyName) {
@@ -146,12 +147,13 @@ function _$buildQueryFilter(data, cacheSpec) {
     if (cacheSpec.keyName !== undefined) {
         filter[cacheSpec.keyName] = tools.isTypeOfPrimitive(data)? data : data[cacheSpec.keyName];
     } else if (cacheSpec.keyNameTemplate !== undefined) {
-        let keys = cacheSpec.keyNameTemplate.split(':');
-        for (let i = 0; i < keys.length; i++) {
-            let field = keys[i];
-            filter[field] = data[field] !== undefined? data[field] : '*';
-        }
+        cacheSpec.keyNameTemplate.split(':').forEach (key => {
+            if (data[key] !== undefined) {
+                filter[key] = data[key];
+            }
+        });
     }
+    return filter;
 }
 
 // The repository class
@@ -490,7 +492,10 @@ class Repository extends EventObject {
                 });
             }
             //
-            let filter = options.filter || { bulkDeleteIsNotAllowed: true };
+            let filter = options.filter || { 
+                _id: new ObjectId(),
+                isDeleteProtection: true
+            };
             let methodName = options.multi === true ? 'deleteMany' : 'deleteOne';
             logger.debug(`Remove ${this.$name} by ${methodName} with filter: ${tools.inspect(filter)}`);
             this._model[methodName](filter, (err, result) => {
