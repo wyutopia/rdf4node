@@ -102,25 +102,28 @@ function _updateOne(params, callback) {
     });
 }
 
-function _$fillCacheFilter (template, k, filter) {
-    let keys = template.split(':');
-    let values = k.split(':');
-    for (let i = 0; i < keys.length; i++) {
-        if (values[i] !== '*') {
-            filter[keys[i]] = values[i];
-        }
+function _$parseCacheKey (doc, cacheSpec) {
+    if (typeof doc === 'string') {
+        return doc;
     }
-}
-
-function _$packCacheKeyName (template, doc) {
-    let keyName = ''
-    let fields = template.splic(':');
+    if (cacheSpec.keyName) {
+        return doc[cacheSpec.keyName];
+    }
+    let template = cacheSpec.keyNameTemplate;
+    if (template === undefined) {
+        return template;
+    }
+    let keyNameArray = []
+    let fields = template.split(':');
     for (let i = 0; i < fields.length; i++) {
         let field = fields[i];
-        let nameUnit = doc[field] !== undefined? doc[field] : '*';
-        keyName += nameUnit;
+        let namePart = '*';
+        if (doc[field] !== undefined) {
+            namePart = doc[field]._id === undefined? doc[field] : doc[field]._id;
+        };
+        keyNameArray.push(namePart);
     }
-    return keyName;
+    return keyNameArray.join(':');
 }
 
 function _appendCache(data, callback) {
@@ -130,13 +133,25 @@ function _appendCache(data, callback) {
     let docs = Array.isArray(data)? data : [data];
     //
     async.each(docs, (doc, next) => {
-        let keyName = this.cacheSpec.keyName? this.cacheSpec.keyName : _$packCacheKeyName(this.cacheSpec.keyNameTemplate, doc);
-        let cacheKey = doc[keyName];
-        this._cache[cacheKey] = doc;    // TODO: replace with cacheRepository opeartions
+        let cacheKey = _$parseCacheKey(doc, this.cacheSpec);
+        this._cache[cacheKey] = doc.toObject();    // TODO: replace with cacheRepository opeartions
         return process.nextTick(next);
     }, () => {
         return callback();
     });
+}
+
+function _$buildQueryFilter(data, cacheSpec) {
+    let filter = {};
+    if (cacheSpec.keyName !== undefined) {
+        filter[cacheSpec.keyName] = tools.isTypeOfPrimitive(data)? data : data[cacheSpec.keyName];
+    } else if (cacheSpec.keyNameTemplate !== undefined) {
+        let keys = cacheSpec.keyNameTemplate.split(':');
+        for (let i = 0; i < keys.length; i++) {
+            let field = keys[i];
+            filter[field] = data[field] !== undefined? data[field] : '*';
+        }
+    }
 }
 
 // The repository class
@@ -165,23 +180,19 @@ class Repository extends EventObject {
             return this._cache;
         };
         // Implementing cache methods
-        this.cacheGet = (k, callback) => {
+        this.cacheGet = (key, callback) => {
             if (this.allowCache === false) {
                 return callback({
                     code: eRetCodes.METHOD_NOT_ALLOWED,
                     message: 'Set allowCache=true before using.'
                 });
             }
-            let v = this._cache[k];
-            if (v !== undefined) {
+            let cacheKey = _$parseCacheKey(key, this.cacheSpec);
+            let v = this._cache[cacheKey];
+            if (v !== undefined || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
                 return callback(null, v);
             }
-            let filter = {};
-            if (this.cacheSpec.keyName !== undefined) {
-                filter[this.cacheSpec.keyName] = k;
-            } else if (this.cacheSpec.keyNameTemplate !== undefined) {
-                _$fillCacheFilter(this.cacheSpec.keyNameTemplate, k, filter);
-            }
+            let filter = _$buildQueryFilter(key, this.cacheSpec);
             if (Object.keys(filter).length === 0) {
                 return callback({
                     code: eRetCodes.BAD_REQUEST,
@@ -192,7 +203,7 @@ class Repository extends EventObject {
                 filter: filter
             }, (err, doc) => {
                 if (doc && this.cacheSpec.loadPolicy === eLoadPolicy.SetAfterFound) {
-                    this._cache[k] = doc;
+                    this._cache[cacheKey] = doc.toObject();
                 }
                 return callback(err, doc);
             });

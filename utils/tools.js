@@ -13,6 +13,7 @@ const { v4: uuidv4 } = require('uuid');
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes.js');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
+const { experimental } = require('@grpc/grpc-js');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'tools');
 
 function _noop() {}
@@ -70,6 +71,11 @@ exports.isTypeOfArray = _isTypeOfArray;
 exports.isTypeOfDate = function (obj) {
     return '[object Date]' === Object.prototype.toString.call(obj);
 };
+
+const gPrimitiveTypes = ['undefined', 'boolean', 'number', 'bigint', 'string'];
+exports.isTypeOfPrimitive = function (v) {
+    return gPrimitiveTypes.indexOf(typeof v) !== -1;
+}
 
 exports.uuidv4 = function () {
     return uuidv4().replace(/-/g, '');
