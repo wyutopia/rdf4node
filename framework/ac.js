@@ -11,13 +11,9 @@ const logger = WinstonLogger(process.env.SRV_ROLE);
 const sysConf = require('./config');
 const config = sysConf.security || {};
 const ENCRYPT_KEY = config.encryptKey || 'abcd1234';
-const EXPIRES_IN = config.expiresIn || '24h';
+const EXPIRES_IN = config.expiresIn || '72h';
 const DEFAULT_OPTIONS = config.signOptions || {
-    algorithm: 'HS256', 
-    keyid: '1', 
-    noTimestamp: false, 
     expiresIn: EXPIRES_IN, 
-    notBefore: '2s'
 };
 logger.info(`>>>>>> The jwt configuration: ${ENCRYPT_KEY} - ${tools.inspect(DEFAULT_OPTIONS)}`);
 
