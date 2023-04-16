@@ -112,15 +112,15 @@ const gVerbsRe = new RegExp(/(add|create|get|find|list|watch|update|patch|modify
 function _parseUrl(originUrl) {
     let result = {};
     let url = originUrl.replace('\/v1\/', '').split(':')[0].replace(/\/$/, '');
+    let found = gVerbsRe.exec(url);
+    if (found) {
+        result.resource = url.slice(0, found.index).replace(/\/$/, '');
+        result.verb = found[0];
+    }
     if (privilegeUrls.indexOf(url) !== -1) {
         result.resource = url;
         result.verb = '*';
         return result;
-    }
-    let found = gVerbsRe.exec(url);
-    if (found) {
-        result.resource = url.slice(0, found).replace(/\/$/, '');
-        result.verb = found[0];
     }
     return result;
 }
@@ -131,7 +131,7 @@ function _authorize(req, callback) {
         return callback();
     }
     let acl = _parseUrl(req.url);
-    if (acl.resource === undefined) {
+    if (!acl.resource) {
         return callback({
             code: eRetCodes.UNAUTHORIZED,
             message: 'Unknown request url'
