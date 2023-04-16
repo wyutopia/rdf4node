@@ -11,31 +11,45 @@ const logger = WinstonLogger(process.env.SRV_ROLE);
 const sysConf = require('./config');
 const config = sysConf.security || {};
 const ENCRYPT_KEY = config.encryptKey || 'abcd1234';
-const EXPIRES_IN = config.expiresIn || '120s';
+const EXPIRES_IN = config.expiresIn || '24h';
+const DEFAULT_OPTIONS = config.signOptions || {
+    algorithm: 'HS256', 
+    keyid: '1', 
+    noTimestamp: false, 
+    expiresIn: EXPIRES_IN, 
+    notBefore: '2s'
+};
+logger.info(`>>>>>> The jwt configuration: ${ENCRYPT_KEY} - ${tools.inspect(DEFAULT_OPTIONS)}`);
 
-function _packAdminTokenSeed (aid, admin) {
+function _packAdminPayload (aid, admin) {
     return {
         id: aid,
-        username: admin.username,
-        issuedAt: new Date().valueOf()
+        sub: admin.username
     }
 }
 
-function _packUserTokenSeed (uid, user) {
+function _packUserPayload (uid, user) {
     return {
         id: uid,
-        username: user.username,
-        activeGroup: user.activeGroup,
-        activeTenant: user.activeTenant,
-        issuedAt: new Date().valueOf()
+        sub: user.username,
+        grp: user.activeGroup,
+        tnt: user.activeTenant
     }
 }
 
-function _genJwtToken(seed) {
-    return {
-        token: jsonwebtoken.sign(seed, ENCRYPT_KEY, { expiresIn: EXPIRES_IN }),
-        expiresIn: EXPIRES_IN
-    }
+function _genJwtToken(payload, signOptions) {
+    const jwtSignOptions = Object.assign({}, signOptions, DEFAULT_OPTIONS);
+    return jsonwebtoken.sign(payload, ENCRYPT_KEY, jwtSignOptions);
+}
+
+function _refreshJwtToken(token, refreshOptions) {
+    const payload = jsonwebtoken.verify(token, ENCRYPT_KEY, refreshOptions.verify);
+    delete payload.iat;
+    delete payload.exp;
+    delete payload.nbf;
+    delete payload.jti;
+    const jwtSignOptions = Object.assign({}, DEFAULT_OPTIONS, {jwtid: refreshOptions.jwtid});
+    return jwt.sign(payload, ENCRYPT_KEY, jwtSignOptions);
 }
 
 function _validateJwt(req, callback) {
@@ -147,8 +161,9 @@ function _accessAuth(authType, req, res, next) {
 
 // Declaring module exports
 module.exports = exports = {
-    packUserTokenSeed: _packUserTokenSeed,
-    packAdminTokenSeed: _packAdminTokenSeed,
+    packUserPayload: _packUserPayload,
+    packAdminPayload: _packAdminPayload,
     genJwtToken: _genJwtToken,
+    refreshJwtToken: _refreshJwtToken,
     accessAuth: _accessAuth
 };
