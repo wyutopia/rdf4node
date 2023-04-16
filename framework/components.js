@@ -149,7 +149,6 @@ const _defaultCtlSpec = {
     beforeFindByGroup: tools.noop,
     beforeFindByProject: tools.noop,
     beforeFindByUser: tools.noop,
-    beforeFindPartial: tools.noop,
     //
     afterFindOne: function (doc, callback) { return callback(null, doc); },      // For only one document
     afterFindMany: function (docs, callback) { return callback(null, docs); },     // For one or array results
@@ -333,7 +332,7 @@ class EntityController extends ControllerBase {
             let params = Object.assign({}, req.params, req.query, req.body);
             tools.parseParameter2(params, {
                 id: {
-                    type: 'ObjectId',
+                    type: 'ObjectID',
                     required: true
                 }
             }, (err, args) => {
@@ -386,7 +385,7 @@ class EntityController extends ControllerBase {
             });
         };
         this.findPartial = (req, res) => {
-            let validator = tools.deepAssign({}, repoFactory.paginationVal, this._searchVal);
+            let validator = tools.deepAssign({}, paginationVal, this._searchVal);
             this._mandatorySearchKeys.forEach( key => {
                 let path = key.replace('.', '.$embeddedValidators.');
                 let val = tools.safeGetJsonValue(validator, path);
@@ -405,7 +404,7 @@ class EntityController extends ControllerBase {
                     //
                     let options = _prepareFindOption.call(this, args);
                     this._beforeFind(options);
-                    this._beforeFindPartial(options);
+                    this.emit('before_find_partial', args, req, options);
                     repo.findPartial(options, (err, results) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
@@ -423,10 +422,9 @@ class EntityController extends ControllerBase {
         this.findByProject = (req, res) => {
             let params = Object.assign({}, req.params, req.query);
             let validator = Object.assign({
-                id: {
-                    type: 'ObjectId',
-                    required: true,
-                    transKey: 'project'
+                project: {
+                    type: 'ObjectID',
+                    required: true
                 },
                 brief: {}
             }, this._searchVal);
@@ -463,10 +461,9 @@ class EntityController extends ControllerBase {
         this.findByUser = (req, res) => {
             let params = Object.assign({}, req.params, req.query);
             let validator = Object.assign({
-                id: {
-                    type: 'ObjectId',
-                    required: true,
-                    transKey: 'user'
+                user: {
+                    type: 'ObjectID',
+                    required: true
                 },
                 brief: {}
             }, this._searchVal);
@@ -497,12 +494,11 @@ class EntityController extends ControllerBase {
             });
         };
         this.findByGroup = (req, res) => {
-            let params = Object.assign({}, req.params, req.query);
+            let params = Object.assign({}, req.params, req.query, req.body);
             let validator = Object.assign({
-                id: {
-                    type: 'ObjectId',
-                    required: true,
-                    transKey: 'group'
+                group: {
+                    type: 'ObjectID',
+                    required: true
                 },
                 brief: {}
             }, this._searchVal);
@@ -651,7 +647,7 @@ class EntityController extends ControllerBase {
         this.updateOne = (req, res) => {
             let validator = Object.assign({
                 id: {
-                    type: 'ObjectId',
+                    type: 'ObjectID',
                     required: true
                 }
             }, this._updateVal);
@@ -687,7 +683,7 @@ class EntityController extends ControllerBase {
         this.deleteOne = (req, res) => {
             let validator = {
                 id: {
-                    type: 'ObjectId',
+                    type: 'ObjectID',
                     required: true
                 }
             };
@@ -747,7 +743,7 @@ class EntityController extends ControllerBase {
         this.patchOne = (req, res) => {
             let validator = {
                 id: {
-                    type: 'ObjectId',
+                    type: 'ObjectID',
                     requird: true
                 },
                 jsonPatch: {
