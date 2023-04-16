@@ -98,7 +98,7 @@ const privilegeUrls = config.privilegeUrls || [];
 //     'users/chgpwd',
 //     'users/update'
 // ];
-const gVerbsRe = new RegExp(/(add|create|get|find|list|watch|update|patch|push|move|assign|sort|schedule|delete|remove)/);
+const gVerbsRe = new RegExp(/(add|create|get|find|list|watch|update|patch|modify|push|move|assign|sort|schedule|delete|remove)/);
 function _parseUrl(originUrl) {
     let result = {};
     let url = originUrl.replace('\/v1\/', '').split(':')[0].replace(/\/$/, '');

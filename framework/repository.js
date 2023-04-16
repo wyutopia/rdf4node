@@ -408,7 +408,10 @@ class Repository extends EventObject {
                     message: 'Model should be initialized before using!'
                 });
             }
-            let filter = options.filter || {};
+            let filter = options.filter || {
+                _id: new Object(),
+                isUpdateProtection: true
+            };
             let updates = options.updates || {};
             logger.debug(`UpdateMany ${this.$name} with filter: ${tools.inspect(filter)} - updates: ${tools.inspect(updates)}`);
             this._model.updateMany(filter, updates, (err, result) => {

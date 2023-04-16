@@ -133,7 +133,8 @@ class ControllerBase extends EventModule {
 
 const _defaultCtlSpec = {
     // For CRUD operation validators
-    searchVal: {},              // For query
+    searchVal: {},              // For search query
+    mandatorySearchKeys: [],    // For 
     addVal: {},                 // For create
     mandatoryAddKeys: [],
     updateVal: {},              // For Update
@@ -385,7 +386,14 @@ class EntityController extends ControllerBase {
             });
         };
         this.findPartial = (req, res) => {
-            let validator = Object.assign({}, repoFactory.paginationVal, this._searchVal);
+            let validator = tools.deepAssign({}, repoFactory.paginationVal, this._searchVal);
+            this._mandatorySearchKeys.forEach( key => {
+                let path = key.replace('.', '.$embeddedValidators.');
+                let val = tools.safeGetJsonValue(validator, path);
+                if (val) {
+                    val.required = true;
+                }
+            });
             tools.parseParameter2(req.query, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
