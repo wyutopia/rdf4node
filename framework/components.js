@@ -146,9 +146,6 @@ const _defaultCtlSpec = {
     briefSelect: 'name',        // For brief query
     // For overridable query operations
     beforeFind: tools.noop,
-    beforeFindByGroup: tools.noop,
-    beforeFindByProject: tools.noop,
-    beforeFindByUser: tools.noop,
     //
     afterFindOne: function (doc, callback) { return callback(null, doc); },      // For only one document
     afterFindMany: function (docs, callback) { return callback(null, docs); },     // For one or array results
@@ -438,7 +435,7 @@ class EntityController extends ControllerBase {
                     }
                     let options = _prepareFindOption.call(this, args);
                     this._beforeFind(options);
-                    this._beforeFindByProject(options);
+                    this.emit('before_findby_project', args, req, options);
                     repo.findMany(options, (err, docs) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
@@ -478,7 +475,7 @@ class EntityController extends ControllerBase {
                     //
                     let options = _prepareFindOption.call(this, args);
                     this._beforeFind(options);
-                    this._beforeFindByUser(options);
+                    this.emit('before_findby_user', args, req, options);
                     repo.findMany(options, (err, docs) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
@@ -541,7 +538,7 @@ class EntityController extends ControllerBase {
                     //
                     let options = _prepareFindOption.call(this, args);
                     this._beforeFind(options);
-                    this._beforeFindByUser(options);
+                    this.emit('before_findby_user', args, req, options);
                     repo.findMany(options, (err, docs) => {
                         if (err) {
                             return callback(err);
