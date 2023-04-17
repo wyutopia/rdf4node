@@ -145,7 +145,10 @@ const _defaultCtlSpec = {
     deleteOptions: null,        // For additional delete criterias
     briefSelect: 'name',        // For brief query
     // For overridable query operations
-    beforeFind: tools.noop,
+    beforeFind: function (req, args, callback) {
+        let options = _prepareFindOption.call(this, req, args);
+        return callback(null, options);
+    },
     //
     afterFindOne: function (doc, callback) { return callback(null, doc); },      // For only one document
     afterFindMany: function (docs, callback) { return callback(null, docs); },     // For one or array results
@@ -179,7 +182,7 @@ function _initCtlSpec(ctlSpec) {
     });
 }
 
-function _prepareFindOption (args) {
+function _prepareFindOption (req, args) {
     let filter = tools.deepAssign({}, args);
     if (filter.id !== undefined) {
         filter._id = filter.id;
@@ -245,6 +248,15 @@ function _beforePatch(args) {
     return options;
 }
 
+function _setMandatoryKeys(keys, validator) {
+    keys.forEach( key => {
+        let path = key.replace('.', '.$embeddedValidators.');
+        let val = tools.safeGetJsonValue(validator, path);
+        if (val) {
+            val.required = true;
+        }
+    });
+}
 
 // The class
 class EntityController extends ControllerBase {
@@ -300,8 +312,10 @@ class EntityController extends ControllerBase {
         this._domainEvents = props.domainEvents || {};
         // Implementing basic CRUD methods
         this.find = (req, res) => {
+            let validator = tools.deepAssign({}, this._searchVal);
+            _setMandatoryKeys(this._mandatorySearchKeys, validator);
             let params = Object.assign({}, req.params, req.query, req.body);
-            tools.parseParameter2(params, this._searchVal, (err, args) => {
+            tools.parseParameter2(params, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -309,17 +323,20 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let options = _prepareFindOption.call(this, args);
-                    this._beforeFind(options);
-                    repo.findMany(options, (err, docs) => {
+                    this._beforeFind(req, args, (err, options) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._afterFindMany(docs, (err, results) => {
+                        repo.findMany(options, (err, docs) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            return res.sendSuccess(results);
+                            this._afterFindMany(docs, (err, results) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                return res.sendSuccess(results);
+                            });
                         });
                     });
                 });
@@ -340,24 +357,30 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let options = _prepareFindOption.call(this, args);
-                    repo.findOne(options, (err, doc) => {
+                    this._beforeFind(req, args, (err, options) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._afterFindOne(doc, (err, result) => {
+                        repo.findOne(options, (err, doc) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            return res.sendSuccess(result);
+                            this._afterFindOne(doc, (err, result) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                return res.sendSuccess(result);
+                            });
                         });
                     });
                 });
             });
         };
         this.findOne = (req, res) => {
+            let validator = tools.deepAssign({}, this._searchVal);
+            _setMandatoryKeys(this._mandatorySearchKeys, validator);
             let params = Object.assign({}, req.params, req.query, req.body);
-            tools.parseParameter2(params, this._searchVal, (err, args) => {
+            tools.parseParameter2(params, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -365,17 +388,21 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let options = _prepareFindOption.call(this, args);
-                    this._beforeFind(options);
-                    repo.findOne(options, (err, doc) => {
+                    this._beforeFind(req, args, (err, options) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._afterFindOne(doc, (err, result) => {
+                        this.emit('before_find_one', req, args, options);
+                        repo.findOne(options, (err, doc) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            return res.sendSuccess(result);
+                            this._afterFindOne(doc, (err, result) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                return res.sendSuccess(result);
+                            });
                         });
                     });
                 });
@@ -383,13 +410,7 @@ class EntityController extends ControllerBase {
         };
         this.findPartial = (req, res) => {
             let validator = tools.deepAssign({}, paginationVal, this._searchVal);
-            this._mandatorySearchKeys.forEach( key => {
-                let path = key.replace('.', '.$embeddedValidators.');
-                let val = tools.safeGetJsonValue(validator, path);
-                if (val) {
-                    val.required = true;
-                }
-            });
+            _setMandatoryKeys(this._mandatorySearchKeys, validator);
             tools.parseParameter2(req.query, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
@@ -399,25 +420,28 @@ class EntityController extends ControllerBase {
                         return res.sendRsp(err.code, err.message);
                     }
                     //
-                    let options = _prepareFindOption.call(this, args);
-                    this._beforeFind(options);
-                    this.emit('before_find_partial', args, req, options);
-                    repo.findPartial(options, (err, results) => {
+                    this._beforeFind(req, args, (err, options) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._afterFindPartial(results, (err, outcomes) => {
+                        this.emit('before_find_partial', req, args, options);
+                        repo.findPartial(options, (err, results) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            return res.sendSuccess(outcomes);
+                            this._afterFindPartial(results, (err, outcomes) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                return res.sendSuccess(outcomes);
+                            });
                         });
+    
                     });
                 });
             });
         };
         this.findByProject = (req, res) => {
-            let params = Object.assign({}, req.params, req.query);
             let validator = Object.assign({
                 project: {
                     type: 'ObjectID',
@@ -425,6 +449,7 @@ class EntityController extends ControllerBase {
                 },
                 brief: {}
             }, this._searchVal);
+            let params = Object.assign({}, req.params, req.query, req.body);
             tools.parseParameter2(params, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
@@ -433,22 +458,25 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let options = _prepareFindOption.call(this, args);
-                    this._beforeFind(options);
-                    this.emit('before_findby_project', args, req, options);
-                    repo.findMany(options, (err, docs) => {
+                    this._beforeFind(req, args, (err, options) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        _publishEvents.call(this, {
-                            method: 'findByProject',
-                            data: docs
-                        }, () => {
-                            this._afterFindMany(docs, (err, results) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                return res.sendSuccess(results);
+                        this.emit('before_findby_project', req, args, options);
+                        repo.findMany(options, (err, docs) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            _publishEvents.call(this, {
+                                method: 'findByProject',
+                                data: docs
+                            }, () => {
+                                this._afterFindMany(docs, (err, results) => {
+                                    if (err) {
+                                        return res.sendRsp(err.code, err.message);
+                                    }
+                                    return res.sendSuccess(results);
+                                });
                             });
                         });
                     });
@@ -473,18 +501,21 @@ class EntityController extends ControllerBase {
                         return res.sendRsp(err.code, err.message);
                     }
                     //
-                    let options = _prepareFindOption.call(this, args);
-                    this._beforeFind(options);
-                    this.emit('before_findby_user', args, req, options);
-                    repo.findMany(options, (err, docs) => {
+                    this._beforeFind(req, args, (err, options) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._afterFindMany(docs, (err, results) => {
+                        this.emit('before_findby_user', req, args, options);
+                        repo.findMany(options, (err, docs) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            return res.sendSuccess(results);
+                            this._afterFindMany(docs, (err, results) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                return res.sendSuccess(results);
+                            });
                         });
                     });
                 });
@@ -508,46 +539,21 @@ class EntityController extends ControllerBase {
                         return res.sendRsp(err.code, err.message);
                     }
                     //
-                    let options = _prepareFindOption.call(this, args);
-                    this._beforeFind(options);
-                    this.emit('before_findby_group', options);
-                    repo.findMany(options, (err, docs) => {
+                    this._beforeFind(req, args, (err, options) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._afterFindMany(docs, (err, results) => {
+                        this.emit('before_findby_group', req, args, options);
+                        repo.findMany(options, (err, docs) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            return res.sendSuccess(results);
-                        });
-                    });
-                });
-            });
-        };
-        this._findBy = (validator, req, callback) => {
-            let params = Object.assign({}, req.params, req.query);
-            tools.parseParameter2(params, validator, (err, args) => {
-                if (err) {
-                    return callback(err);
-                }
-                this._getRepo(req.dataSource, (err, repo) => {
-                    if (err) {
-                        return callback(err);
-                    }
-                    //
-                    let options = _prepareFindOption.call(this, args);
-                    this._beforeFind(options);
-                    this.emit('before_findby_user', args, req, options);
-                    repo.findMany(options, (err, docs) => {
-                        if (err) {
-                            return callback(err);
-                        }
-                        this._afterFindMany(docs, (err, results) => {
-                            if (err) {
-                                return callback(err);
-                            }
-                            return callback(null, results);
+                            this._afterFindMany(docs, (err, results) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                return res.sendSuccess(results);
+                            });
                         });
                     });
                 });
