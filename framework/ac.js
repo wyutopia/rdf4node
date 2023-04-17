@@ -76,13 +76,11 @@ function _authenticate(authType, req, callback) {
             if (err && config.enableAuthentication === true) {
                 return callback(err);
             }
-            if (token) {
-                // Set decoded jwt into req
-                if (req.jwt === undefined) {
-                    req.jwt = token;
-                } else {
-                    req['x-jwt'] = token;
-                }
+            // Set decoded jwt into req
+            if (req.jwt === undefined) {
+                req.jwt = token || {};
+            } else {
+                req['x-jwt'] = token || {};
             }
             return callback();
         });
