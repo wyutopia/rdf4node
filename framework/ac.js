@@ -66,27 +66,26 @@ function _validateJwt(req, callback) {
                 message: 'Invalid JWT value!'
             });
         }
-        // Set decoded jwt into req
-        if (req.jwt === undefined) {
-            req.jwt = token;
-        } else {
-            req['x-jwt'] = token;
-        }
-        return callback();
+        return callback(null, token);
     });
 };
 
 function _authenticate(authType, req, callback) {
-    if (config.enableAuthentication !== true) {
-        if (req.jwt === undefined) {
-            req.jwt = {};
-        } else {
-            req['x-jwt'] = {};
-        }
-        return callback();
-    }
     if (authType === 'jwt') {
-        return _validateJwt(req, callback);
+        return _validateJwt(req, (err, token) => {
+            if (err && config.enableAuthentication === true) {
+                return callback(err);
+            }
+            if (token) {
+                // Set decoded jwt into req
+                if (req.jwt === undefined) {
+                    req.jwt = token;
+                } else {
+                    req['x-jwt'] = token;
+                }
+            }
+            return callback();
+        });
     }
     if (authType === 'cookie') {
         // TODO: Add cookie validation here ...
