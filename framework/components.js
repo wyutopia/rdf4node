@@ -163,7 +163,33 @@ const _defaultCtlSpec = {
     },
     afterAdd: function (doc, callback) { return callback(null, doc); },
     //
-    beforeUpdateOne: tools.noop,
+    beforeUpdate: function (req, args, callback) {
+        let setData = tools.deepAssign({}, args);
+        delete setData.id;
+        if (Object.keys(setData).length === 0) {
+            return callback({
+                code: eRetCodes.ACCEPTED,
+                message: 'Empty updates!'
+            });
+        }
+        setData.updateAt = new Date();
+        let options = {
+            filter: {
+                _id: args.id
+            },
+            updates: {
+                $set: setData
+            }
+        }
+        if (this._populate) {
+            options.populate = this._populate;
+        }
+        if (this._select) {
+            options.select = this._select;
+        }
+        return callback(null, options);
+    },
+//    beforeUpdateOne: tools.noop,
     afterUpdateOne: function (doc) { return doc; },
     //
     allowDelete: function (id, dsName, callback) { 
@@ -203,30 +229,6 @@ function _prepareFindOption (req, args, extOptions = {}) {
     }
     if (args.brief) {
         options.select = this._briefSelect;
-    }
-    return options;
-}
-
-function _beforeUpdate(args) {
-    let setData = tools.deepAssign({}, args);
-    delete setData.id;
-    if (Object.keys(setData).length === 0) {
-        return {noop: true};
-    }
-    setData.updateAt = new Date();
-    let options = {
-        filter: {
-            _id: args.id
-        },
-        updates: {
-            $set: setData
-        }
-    }
-    if (this._populate) {
-        options.populate = this._populate;
-    }
-    if (this._select) {
-        options.select = this._select;
     }
     return options;
 }
@@ -669,21 +671,22 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let options = _beforeUpdate.call(this, args);
-                    if (options.noop) {
-                        return res.sendRsp(eRetCodes.ACCEPTED, 'Empty updates!');
-                    }
-                    this._beforeUpdateOne(options);
-                    repo.updateOne(options, (err, doc) => {
+                    this._beforeUpdate(req, args, (err, options) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        _publishEvents.call(this, {
-                            method: 'updateOne',
-                            data: doc
-                        }, () => {
-                            let result = this._afterUpdateOne(doc);
-                            return res.sendSuccess(result);
+                        this.emit('before_update_one', req, args, options);
+                        repo.updateOne(options, (err, doc) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            _publishEvents.call(this, {
+                                method: 'updateOne',
+                                data: doc
+                            }, () => {
+                                let result = this._afterUpdateOne(doc);
+                                return res.sendSuccess(result);
+                            });
                         });
                     });
                 });
