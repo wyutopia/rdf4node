@@ -11,9 +11,8 @@ const eRetCodes = require('../include/retcodes.js');
 const tools = require('./tools');
 const XTask = require('../libs/xtask');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
-const { setFlagsFromString } = require('v8');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'logdir');
-
+const {parseParameters} = require('../framework/ac');
 let logDir = process.env.LOG_DIR || path.join(appRoot.path, 'logs');
 console.log(`>>>>>> Log directory: ${logDir}`);
 
@@ -119,7 +118,7 @@ new ScheduledCleanTask({
 });
 
 exports.removeFiles = function (req, res) {
-    tools.parseParameters(req.body, {
+    parseParameters(req.body, {
         mandatory: ['files']
     }, (err, args) => {
         if (err) {

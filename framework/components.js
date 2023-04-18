@@ -10,6 +10,7 @@ const {EventModule, icp, sysEvents} = require('../include/events');
 const {winstonWrapper: {WinstonLogger}} = require('../libs');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'comp');
 const tools = require('../utils/tools');
+const {parseParameters} = require('./ac');
 const {repoFactory, paginationVal, _DS_DEFAULT_} = require('./repository');
 
 /////////////////////////////////////////////////////////////////////////
@@ -60,14 +61,6 @@ function _$parsePatch(jsonPatch) {
         });
     }
     return updates
-}
-
-function _$extFindFilter (filter) {
-    return filter;
-}
-
-function _$extDeleteFilter (filter) {
-    // Do nothering...
 }
 
 const _reNotAllowed = new RegExp(/^-/);
@@ -317,7 +310,7 @@ class EntityController extends ControllerBase {
             let validator = tools.deepAssign({}, this._searchVal);
             _setMandatoryKeys(this._mandatorySearchKeys, validator);
             let params = Object.assign({}, req.params, req.query, req.body);
-            tools.parseParameter2(params, validator, (err, args) => {
+            parseParameters(params, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -347,7 +340,7 @@ class EntityController extends ControllerBase {
         };
         this.findById = (req, res) => {
             let params = Object.assign({}, req.params, req.query, req.body);
-            tools.parseParameter2(params, {
+            parseParameters(params, {
                 id: {
                     type: 'ObjectID',
                     required: true
@@ -384,7 +377,7 @@ class EntityController extends ControllerBase {
             let validator = tools.deepAssign({}, this._searchVal);
             _setMandatoryKeys(this._mandatorySearchKeys, validator);
             let params = Object.assign({}, req.params, req.query, req.body);
-            tools.parseParameter2(params, validator, (err, args) => {
+            parseParameters(params, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -416,7 +409,7 @@ class EntityController extends ControllerBase {
         this.findPartial = (req, res) => {
             let validator = tools.deepAssign({}, paginationVal, this._searchVal);
             _setMandatoryKeys(this._mandatorySearchKeys, validator);
-            tools.parseParameter2(req.query, validator, (err, args) => {
+            parseParameters(req.query, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -456,7 +449,7 @@ class EntityController extends ControllerBase {
                 brief: {}
             }, this._searchVal);
             let params = Object.assign({}, req.params, req.query, req.body);
-            tools.parseParameter2(params, validator, (err, args) => {
+            parseParameters(params, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -499,7 +492,7 @@ class EntityController extends ControllerBase {
                 },
                 brief: {}
             }, this._searchVal);
-            tools.parseParameter2(params, validator, (err, args) => {
+            parseParameters(params, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -538,7 +531,7 @@ class EntityController extends ControllerBase {
                 },
                 brief: {}
             }, this._searchVal);
-            tools.parseParameter2(params, validator, (err, args) => {
+            parseParameters(params, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -576,7 +569,7 @@ class EntityController extends ControllerBase {
                     val.required = true;
                 }
             });
-            tools.parseParameter2(req.body, validator, (err, args) => {
+            parseParameters(req.body, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -622,7 +615,7 @@ class EntityController extends ControllerBase {
                     validator[key].required = true;
                 }
             });
-            tools.parseParameter2(req.body, validator, (err, args) => {
+            parseParameters(req.body, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -662,7 +655,7 @@ class EntityController extends ControllerBase {
                     required: true
                 }
             }, this._updateVal);
-            tools.parseParameter2(req.body, validator, (err, args) => {
+            parseParameters(req.body, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -699,7 +692,7 @@ class EntityController extends ControllerBase {
                     required: true
                 }
             };
-            tools.parseParameter2(req.body, validator, (err, args) => {
+            parseParameters(req.body, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
@@ -762,7 +755,7 @@ class EntityController extends ControllerBase {
                     required: true
                 }
             };
-            tools.parseParameter2(req.body, validator, (err, args) => {
+            parseParameters(req.body, validator, (err, args) => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
