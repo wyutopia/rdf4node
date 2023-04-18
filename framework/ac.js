@@ -413,7 +413,7 @@ function _unifyValidator(validator) {
     }
 }
 
-function _parseParameters (req, validator, callback) {
+function _parseParameters (args, validator, callback) {
     logger.debug(`Parsing: ${tools.inspect(args)}`);
     if (typeof validator === 'function') {
         callback = validator;
