@@ -183,7 +183,7 @@ function _initCtlSpec(ctlSpec) {
 
 function _prepareFindOption (req, args, extOptions = {}) {
     let extFilter = extOptions.filter || {};
-    let filter = tools.deepAssign({}, args, extFilter);
+    let filter = tools.deepAssign(extFilter, args);
     if (filter.id !== undefined) {
         filter._id = filter.id;
         delete filter.id;
