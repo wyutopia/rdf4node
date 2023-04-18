@@ -138,6 +138,11 @@ function _authorize(req, callback) {
     return callback();
 };
 
+function _authorize2(req, args, callback) {
+    let whoami = req.jwt.id;
+    
+}
+
 function _accessAuth(authType, req, res, next) {
     _authenticate(authType, req, err => {
         if (err) {
@@ -152,11 +157,13 @@ function _accessAuth(authType, req, res, next) {
     });
 }
 
+
 // Declaring module exports
 module.exports = exports = {
     packUserPayload: _packUserPayload,
     packAdminPayload: _packAdminPayload,
     genJwtToken: _genJwtToken,
     refreshJwtToken: _refreshJwtToken,
-    accessAuth: _accessAuth
+    accessAuth: _accessAuth,
+    authorize: _authorize2
 };

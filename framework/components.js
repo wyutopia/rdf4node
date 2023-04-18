@@ -146,8 +146,7 @@ const _defaultCtlSpec = {
     briefSelect: 'name',        // For brief query
     // For overridable query operations
     beforeFind: function (req, args, callback) {
-        let options = _prepareFindOption.call(this, req, args);
-        return callback(null, options);
+        return callback(null, {});
     },
     //
     afterFindOne: function (doc, callback) { return callback(null, doc); },      // For only one document
@@ -182,8 +181,9 @@ function _initCtlSpec(ctlSpec) {
     });
 }
 
-function _prepareFindOption (req, args) {
-    let filter = tools.deepAssign({}, args);
+function _prepareFindOption (req, args, extOptions = {}) {
+    let extFilter = extOptions.filter || {};
+    let filter = tools.deepAssign({}, args, extFilter);
     if (filter.id !== undefined) {
         filter._id = filter.id;
         delete filter.id;
@@ -323,10 +323,11 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeFind(req, args, (err, options) => {
+                    this._beforeFind(req, args, (err, extOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
+                        let options = _prepareFindOption.call(this, req, args, extOptions);
                         repo.findMany(options, (err, docs) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
@@ -357,10 +358,11 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeFind(req, args, (err, options) => {
+                    this._beforeFind(req, args, (err, extOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
+                        let options = _prepareFindOption.call(this, req, args, extOptions);
                         repo.findOne(options, (err, doc) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
@@ -388,10 +390,11 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeFind(req, args, (err, options) => {
+                    this._beforeFind(req, args, (err, extOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
+                        let options = _prepareFindOption.call(this, req, args, extOptions);
                         this.emit('before_find_one', req, args, options);
                         repo.findOne(options, (err, doc) => {
                             if (err) {
@@ -420,10 +423,11 @@ class EntityController extends ControllerBase {
                         return res.sendRsp(err.code, err.message);
                     }
                     //
-                    this._beforeFind(req, args, (err, options) => {
+                    this._beforeFind(req, args, (err, extOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
+                        let options = _prepareFindOption.call(this, req, args, extOptions);
                         this.emit('before_find_partial', req, args, options);
                         repo.findPartial(options, (err, results) => {
                             if (err) {
@@ -458,10 +462,11 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeFind(req, args, (err, options) => {
+                    this._beforeFind(req, args, (err, extOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
+                        let options = _prepareFindOption.call(this, req, args, extOptions);
                         this.emit('before_findby_project', req, args, options);
                         repo.findMany(options, (err, docs) => {
                             if (err) {
@@ -501,10 +506,11 @@ class EntityController extends ControllerBase {
                         return res.sendRsp(err.code, err.message);
                     }
                     //
-                    this._beforeFind(req, args, (err, options) => {
+                    this._beforeFind(req, args, (err, extOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
+                        let options = _prepareFindOption.call(this, req, args, extOptions);
                         this.emit('before_findby_user', req, args, options);
                         repo.findMany(options, (err, docs) => {
                             if (err) {
@@ -539,11 +545,11 @@ class EntityController extends ControllerBase {
                         return res.sendRsp(err.code, err.message);
                     }
                     //
-                    this._beforeFind(req, args, (err, options) => {
+                    this._beforeFind(req, args, (err, extOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this.emit('before_findby_group', req, args, options);
+                        this.emit('before_findby_group', req, args, extOptions);
                         repo.findMany(options, (err, docs) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
