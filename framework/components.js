@@ -680,7 +680,10 @@ class EntityController extends ControllerBase {
                             }
                             _publishEvents.call(this, {
                                 method: 'updateOne',
-                                data: doc
+                                data: {
+                                    originDoc: doc.toObject(),
+                                    updates: args
+                                }
                             }, () => {
                                 let result = this._afterUpdateOne(doc);
                                 return res.sendSuccess(result);
