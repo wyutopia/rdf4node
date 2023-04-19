@@ -29,8 +29,8 @@ function _packUserPayload (user) {
     return {
         id: user._id,
         sub: user.username,
-        grp: user.activeGroup._id,
-        tnt: user.activeTenant._id
+        grp: user.activeGroup,
+        tnt: user.activeTenant
     }
 }
 
