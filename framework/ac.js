@@ -25,12 +25,12 @@ function _packAdminPayload (aid, admin) {
     }
 }
 
-function _packUserPayload (uid, user) {
+function _packUserPayload (user) {
     return {
-        id: uid,
+        id: user._id,
         sub: user.username,
-        grp: user.activeGroup,
-        tnt: user.activeTenant
+        grp: user.activeGroup._id,
+        tnt: user.activeTenant._id
     }
 }
 
