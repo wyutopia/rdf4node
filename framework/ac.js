@@ -470,5 +470,6 @@ module.exports = exports = {
     refreshJwtToken: _refreshJwtToken,
     accessAuth: _accessAuth,
     authorize: _authorize2,
-    parseParameters: _parseParameters
+    parseParameters: _parseParameters,
+    parseUrl: _parseUrl
 };
