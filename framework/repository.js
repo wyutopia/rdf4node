@@ -634,7 +634,7 @@ class RepositoryFactory extends EventModule {
             });
             return this._repos[repoKey];
         };
-        this.getRepos = (modelNames, dsName = 'default') => {
+        this.getMultiRepos = (modelNames, dsName = 'default') => {
             assert(Array.isArray(modelNames));
             let results = {};
             modelNames.forEach(modelName => {
