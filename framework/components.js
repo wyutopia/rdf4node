@@ -361,6 +361,7 @@ class EntityController extends ControllerBase {
                             return res.sendRsp(err.code, err.message);
                         }
                         let options = _packFindOption.call(this, req, args, baseOptions);
+                        this.emit('before_findby_id', req, args, options);
                         repo.findOne(options, (err, doc) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
