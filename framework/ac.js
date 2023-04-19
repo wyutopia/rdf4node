@@ -2,6 +2,7 @@
  * The authentication and authorization module
  */
 const jsonwebtoken = require('jsonwebtoken');
+const {Types: {ObjectId}} = require('mongoose');
 //
 const eRetCodes = require('../include/retcodes');
 const tools = require('../utils/tools');
@@ -105,7 +106,7 @@ const privilegeUrls = config.privilegeUrls || [];
 //     'users/chgpwd',
 //     'users/update'
 // ];
-const gVerbsRe = new RegExp(/(add|create|get|find|list|watch|update|patch|modify|push|move|assign|sort|schedule|delete|remove)/);
+const gVerbsRe = new RegExp(/(add|create|get|find|findby|list|watch|update|patch|modify|push|move|assign|sort|schedule|delete|remove)/);
 function _parseUrl(originUrl) {
     let result = {};
     let url = originUrl.replace('\/v1\/', '').split(':')[0].replace(/\/$/, '');
