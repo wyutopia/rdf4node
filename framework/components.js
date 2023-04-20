@@ -131,7 +131,7 @@ const _defaultCtlSpec = {
     addVal: {},                 // For create
     mandatoryAddKeys: [],
     updateVal: {},              // For Update
-    chainUpdateKeys: [],        // For chain updates
+    chainUpdateKeys: {},        // For chain updates
     // For database query options
     populate: null,             // For populate
     sort: null,                 // For sort
@@ -260,17 +260,39 @@ function _setMandatoryKeys(keys, validator) {
     });
 }
 
-function _findUpdatedKeys (doc, args, options) {
-    if (options.new === true) {
-        return this._chainUpdateKeys;
+function _getObjectIdString(v) {
+    if (v instanceof ObjectId) {
+        return v + '';
     }
-    let keys = [];
-    this._chainUpdateKeys.forEach(key => {
-        if (doc[key] !== args[key]) {
-            keys.push(key);
+    if (v._id instanceof ObjectId) {
+        return v._id + '';
+    }
+    return null;
+}
+function _findUpdatedKeys (doc, updates, options) {
+    let configKeys = Object.keys(this._chainUpdateKeys);
+    if (options.new === true || configKeys.length === 0) {
+        return configKeys;
+    }
+    let updatedKeys = [];
+    configKeys.forEach(key => {
+        if (updates[key] !== undefined) {
+            let spec = this._chainUpdateKeys[key];
+            if (['String', 'Number', 'Boolean'].indexOf(spec.type) !== -1) {  // 
+                if (doc[key] !== updates[key]) {
+                    updatedKeys.push(key);
+                }
+            } else if (spec.type === 'ObjectID') {
+                let oidString = _getObjectIdString(doc[key]);
+                if (oidString && oidString !== updates[key]) {
+                    updatedKeys.push(key);
+                }
+            } else {
+                logger.error(`Unrecognized chainUpdateKey type! - ${spec.type}`);
+            }
         }
     });
-    return keys;
+    return updatedKeys;
 }
 
 // The class
