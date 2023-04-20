@@ -701,8 +701,7 @@ class EntityController extends ControllerBase {
                                 method: 'updateOne',
                                 data: {
                                     doc: rspObject,
-                                    updatedKeys: _findUpdatedKeys.call(this, obj, args, params.options),
-                                    options: params.options
+                                    updatedKeys: _findUpdatedKeys.call(this, obj, args, params.options)
                                 }
                             }, () => {
                                 let result = this._afterUpdateOne(rspObject);
