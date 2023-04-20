@@ -131,6 +131,7 @@ const _defaultCtlSpec = {
     addVal: {},                 // For create
     mandatoryAddKeys: [],
     updateVal: {},              // For Update
+    chainUpdateKeys: [],        // For chain updates
     // For database query options
     populate: null,             // For populate
     sort: null,                 // For sort
@@ -257,6 +258,19 @@ function _setMandatoryKeys(keys, validator) {
             val.required = true;
         }
     });
+}
+
+function _findUpdatedKeys (doc, args, options) {
+    if (options.new === true) {
+        return this._chainUpdateKeys;
+    }
+    let keys = [];
+    this._chainUpdateKeys.forEach(key => {
+        if (doc[key] !== args[key]) {
+            keys.push(key);
+        }
+    });
+    return keys;
 }
 
 // The class
@@ -682,15 +696,15 @@ class EntityController extends ControllerBase {
                                 return res.sendRsp(err.code, err.message);
                             }
                             let obj = doc.toObject();
+                            let rspObject = params.options.new === true? obj : Object.assign({}, obj, args); // Always return new object to client
                             _publishEvents.call(this, {
                                 method: 'updateOne',
                                 data: {
-                                    doc: obj,
-                                    updates: args,
+                                    doc: rspObject,
+                                    updatedKeys: _findUpdatedKeys.call(this, obj, args, params.options),
                                     options: params.options
                                 }
                             }, () => {
-                                let rspObject = params.options.new === true? obj : Object.assign(obj, args);
                                 let result = this._afterUpdateOne(rspObject);
                                 return res.sendSuccess(result);
                             });
