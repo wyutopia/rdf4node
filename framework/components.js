@@ -3,6 +3,7 @@
  */
 // System libs
 const assert = require('assert');
+const ObjectId = require('mongoose').Types.ObjectId;
 // Framework libs
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
@@ -187,7 +188,7 @@ const _defaultCtlSpec = {
         return callback(null, params);
     },
 //    beforeUpdateOne: tools.noop,
-    afterUpdateOne: function (doc) { return doc; },
+    afterUpdateOne: function (doc, callback) { return callback(null, doc); },
     //
     allowDelete: function (id, dsName, callback) { 
         return callback({
@@ -718,16 +719,13 @@ class EntityController extends ControllerBase {
                                 return res.sendRsp(err.code, err.message);
                             }
                             let obj = doc.toObject();
-                            let rspObject = params.options.new === true? obj : Object.assign({}, obj, args); // Always return new object to client
                             _publishEvents.call(this, {
                                 method: 'updateOne',
-                                data: {
-                                    doc: rspObject,
-                                    updatedKeys: _findUpdatedKeys.call(this, obj, args, params.options)
-                                }
+                                data: obj
                             }, () => {
-                                let result = this._afterUpdateOne(rspObject);
-                                return res.sendSuccess(result);
+                                this._afterUpdateOne(obj, (err, result) => {
+                                    return res.sendSuccess(result);
+                                });
                             });
                         });
                     });
