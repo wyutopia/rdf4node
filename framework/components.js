@@ -846,5 +846,9 @@ class ServiceBase extends EventModule {
 module.exports = exports = {
     ControllerBase: ControllerBase,
     EntityController: EntityController,
-    ServiceBase: ServiceBase
+    ServiceBase: ServiceBase,
+    utils: {
+        packFindOption: _packFindOption,
+        findUpdatedKeys: _findUpdatedKeys
+    }
 };
