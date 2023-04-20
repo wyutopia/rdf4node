@@ -166,21 +166,24 @@ const _defaultCtlSpec = {
             });
         }
         setData.updateAt = new Date();
-        let options = {
+        let params = {
             filter: {
                 _id: args.id
             },
             updates: {
                 $set: setData
+            },
+            options: {
+                new: true
             }
         }
         if (this._populate) {
-            options.populate = this._populate;
+            params.populate = this._populate;
         }
         if (this._select) {
-            options.select = this._select;
+            params.select = this._select;
         }
-        return callback(null, options);
+        return callback(null, params);
     },
 //    beforeUpdateOne: tools.noop,
     afterUpdateOne: function (doc) { return doc; },
@@ -669,20 +672,21 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeUpdate(req, args, (err, options) => {
+                    this._beforeUpdate(req, args, (err, params) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this.emit('before_update_one', req, args, options);
-                        repo.updateOne(options, (err, doc) => {
+                        this.emit('before_update_one', req, args, params);
+                        repo.updateOne(params, (err, doc) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
                             _publishEvents.call(this, {
                                 method: 'updateOne',
                                 data: {
-                                    originDoc: doc.toObject(),
-                                    updates: args
+                                    doc: doc.toObject(),
+                                    updates: args,
+                                    options: params.options
                                 }
                             }, () => {
                                 let result = this._afterUpdateOne(doc);
