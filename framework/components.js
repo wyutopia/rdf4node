@@ -681,15 +681,17 @@ class EntityController extends ControllerBase {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
+                            let obj = doc.toObject();
                             _publishEvents.call(this, {
                                 method: 'updateOne',
                                 data: {
-                                    doc: doc.toObject(),
+                                    doc: obj,
                                     updates: args,
                                     options: params.options
                                 }
                             }, () => {
-                                let result = this._afterUpdateOne(doc);
+                                let rspObject = params.options.new === true? obj : Object.assign(obj, args);
+                                let result = this._afterUpdateOne(rspObject);
                                 return res.sendSuccess(result);
                             });
                         });
