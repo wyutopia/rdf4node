@@ -65,6 +65,7 @@ class EventLogger extends CommonObject {
             return this._execPersistent({
                 publisher: src,
                 code: evt.code,
+                headers: evt.headers,
                 body: evt.body,
                 options: options
             }, callback);
@@ -76,6 +77,7 @@ class EventLogger extends CommonObject {
             return this._execPersistent({
                 consumer: consumer,
                 code: evt.code,
+                headers: evt.headers,
                 body: evt.body
             }, callback);
         };
