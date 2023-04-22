@@ -79,11 +79,11 @@ function _publishEvents(options, callback) {
         return callback();
     }
     let evt = tools.deepAssign({
-        headers: {
+        headers: Object.assign({
             source: this.$name,
             modelName: this.modelName,
             dsName: options.dsName || _DS_DEFAULT_
-        },
+        }, options.headers),
         body: options.data
     }, domainEvent.success);
     if (typeof domainEvent.select === 'string') { // Remove not-allowed properties
@@ -721,7 +721,10 @@ class EntityController extends ControllerBase {
                             let obj = doc.toObject();
                             _publishEvents.call(this, {
                                 method: 'updateOne',
-                                data: obj
+                                data: obj,
+                                headers: {
+                                    updatedKeys: _findUpdatedKeys(obj, args, params.options)
+                                }
                             }, () => {
                                 this._afterUpdateOne(obj, (err, result) => {
                                     return res.sendSuccess(result);
