@@ -92,7 +92,8 @@ const eStatus = {
     EXPIRED     : 6,
     SUSPEND     : 7,
     DEL_PENDING : 8,
-    DELETED     : 9
+    DELETED     : 9,
+    EXTEND      : 100
 };
 exports.eStatus = eStatus;
 exports.isValidStatus = (s) => {
