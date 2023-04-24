@@ -459,3 +459,7 @@ exports.deleteFromArray = function (arr, item) {
     }
     return null;
 };
+
+exports.getObjectId = function (oid) {
+    return oid instanceof ObjectId? oid : (oid !== undefined? oid._id : oid);
+}

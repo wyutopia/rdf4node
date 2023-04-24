@@ -38,7 +38,7 @@ function _uniQuery(query, options, callback) {
         if (!result) {
             return callback({
                 code: eRetCodes.NOT_FOUND,
-                message: `Specified record not exists!`
+                message: `${this.$name}: Specified document not exists!`
             })
         }
         return callback(null, result);
@@ -290,7 +290,7 @@ class Repository extends EventObject {
             logger.debug(`${this.modelName} - options: ${tools.inspect(options)}`);
             //
             let query = this._model.findOne(options.filter || {});
-            return _uniQuery(query, options, (err, doc) => {
+            return _uniQuery.call(this, query, options, (err, doc) => {
                 _appendCache.call(this, doc, () => {
                     return callback(err, doc);
                 });
@@ -311,7 +311,7 @@ class Repository extends EventObject {
             logger.debug(`${this.$name} - options: ${tools.inspect(options)}`);
             //
             let query = this._model.find(options.filter || {});
-            return _uniQuery(query, options, (err, docs) => {
+            return _uniQuery.call(this, query, options, (err, docs) => {
                 _appendCache.call(this, docs, () => {
                     return callback(err, docs);
                 });
@@ -394,7 +394,7 @@ class Repository extends EventObject {
             logger.debug(`${this.$name} - options: ${id} ${tools.inspect(options)}`);
             //
             let query = this._model.findById(id);
-            return _uniQuery(query, options, callback);
+            return _uniQuery.call(this, query, options, callback);
         };
         this.updateOne = _updateOne.bind(this);
         this.updateMany = (options, callback) => {
