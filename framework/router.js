@@ -99,7 +99,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
             }
         });
     } catch (ex) {
-        logger.error(`Loading ${fullPathName} error! - ${ex.message}`);
+        logger.error(`Loading ${fullPathName} error! - ${ex.message} - ${ex.stack}`);
     }
 }
 
