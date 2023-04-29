@@ -89,7 +89,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
             let toh = typeof route.handler;
             if (toh === 'function') {
                 gRoutes.push({
-                    path: path.join(pathPrefix, filename.split('.')[0].replace('-', ''), route.path),
+                    path: path.join(pathPrefix, filename.split('.')[0].replace('-', '/'), route.path),
                     authType: route.authType || 'jwt',
                     method: route.method.toUpperCase(),
                     handler: route.handler

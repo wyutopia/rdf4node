@@ -168,12 +168,12 @@ function _validateString (field, validator, argv) {
     }
     if (!errMsg && validator.minLen !== undefined) {
         if (argv.length < validator.minLen) {
-            errMsg = `Length of ${field} should great than ${validator.minLen} !`;
+            errMsg = `Length of ${field} should be great than ${validator.minLen} !`;
         }
     }
     if (!errMsg && validator.maxLen !== undefined) {
         if (argv.length > validator.maxLen) {
-            errMsg = `Length of ${field} should less than ${validator.maxLen} !`;
+            errMsg = `Length of ${field} should be less than ${validator.maxLen} !`;
         }
     }
     return errMsg;
@@ -378,7 +378,7 @@ function _validateParameter(field, validator, argv) {
             break;
         case 'Boolean':
             if (typeof argv !== 'boolean') {
-                errMsg = `Should be Boolean for ${field}`;
+                errMsg = `Value of ${field} shoud be a boolean!`;
             }
             break;
         case 'Date':
