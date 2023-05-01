@@ -10,7 +10,7 @@ const routeDir = path.join(appRoot.path, 'routes');
 // Framework
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
-const {accessAuth} = require('./ac');
+const {authenticate} = require('./ac');
 const tools = require('../utils/tools');
 const config = require('./config');
 const securityConf = config.security || {};
@@ -115,7 +115,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
                 router[method](route.path, route.handler);
             } else {
                 //route.authType === 'jwt'? router[method](route.path, jwt.validateToken, route.handler) : router[method](route.path, tools.checkSign, route.handler);
-                router[method](route.path, accessAuth.bind(null, route.authType), route.handler);
+                router[method](route.path, authenticate.bind(null, route.authType), route.handler);
             }
         });
     } catch (err) {

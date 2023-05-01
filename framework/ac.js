@@ -6,6 +6,7 @@ const {Types: {ObjectId}} = require('mongoose');
 //
 const eRetCodes = require('../include/retcodes');
 const tools = require('../utils/tools');
+const {CommonModule} = require('../include/common');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE);
 //
@@ -71,11 +72,11 @@ function _validateJwt(req, callback) {
     });
 };
 
-function _authenticate(authType, req, callback) {
+function _authenticate(authType, req, res, next) {
     if (authType === 'jwt') {
         return _validateJwt(req, (err, token) => {
             if (err && config.enableAuthentication === true) {
-                return callback(err);
+                return res.sendStatus(err.code);
             }
             // Set decoded jwt into req
             if (req.jwt === undefined) {
@@ -83,80 +84,37 @@ function _authenticate(authType, req, callback) {
             } else {
                 req['x-jwt'] = token || {};
             }
-            return callback();
+            return next();
         });
     }
     if (authType === 'cookie') {
         // TODO: Add cookie validation here ...
-        return callback();
+        return next();
     }
-    return callback();
+    return next();
 }
 
-const privilegeUrls = config.privilegeUrls || [];
-//
-// [
-//     '/monitor/metrics',
-//     '/monitor/health',
-//     'admin/login',
-//     'admin/logout',
-//     'admin/chgpwd',
-//     'users/login',
-//     'users/logout',
-//     'users/chgpwd',
-//     'users/update'
-// ];
-const gVerbsRe = new RegExp(/(add|create|get|find|findby|list|watch|update|patch|modify|push|move|assign|sort|schedule|delete|remove)/);
-function _parseUrl(originUrl) {
-    let result = {};
-    let url = originUrl.replace('\/v1\/', '').split(':')[0].replace(/\/$/, '');
-    let found = gVerbsRe.exec(url);
-    if (found) {
-        result.resource = url.slice(0, found.index).replace(/\/$/, '');
-        result.verb = found[0];
-    }
-    if (privilegeUrls.indexOf(url) !== -1) {
-        result.resource = url;
-        result.verb = '*';
-        return result;
-    }
-    return result;
-}
 
-function _authorize(req, callback) {
+function _authorize(req, args, options, callback) {
     if (config.enableAuthorization !== true) {
         // Ignore AUTHORIZATION
         return callback();
     }
-    let acl = _parseUrl(req.url);
-    if (!acl.resource) {
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    // 1. Check jwt
+    let whoami = req.jwt.id;
+    if (whoami === undefined) {
         return callback({
-            code: eRetCodes.UNAUTHORIZED,
-            message: 'Unknown request url'
+            code: eRetCodes.FORBIDDEN,
+            message: 'JWT is required!'
         });
     }
-    //TODO: Add 
-    return callback();
+    // 2. Check privileges
+    return this._realAuthorize(req, arge, callback);
 };
-
-function _authorize2(req, args, callback) {
-    let whoami = req.jwt.id;
-    
-}
-
-function _accessAuth(authType, req, res, next) {
-    _authenticate(authType, req, err => {
-        if (err) {
-            return res.sendRsp(err.code, err.message);
-        }
-        _authorize(req, err => {
-            if (err) {
-                return res.sendStatus(err.code);
-            }
-            return next();
-        });
-    });
-}
 
 function _validateString (field, validator, argv) {
     let errMsg = null;
@@ -178,7 +136,6 @@ function _validateString (field, validator, argv) {
     }
     return errMsg;
 }
-
 
 function _validateEmbeddedObject(field, validator, args) {
     let errMsg = null;
@@ -414,8 +371,8 @@ function _unifyValidator(validator) {
     }
 }
 
-function _parseParameters (args, validator, callback) {
-    logger.debug(`Parsing: ${tools.inspect(args)}`);
+function _parseParameters (params, validator, callback) {
+    logger.debug(`Parsing request parameters: ${tools.inspect(params)}`);
     if (typeof validator === 'function') {
         callback = validator;
         validator = {};
@@ -424,33 +381,33 @@ function _parseParameters (args, validator, callback) {
     let fields = Object.keys(validator);
     //logger.debug(`Validator fields: ${tools.inspect(fields)}`);
     if (fields.length === 0) {  // No validator provided or all arguments are validated
-        return callback(null, args);
+        return callback(null, params);
     }
     // Only validated arguments will be parsed
-    let params = {};
+    let args = {};
     let errMsg = null;
     for (let i = 0; i < fields.length; i++) {
         let field = fields[i];
-        let v = validator[field];
-        let argv = args[field];
+        let val = validator[field];
+        let argv = params[field];
 
         if (argv === undefined) {
-            if (v.required === true) {
+            if (val.required === true) {
                 errMsg = `Missing parameter(s): ${field}!`;
                 break;
             }
             continue;  // Ignore optional parameter
         }
         // Perform validation for exist field ...
-        errMsg = _validateParameter(field, v, argv);
+        errMsg = _validateParameter(field, val, argv);
         if (errMsg !== null) {
             break;
         }
         // Copy directly
-        if (v.transKey) {
-            params[v.transKey] = argv;
+        if (val.transKey) {
+            args[val.transKey] = argv;
         } else {
-            params[field] = argv;
+            args[field] = argv;
         }
     }
     if (errMsg) {
@@ -459,17 +416,28 @@ function _parseParameters (args, validator, callback) {
             message: errMsg
         })
     }
-    return callback(null, params);
+    return callback(null, args);
+}
+
+// The class
+class AccessAuthController extends CommonModule {
+    constructor(props) {
+        super(props);
+        //
+        this.authenticate = _authenticate;
+        this._realAuthorize = function (req, args, options, callback) {
+            return callback();
+        };
+        this.authorize = _authorize.bind(this);
+        this.packUserPayload = _packUserPayload;
+        this.packAdminPayload = _packAdminPayload;
+        this.genJwtToken = _genJwtToken;
+        this.refreshJwtToken = _refreshJwtToken;
+        this.parseParameters = _parseParameters;
+    }
 }
 
 // Declaring module exports
-module.exports = exports = {
-    packUserPayload: _packUserPayload,
-    packAdminPayload: _packAdminPayload,
-    genJwtToken: _genJwtToken,
-    refreshJwtToken: _refreshJwtToken,
-    accessAuth: _accessAuth,
-    authorize: _authorize2,
-    parseParameters: _parseParameters,
-    parseUrl: _parseUrl
-};
+module.exports = exports = new AccessAuthController({
+    $name: 'AccessAuthController'
+});

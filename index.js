@@ -8,6 +8,7 @@ exports.eRetCodes = require('./include/retcodes');
 exports.base = require('./include/base');
 exports.common = require('./include/common');
 exports.events = require('./include/events');
+exports.ac = require('./framework/ac');
 exports.components = require('./framework/components');
 exports.repository = require('./framework/repository');
 exports.cache = require('./framework/cache');
