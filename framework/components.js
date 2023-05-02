@@ -140,7 +140,7 @@ const _defaultCtlSpec = {
     deleteOptions: null,        // For additional delete criterias
     briefSelect: 'name',        // For brief query
     // For overridable query operations
-    beforeFind: function (req, args, callback) {
+    beforeFind: function (req, callback) {
         return callback(null, {});
     },
     //
@@ -148,18 +148,18 @@ const _defaultCtlSpec = {
     afterFindMany: function (docs, callback) { return callback(null, docs); },     // For one or array results
     afterFindPartial: function (results, callback) { return callback(null, results); },  // For pagination results
     //
-    allowAdd: function (req, args, callback) { return callback(); },
-    beforeAdd: function (req, args, callback) { return callback(null, args); },
-    beforeInsert: function (req, args, callback) { 
+    allowAdd: function (req, callback) { return callback(); },
+    beforeAdd: function (req, callback) { return callback(null, req.$args); },
+    beforeInsert: function (req, callback) { 
         return callback(null, {
-            filter: args,
-            updates: args
+            filter: req.$args,
+            updates: req.$args
         }); 
     },
     afterAdd: function (doc, callback) { return callback(null, doc); },
     //
-    beforeUpdate: function (req, args, callback) {
-        let setData = tools.deepAssign({}, args);
+    beforeUpdate: function (req, callback) {
+        let setData = tools.deepAssign({}, req.$args);
         delete setData.id;
         if (Object.keys(setData).length === 0) {
             return callback({
@@ -170,7 +170,7 @@ const _defaultCtlSpec = {
         setData.updateAt = new Date();
         let params = {
             filter: {
-                _id: args.id
+                _id: req.$args.id
             },
             updates: {
                 $set: setData
@@ -207,7 +207,7 @@ function _initCtlSpec(ctlSpec) {
 
 function _packFindOption (req, args, baseOptions = {}) {
     let baseFilter = baseOptions.filter || {};
-    let filter = tools.deepAssign(baseFilter, args);
+    let filter = tools.deepAssign(baseFilter, req.$args);
     // Convert id to _id
     if (filter.id !== undefined) {
         filter._id = filter.id;
@@ -221,7 +221,7 @@ function _packFindOption (req, args, baseOptions = {}) {
     if (this._sort) {
         options.sort = this._sort;
     }
-    if (args.brief) { // Using briefSelect and no populate
+    if (req.$args.brief) { // Using briefSelect and no populate
         options.select = this._briefSelect; 
     } else {
         if (this._select) {
@@ -234,15 +234,15 @@ function _packFindOption (req, args, baseOptions = {}) {
     return options;
 }
 
-function _beforePatch(args) {
-    let updates = this._parsePatch(args.jsonPatch);
+function _beforePatch(req) {
+    let updates = this._parsePatch(req.$args.jsonPatch);
     //
     if (Object.keys(updates).length === 0) {
         return {noop: 'Empty updates!'}
     }
     //
     let options = {
-        filter: {_id: args.id},
+        filter: {_id: req.$args.id},
         updates: updates
     }
     if (this._select) {
@@ -309,8 +309,7 @@ class EntityController extends ControllerBase {
         // Init controller properties
         _initCtlSpec.call(this, props.ctlSpec || {});
         // Implementing the class methods
-        this._getRepo = (dataSourceOption, callback) => {
-            assert(dataSourceOption !== undefined);
+        this.getRepo = (dataSourceOption, callback) => {
             if (typeof dataSourceOption === 'function') {
                 callback = dataSourceOption;
                 dataSourceOption = {};
@@ -349,23 +348,22 @@ class EntityController extends ControllerBase {
         // Register event publishers
         this._domainEvents = props.domainEvents || {};
         // Implementing basic CRUD methods
-        this.find = (req, res) => {
-            let validator = tools.deepAssign({}, this._searchVal);
-            _setMandatoryKeys(this._mandatorySearchKeys, validator);
-            let params = Object.assign({}, req.params, req.query, req.body);
-            parseParameters(params, validator, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                this._getRepo(req.dataSource, (err, repo) => {
+        this.find = {
+            val: (() => {
+                let validator = tools.deepAssign({}, this._searchVal);
+                _setMandatoryKeys(this._mandatorySearchKeys, validator);
+                return validator;
+            }).call(this),
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeFind(req, args, (err, baseOptions) => {
+                    this._beforeFind(req, (err, baseOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        let options = _packFindOption.call(this, req, args, baseOptions);
+                        let options = _packFindOption.call(this, req, baseOptions);
                         repo.findMany(options, (err, docs) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
@@ -379,20 +377,16 @@ class EntityController extends ControllerBase {
                         });
                     });
                 });
-            });
+            }
         };
-        this.findById = (req, res) => {
-            let params = Object.assign({}, req.params, req.query, req.body);
-            parseParameters(params, {
-                id: {
-                    type: 'ObjectID',
-                    required: true
-                }
-            }, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                this._getRepo(req.dataSource, (err, repo) => {
+        this.findOne = {
+            val: (() => {
+                let validator = tools.deepAssign({}, this._searchVal);
+                _setMandatoryKeys(this._mandatorySearchKeys, validator);
+                return validator;
+            }).call(this),
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
@@ -400,8 +394,8 @@ class EntityController extends ControllerBase {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        let options = _packFindOption.call(this, req, args, baseOptions);
-                        this.emit('before_findby_id', req, args, options);
+                        let options = _packFindOption.call(this, req, baseOptions);
+                        this.emit('before_find_one', req, options);
                         repo.findOne(options, (err, doc) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
@@ -415,59 +409,26 @@ class EntityController extends ControllerBase {
                         });
                     });
                 });
-            });
+            }
         };
-        this.findOne = (req, res) => {
-            let validator = tools.deepAssign({}, this._searchVal);
-            _setMandatoryKeys(this._mandatorySearchKeys, validator);
-            let params = Object.assign({}, req.params, req.query, req.body);
-            parseParameters(params, validator, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                this._getRepo(req.dataSource, (err, repo) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
-                    }
-                    this._beforeFind(req, args, (err, baseOptions) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        let options = _packFindOption.call(this, req, args, baseOptions);
-                        this.emit('before_find_one', req, args, options);
-                        repo.findOne(options, (err, doc) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            this._afterFindOne(doc, (err, result) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                return res.sendSuccess(result);
-                            });
-                        });
-                    });
-                });
-            });
-        };
-        this.findPartial = (req, res) => {
-            let validator = tools.deepAssign({}, paginationVal, this._searchVal);
-            _setMandatoryKeys(this._mandatorySearchKeys, validator);
-            parseParameters(req.query, validator, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                this._getRepo(req.dataSource, (err, repo) => {
+        this.findPartial = {
+            val: (() => {
+                let validator = tools.deepAssign({}, paginationVal, this._searchVal);
+                _setMandatoryKeys(this._mandatorySearchKeys, validator);
+                return validator;
+            }).call(this),
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
                     //
-                    this._beforeFind(req, args, (err, baseOptions) => {
+                    this._beforeFind(req, (err, baseOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        let options = _packFindOption.call(this, req, args, baseOptions);
-                        this.emit('before_find_partial', req, args, options);
+                        let options = _packFindOption.call(this, req, baseOptions);
+                        this.emit('before_find_partial', req, options);
                         repo.findPartial(options, (err, results) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
@@ -482,31 +443,61 @@ class EntityController extends ControllerBase {
     
                     });
                 });
-            });
+            }
         };
-        this.findByProject = (req, res) => {
-            let validator = Object.assign({
+        // 
+        this.findById = {
+            val: {
+                id: {
+                    type: 'ObjectID',
+                    required: true
+                }
+            },
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
+                    if (err) {
+                        return res.sendRsp(err.code, err.message);
+                    }
+                    this._beforeFind(req, (err, baseOptions) => {
+                        if (err) {
+                            return res.sendRsp(err.code, err.message);
+                        }
+                        let options = _packFindOption.call(this, req, baseOptions);
+                        this.emit('before_findby_id', req, options);
+                        repo.findOne(options, (err, doc) => {
+                            if (err) {
+                                return res.sendRsp(err.code, err.message);
+                            }
+                            this._afterFindOne(doc, (err, result) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                return res.sendSuccess(result);
+                            });
+                        });
+                    });
+                });
+            }
+        };
+        this.findByProject = {
+            val: Object.assign({
                 project: {
                     type: 'ObjectID',
                     required: true
                 },
                 brief: {}
-            }, this._searchVal);
-            let params = Object.assign({}, req.params, req.query, req.body);
-            parseParameters(params, validator, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                this._getRepo(req.dataSource, (err, repo) => {
+            }, this._searchVal),
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeFind(req, args, (err, baseOptions) => {
+                    this._beforeFind(req, (err, baseOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        let options = _packFindOption.call(this, req, args, baseOptions);
-                        this.emit('before_findby_project', req, args, options);
+                        let options = _packFindOption.call(this, req, baseOptions);
+                        this.emit('before_findby_project', req, options);
                         repo.findMany(options, (err, docs) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
@@ -525,32 +516,28 @@ class EntityController extends ControllerBase {
                         });
                     });
                 });
-            });
+            }
         };
-        this.findByUser = (req, res) => {
-            let params = Object.assign({}, req.params, req.query);
-            let validator = Object.assign({
+        this.findByUser = {
+            val: Object.assign({
                 user: {
                     type: 'ObjectID',
                     required: true
                 },
                 brief: {}
-            }, this._searchVal);
-            parseParameters(params, validator, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                this._getRepo(req.dataSource, (err, repo) => {
+            }, this._searchVal),
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
                     //
-                    this._beforeFind(req, args, (err, baseOptions) => {
+                    this._beforeFind(req, (err, baseOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        let options = _packFindOption.call(this, req, args, baseOptions);
-                        this.emit('before_findby_user', req, args, options);
+                        let options = _packFindOption.call(this, req, baseOptions);
+                        this.emit('before_findby_user', req, options);
                         repo.findMany(options, (err, docs) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
@@ -564,32 +551,31 @@ class EntityController extends ControllerBase {
                         });
                     });
                 });
-            });
+            }
         };
-        this.findByGroup = (req, res) => {
-            let params = Object.assign({}, req.params, req.query, req.body);
-            let validator = Object.assign({
-                group: {
-                    type: 'ObjectID',
-                    required: true
-                },
-                brief: {}
-            }, this._searchVal);
-            parseParameters(params, validator, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                this._getRepo(req.dataSource, (err, repo) => {
+        this.findByGroup = {
+            val: (() => {
+                let validator = Object.assign({
+                    group: {
+                        type: 'ObjectID',
+                        required: true
+                    },
+                    brief: {}
+                }, this._searchVal);
+                return validator;
+            }).call(this),
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
                     //
-                    this._beforeFind(req, args, (err, baseOptions) => {
+                    this._beforeFind(req, (err, baseOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        let options = _packFindOption.call(this, req, args, baseOptions);
-                        this.emit('before_findby_group', req, args, options);
+                        let options = _packFindOption.call(this, req, baseOptions);
+                        this.emit('before_findby_group', req, options);
                         repo.findMany(options, (err, docs) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
@@ -603,31 +589,25 @@ class EntityController extends ControllerBase {
                         });
                     });
                 });
-            });
+            }
         };
-        this.addOne = (req, res) => {
-            let validator = tools.deepAssign({}, this._addVal);
-            this._mandatoryAddKeys.forEach( key => {
-                let path = key.replace('.', '.$embeddedValidators.');
-                let val = tools.safeGetJsonValue(validator, path);
-                if (val) {
-                    val.required = true;
-                }
-            });
-            parseParameters(req.body, validator, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                //
-                this._getRepo(req.dataSource, (err, repo) => {
+        // Create one new entity
+        this.addOne = {
+            val: (() => {
+                let validator = tools.deepAssign({}, this._addVal);
+                _setMandatoryKeys(this._mandatoryAddKeys, validator);
+                return validator;
+            }).call(this),
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._allowAdd(req, args, (err) => {
+                    this._allowAdd(req, (err) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._beforeAdd(req, args, (err, data) => {
+                        this._beforeAdd(req, (err, data) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
@@ -651,24 +631,21 @@ class EntityController extends ControllerBase {
                         });
                     });
                 });
-            });
+            }
         };
-        this.insertOne = (req, res) => {
-            let validator = tools.deepAssign({}, this._addVal);
-            this._mandatoryAddKeys.forEach( key => {
-                if (validator[key]) {
-                    validator[key].required = true;
-                }
-            });
-            parseParameters(req.body, validator, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                this._getRepo(req.dataSource, (err, repo) => {
+        // FindOneAndUpdate with upsert=true
+        this.insertOne = {
+            val: (() => {
+                let validator = tools.deepAssign({}, this._addVal);
+                _setMandatoryKeys(this._mandatoryAddKeys, validator);
+                return validator;
+            }).call(this),
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeInsert(req, args, (err, options) => {
+                    this._beforeInsert(req, (err, options) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
@@ -691,29 +668,25 @@ class EntityController extends ControllerBase {
                         });
                     });
                 });
-            });
+            }
         };
-        this.updateOne = (req, res) => {
-            let validator = Object.assign({
+        this.updateOne = {
+            val: Object.assign({
                 id: {
                     type: 'ObjectID',
                     required: true
                 }
-            }, this._updateVal);
-            parseParameters(req.body, validator, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                //
-                this._getRepo(req.dataSource, (err, repo) => {
+            }, this._updateVal),
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeUpdate(req, args, (err, params) => {
+                    this._beforeUpdate(req, (err, params) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this.emit('before_update_one', req, args, params);
+                        this.emit('before_update_one', req, params);
                         repo.updateOne(params, (err, doc) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
@@ -733,20 +706,17 @@ class EntityController extends ControllerBase {
                         });
                     });
                 });
-            });
+            }
         };
-        this.deleteOne = (req, res) => {
-            let validator = {
+        this.deleteOne = {
+            val: {
                 id: {
                     type: 'ObjectID',
                     required: true
                 }
-            };
-            parseParameters(req.body, validator, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                this._getRepo(req.dataSource, (err, repo) => {
+            },
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
@@ -793,10 +763,10 @@ class EntityController extends ControllerBase {
                         });
                     });
                 });
-            });
+            }
         };
-        this.patchOne = (req, res) => {
-            let validator = {
+        this.patchOne = {
+            val: {
                 id: {
                     type: 'ObjectID',
                     requird: true
@@ -804,16 +774,13 @@ class EntityController extends ControllerBase {
                 jsonPatch: {
                     required: true
                 }
-            };
-            parseParameters(req.body, validator, (err, args) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                this._getRepo(req.dataSource, (err, repo) => {
+            },
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let options = _beforePatch.call(this, args);
+                    let options = _beforePatch.call(this, req);
                     if (options.noop) {
                         return res.sendRsp(eRetCodes.ACCEPTED, options.noop);
                     }
@@ -830,8 +797,8 @@ class EntityController extends ControllerBase {
                         });
                     });
                 });
-            });
-        };
+            }
+        }
     }
 };
 

@@ -10,7 +10,7 @@ const routeDir = path.join(appRoot.path, 'routes');
 // Framework
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
-const {authenticate} = require('./ac');
+const {accessCtl} = require('./ac');
 const tools = require('../utils/tools');
 const config = require('./config');
 const securityConf = config.security || {};
@@ -103,6 +103,10 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
     }
 }
 
+function accessCtl (authType, validator, req, res, next) {
+
+}
+
 // Load and set routes
 (() => {
     try {
@@ -111,16 +115,12 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
         gRoutes.forEach(route => {
             logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType}`);
             let method = (route.method || 'USE').toLowerCase();
-            if (route.authType === 'none') {
-                router[method](route.path, route.handler);
-            } else {
-                //route.authType === 'jwt'? router[method](route.path, jwt.validateToken, route.handler) : router[method](route.path, tools.checkSign, route.handler);
-                router[method](route.path, authenticate.bind(null, route.authType), route.handler);
-            }
+            router[method](route.path, accessCtl.bind(null, route.authType, route.handler.val), route.handler.fn);
         });
     } catch (err) {
         logger.error(`Dynamic load routes error! - ${err.message}`);
     }
 })();
 
+// Declaring module exports
 module.exports = exports = router;

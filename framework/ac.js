@@ -19,37 +19,6 @@ const DEFAULT_OPTIONS = config.signOptions || {
 };
 logger.info(`>>>>>> The jwt configuration: ${ENCRYPT_KEY} - ${tools.inspect(DEFAULT_OPTIONS)}`);
 
-function _packAdminPayload (aid, admin) {
-    return {
-        id: aid,
-        sub: admin.username
-    }
-}
-
-function _packUserPayload (user) {
-    return {
-        id: user._id,
-        sub: user.username,
-        grp: user.activeGroup,
-        tnt: user.activeTenant
-    }
-}
-
-function _genJwtToken(payload, signOptions) {
-    const jwtSignOptions = Object.assign({}, signOptions, DEFAULT_OPTIONS);
-    return jsonwebtoken.sign(payload, ENCRYPT_KEY, jwtSignOptions);
-}
-
-function _refreshJwtToken(token, refreshOptions) {
-    const payload = jsonwebtoken.verify(token, ENCRYPT_KEY, refreshOptions.verify);
-    delete payload.iat;
-    delete payload.exp;
-    delete payload.nbf;
-    delete payload.jti;
-    const jwtSignOptions = Object.assign({}, DEFAULT_OPTIONS, {jwtid: refreshOptions.jwtid});
-    return jwt.sign(payload, ENCRYPT_KEY, jwtSignOptions);
-}
-
 function _validateJwt(req, callback) {
     // Extract JWT from the request header
     const authHeader = req.headers['authorization'];
@@ -70,50 +39,6 @@ function _validateJwt(req, callback) {
         }
         return callback(null, token);
     });
-};
-
-function _authenticate(authType, req, res, next) {
-    if (authType === 'jwt') {
-        return _validateJwt(req, (err, token) => {
-            if (err && config.enableAuthentication === true) {
-                return res.sendStatus(err.code);
-            }
-            // Set decoded jwt into req
-            if (req.jwt === undefined) {
-                req.jwt = token || {};
-            } else {
-                req['x-jwt'] = token || {};
-            }
-            return next();
-        });
-    }
-    if (authType === 'cookie') {
-        // TODO: Add cookie validation here ...
-        return next();
-    }
-    return next();
-}
-
-
-function _authorize(req, args, options, callback) {
-    if (config.enableAuthorization !== true) {
-        // Ignore AUTHORIZATION
-        return callback();
-    }
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
-    }
-    // 1. Check jwt
-    let whoami = req.jwt.id;
-    if (whoami === undefined) {
-        return callback({
-            code: eRetCodes.FORBIDDEN,
-            message: 'JWT is required!'
-        });
-    }
-    // 2. Check privileges
-    return this._realAuthorize(req, arge, callback);
 };
 
 function _validateString (field, validator, argv) {
@@ -420,24 +345,114 @@ function _parseParameters (params, validator, callback) {
 }
 
 // The class
-class AccessAuthController extends CommonModule {
+class AccessControllerHelper extends CommonModule {
     constructor(props) {
         super(props);
         //
-        this.authenticate = _authenticate;
-        this._realAuthorize = function (req, args, options, callback) {
+        this.packUserPayload = (user) => {
+            return {
+                id: user._id,
+                sub: user.username,
+                grp: user.activeGroup,
+                tnt: user.activeTenant
+            }
+        };
+        this.packAdminPayload = (admin) => {
+            return {
+                id: admin._id,
+                sub: admin.username
+            }
+        };
+        this.genJwtToken = (payload, signOptions) => {
+            const jwtSignOptions = Object.assign({}, signOptions, DEFAULT_OPTIONS);
+            return jsonwebtoken.sign(payload, ENCRYPT_KEY, jwtSignOptions);        
+        };
+        this.refreshJwtToken = (token, refreshOptions) => {
+            const payload = jsonwebtoken.verify(token, ENCRYPT_KEY, refreshOptions.verify);
+            delete payload.iat;
+            delete payload.exp;
+            delete payload.nbf;
+            delete payload.jti;
+            const jwtSignOptions = Object.assign({}, DEFAULT_OPTIONS, {jwtid: refreshOptions.jwtid});
+            return jwt.sign(payload, ENCRYPT_KEY, jwtSignOptions);        
+        };
+        //
+        this._realAuthorize = function (req, options, callback) {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            }
+            logger.info('Do nothing on authorize!');
             return callback();
         };
-        this.authorize = _authorize.bind(this);
-        this.packUserPayload = _packUserPayload;
-        this.packAdminPayload = _packAdminPayload;
-        this.genJwtToken = _genJwtToken;
-        this.refreshJwtToken = _refreshJwtToken;
-        this.parseParameters = _parseParameters;
     }
+}
+const _acHelper = new AccessControllerHelper({
+    $name: 'AccessCtrollerHelper'
+})
+
+// The private methods
+function _authenticate(authType, req, callback) {
+    if (authType === 'jwt') {
+        return _validateJwt(req, (err, token) => {
+            if (err && config.enableAuthentication === true) {
+                return callback(err);
+            }
+            req.$jwt = token || {};
+            return callback();
+        });
+    }
+    if (authType === 'cookie') {
+        // TODO: Add cookie validation here ...
+        return callback();
+    }
+    return callback();
+}
+
+function _authorize(req, callback) {
+    if (config.enableAuthorization !== true) {
+        // Ignore AUTHORIZATION
+        return callback();
+    }
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    // 1. Check jwt
+    let whoami = req.$jwt.id;
+    if (whoami === undefined) {
+        return callback({
+            code: eRetCodes.FORBIDDEN,
+            message: 'JWT is required!'
+        });
+    }
+    // 2. Check privileges
+    return _acHelper._realAuthorize(req, callback);
+}
+
+function _accessCtl (authType, validator, req, res, next) {
+    _authenticate(authType, req, err => {
+        if (err) {
+            return res.sendRsp(err.code, err.message);
+        }
+        let params = Object.assign({}, req.params, req.query, req.body);
+        _parseParameters(params, validator, (err, args) => {
+            if (err) {
+                return res.sendRsp(err.code, err.message);
+            }
+            req.$args = args;
+            _authorize(req, err => {
+                if (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
+                return next();
+            });
+        });
+    });
 }
 
 // Declaring module exports
-module.exports = exports = new AccessAuthController({
-    $name: 'AccessAuthController'
-});
+module.exports = exports = {
+    accessCtl : _accessCtl,
+    acHelper : _acHelper
+};
