@@ -69,11 +69,17 @@ exports.regMetrics = function (options) {
 };
 
 //Exposed API for prometheus monitoring
-exports.getMetrics = async function (req, res) {
-    let metrics = await register.metrics();
-    res.send(metrics);
+exports.getMetrics = {
+    val: {},
+    fn: async function (req, res) {
+        let metrics = await register.metrics();
+        res.send(metrics);
+    }
 };
 
-exports.checkHealth = function (req, res) {
-    res.sendStatus(200);
+exports.checkHealth = {
+    val: {},
+    fn: function (req, res) {
+        res.sendStatus(200);
+    }
 };

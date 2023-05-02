@@ -86,13 +86,14 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
         fullPathName = path.join(dir, filename);
         let routes = require(fullPathName);
         routes.forEach(route => {
-            let toh = typeof route.handler;
+            let toh = typeof route.handler.fn;
             if (toh === 'function') {
                 gRoutes.push({
                     path: path.join(pathPrefix, filename.split('.')[0].replace('-', '/'), route.path),
                     authType: route.authType || 'jwt',
                     method: route.method.toUpperCase(),
-                    handler: route.handler
+                    validator: route.handler.val || {},
+                    handler: route.handler.fn
                 });
             } else {
                 logger.error(`Invalid controller method! - ${filename} - ${route.path} - ${toh}`);
@@ -103,10 +104,6 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
     }
 }
 
-function accessCtl (authType, validator, req, res, next) {
-
-}
-
 // Load and set routes
 (() => {
     try {
@@ -115,7 +112,7 @@ function accessCtl (authType, validator, req, res, next) {
         gRoutes.forEach(route => {
             logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType}`);
             let method = (route.method || 'USE').toLowerCase();
-            router[method](route.path, accessCtl.bind(null, route.authType, route.handler.val), route.handler.fn);
+            router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler);
         });
     } catch (err) {
         logger.error(`Dynamic load routes error! - ${err.message}`);
