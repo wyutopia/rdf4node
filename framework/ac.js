@@ -393,12 +393,15 @@ const _acHelper = new AccessControllerHelper({
 
 // The private methods
 function _authenticate(authType, req, callback) {
+    req.$token = {};
     if (authType === 'jwt') {
         return _validateJwt(req, (err, token) => {
             if (err && config.enableAuthentication === true) {
                 return callback(err);
             }
-            req.$jwt = token || {};
+            if (token) {
+                req.$token = token;
+            }
             return callback();
         });
     }
@@ -418,15 +421,7 @@ function _authorize(req, callback) {
         callback = options;
         options = {};
     }
-    // 1. Check jwt
-    let whoami = req.$jwt.id;
-    if (whoami === undefined) {
-        return callback({
-            code: eRetCodes.FORBIDDEN,
-            message: 'JWT is required!'
-        });
-    }
-    // 2. Check privileges
+    // Do real authorization
     return _acHelper._realAuthorize(req, callback);
 }
 

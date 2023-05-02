@@ -205,7 +205,7 @@ function _initCtlSpec(ctlSpec) {
     });
 }
 
-function _packFindOption (req, args, baseOptions = {}) {
+function _packFindOption (req, baseOptions = {}) {
     let baseFilter = baseOptions.filter || {};
     let filter = tools.deepAssign(baseFilter, req.$args);
     // Convert id to _id
