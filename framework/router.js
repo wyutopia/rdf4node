@@ -57,39 +57,16 @@ function isExclude(filename) {
     return EXCLUDE_FILES.indexOf(filename) !== -1;
 }
 
-function _loadRoutes() {
-    let entries = fs.readdirSync(routeDir, READDIR_OPTIONS);
-    let rootPath = '/';
-    entries.forEach( dirent => {
-        if (dirent.isFile() && !isExclude(dirent.name)) {
-            _loadRouteConfig(rootPath, routeDir, dirent.name);
-        } else if (dirent.isDirectory()) {
-            _loadSubRoutes(rootPath, routeDir, dirent.name);
-        }
-    });
-    //
-}
-
-function _loadSubRoutes(pathPrefix, dir, subDir) {
-    let currDir = path.join(dir, subDir)
-    let entries = fs.readdirSync(currDir, READDIR_OPTIONS);
-    entries.forEach( dirent => {
-        if (dirent.isFile() && !isExclude(dirent.name)) {
-            _loadRouteConfig(path.join(pathPrefix, subDir), currDir, dirent.name);
-        }
-    })
-}
-
-function _loadRouteConfig(pathPrefix, dir, filename) {
-    let fullPathName = null;
+function _loadRoutes(urlPathArray, filename) {
+    let urlPath = urlPathArray.join('/');
+    let fullPathName = path.join(routeDir, urlPath, filename);
     try {
-        fullPathName = path.join(dir, filename);
         let routes = require(fullPathName);
-        routes.forEach(route => {
+        routes.forEach( route => {
             let toh = typeof route.handler.fn;
             if (toh === 'function') {
                 gRoutes.push({
-                    path: path.join(pathPrefix, filename.split('.')[0].replace('-', '/'), route.path),
+                    path: path.join(urlPath, filename.split('.')[0].replace('-', '/'), route.path),
                     authType: route.authType || 'jwt',
                     method: route.method.toUpperCase(),
                     validator: route.handler.val || {},
@@ -100,14 +77,34 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
             }
         });
     } catch (ex) {
-        logger.error(`Loading ${fullPathName} error! - ${ex.message} - ${ex.stack}`);
+        logger.error(`Load routes from file: ${fullPathName} error! - ${ex.message} - ${ex.stack}`);
     }
+}
+
+function _readDir(urlPathArray, dir) {
+    let curDir = path.join(routeDir, urlPathArray.join('/'), dir);
+    //logger.debug(`Processing current directory: ${curDir}`);
+    let entries = fs.readdirSync(curDir, READDIR_OPTIONS);
+    entries.forEach( dirent => {
+        //logger.debug(`${curDir} - ${dirent.name}`);
+        if (isExclude(dirent.name)) {
+            return null;
+        }
+        let nextPaths = urlPathArray.slice();
+        nextPaths.push(dir);
+        //logger.debug(`Processing sub directory: ${tools.inspect(nextPaths)}`);
+        if (dirent.isDirectory()) {
+            _readDir(nextPaths, dirent.name);
+        } else {
+            _loadRoutes(nextPaths, dirent.name);
+        }
+    });
 }
 
 // Load and set routes
 (() => {
     try {
-        _loadRoutes();
+        _readDir([''], '');
         //
         gRoutes.forEach(route => {
             logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType}`);
@@ -115,7 +112,7 @@ function _loadRouteConfig(pathPrefix, dir, filename) {
             router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler);
         });
     } catch (err) {
-        logger.error(`Dynamic load routes error! - ${err.message}`);
+        logger.error(`Dynamic load routes error! - ${err.message} - ${err.stack}`);
     }
 })();
 
