@@ -21,56 +21,62 @@ function _isExclude(filename) {
     return gExludeFiles.test(filename);
 }
 
-exports.listDir = function (req, res) {
-    _realReadDir(logDir, function(err, files) {
-        if (err) {
-            return res.sendRsp(err.code, err.message);
-        }
-        //logger.info(logDir, ': ', files);
-        let result = {
-            num: 0,
-            size: 0,
-            manifest: []
-        };
-        async.eachLimit(files, 2, function(file, callback) {
-            let fullPathFile = path.join(logDir, file);
-            fs.stat(fullPathFile, (err, stats) => {
-                if (err) {
-                    logger.error(`Stat file: ${file} - ${err.message}`);
+exports.listDir = {
+    val: {},
+    fn: function (req, res) {
+        _realReadDir(logDir, function(err, files) {
+            if (err) {
+                return res.sendRsp(err.code, err.message);
+            }
+            //logger.info(logDir, ': ', files);
+            let result = {
+                num: 0,
+                size: 0,
+                manifest: []
+            };
+            async.eachLimit(files, 2, function(file, callback) {
+                let fullPathFile = path.join(logDir, file);
+                fs.stat(fullPathFile, (err, stats) => {
+                    if (err) {
+                        logger.error(`Stat file: ${file} - ${err.message}`);
+                        return callback();
+                    }
+                    logger.info(`${file} - stat: ${stats.size}`);
+                    result.num++;
+                    result.size += stats.size;
+                    result.manifest.push({
+                        file: file,
+                        size: stats.size,
+                        mtime: new Date(stats.mtimeMs)
+                    });
                     return callback();
-                }
-                logger.info(`${file} - stat: ${stats.size}`);
-                result.num++;
-                result.size += stats.size;
-                result.manifest.push({
-                    file: file,
-                    size: stats.size,
-                    mtime: new Date(stats.mtimeMs)
-                });
-                return callback();
-            })
-        }, function() {
-            logger.info(`Scan result: ${tools.inspect(result)}`);
-            return res.sendSuccess(result);
+                })
+            }, function() {
+                logger.info(`Scan result: ${tools.inspect(result)}`);
+                return res.sendSuccess(result);
+            });
         });
-    });
+    }
 };
 
 let cleanMutex = false;
-exports.cleanDir = function (req, res) {
-    if (cleanMutex === true) {
-        return res.sendRsp(eRetCodes.CONFLICT, 'Cleaning...');
-    }
-    cleanMutex = true;
-    _cleanLogDir((err, num) => {
-        cleanMutex = false;
-        if (err) {
-            return res.sendRsp(err.code, err.message);
+exports.cleanDir = {
+    val: {},
+    fn: function (req, res) {
+        if (cleanMutex === true) {
+            return res.sendRsp(eRetCodes.CONFLICT, 'Cleaning...');
         }
-        return res.sendSuccess({
-            removedFileNum: num
+        cleanMutex = true;
+        _cleanLogDir((err, num) => {
+            cleanMutex = false;
+            if (err) {
+                return res.sendRsp(err.code, err.message);
+            }
+            return res.sendSuccess({
+                removedFileNum: num
+            });
         });
-    });
+    }
 };
 
 function _cleanLogDir(lastModTime, callback) {
@@ -117,26 +123,29 @@ new ScheduledCleanTask({
     cronExp: '0 0 8 * * 1'
 });
 
-exports.removeFiles = function (req, res) {
-    parseParameters(req.body, {
-        mandatory: ['files']
-    }, (err, args) => {
-        if (err) {
-            return res.sendRsp(err.code, err.message);
-        }
-        if (typeof args.files !== 'string') {
-            return res.sendRsp(eRetCodes.BAD_REQUEST, 'Invalid parameters: files! - Should be string!');
-        }
-        _safeRemoveFiles(args.files.split(','), new Date(moment().format('YYYY-MM-DD')).valueOf(), (err, num) => {
+exports.removeFiles = {
+    val: {},
+    fn: function (req, res) {
+        parseParameters(req.body, {
+            mandatory: ['files']
+        }, (err, args) => {
             if (err) {
                 return res.sendRsp(err.code, err.message);
             }
-            return res.sendSuccess({
-                removedFileNum: num
+            if (typeof args.files !== 'string') {
+                return res.sendRsp(eRetCodes.BAD_REQUEST, 'Invalid parameters: files! - Should be string!');
+            }
+            _safeRemoveFiles(args.files.split(','), new Date(moment().format('YYYY-MM-DD')).valueOf(), (err, num) => {
+                if (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
+                return res.sendSuccess({
+                    removedFileNum: num
+                });
             });
         });
-    });
-}
+    }
+};
 
 function _safeRemoveFiles(files, lastModTime, callback) {
     logger.debug(`Remove files: ${tools.inspect(files)}`);
@@ -192,19 +201,22 @@ function _realReadDir(dir, callback) {
  * @param {*} res 
  * @returns 
  */
-exports.downloadFile = function (req, res) {
-    let file = req.params.filename;
-    if (file === undefined) {
-        return res.sendRsp(eRetCodes.BAD_REQUEST, 'Invalid file name!');
-    }
-    let fullPath = path.join(logDir, file);
-    logger.info(`Download file: ${fullPath}`);
-    if (!fs.existsSync(fullPath)) {
-        return res.sendStatus(eRetCodes.NOT_FOUND);
-    }
-    res.download(fullPath, (err) => {
-        if (err) {
-            logger.error(err.code, err.message);
+exports.downloadFile = {
+    val: {},
+    fn: function (req, res) {
+        let file = req.params.filename;
+        if (file === undefined) {
+            return res.sendRsp(eRetCodes.BAD_REQUEST, 'Invalid file name!');
         }
-    });
+        let fullPath = path.join(logDir, file);
+        logger.info(`Download file: ${fullPath}`);
+        if (!fs.existsSync(fullPath)) {
+            return res.sendStatus(eRetCodes.NOT_FOUND);
+        }
+        res.download(fullPath, (err) => {
+            if (err) {
+                logger.error(err.code, err.message);
+            }
+        });
+    }
 };

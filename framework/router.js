@@ -10,7 +10,7 @@ const routeDir = path.join(appRoot.path, 'routes');
 // Framework
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
-const {authenticate} = require('./ac');
+const {accessCtl} = require('./ac');
 const tools = require('../utils/tools');
 const config = require('./config');
 const securityConf = config.security || {};
@@ -57,70 +57,64 @@ function isExclude(filename) {
     return EXCLUDE_FILES.indexOf(filename) !== -1;
 }
 
-function _loadRoutes() {
-    let entries = fs.readdirSync(routeDir, READDIR_OPTIONS);
-    let rootPath = '/';
-    entries.forEach( dirent => {
-        if (dirent.isFile() && !isExclude(dirent.name)) {
-            _loadRouteConfig(rootPath, routeDir, dirent.name);
-        } else if (dirent.isDirectory()) {
-            _loadSubRoutes(rootPath, routeDir, dirent.name);
-        }
-    });
-    //
-}
-
-function _loadSubRoutes(pathPrefix, dir, subDir) {
-    let currDir = path.join(dir, subDir)
-    let entries = fs.readdirSync(currDir, READDIR_OPTIONS);
-    entries.forEach( dirent => {
-        if (dirent.isFile() && !isExclude(dirent.name)) {
-            _loadRouteConfig(path.join(pathPrefix, subDir), currDir, dirent.name);
-        }
-    })
-}
-
-function _loadRouteConfig(pathPrefix, dir, filename) {
-    let fullPathName = null;
+function _loadRoutes(urlPathArray, filename) {
+    let urlPath = urlPathArray.join('/');
+    let fullPathName = path.join(routeDir, urlPath, filename);
     try {
-        fullPathName = path.join(dir, filename);
         let routes = require(fullPathName);
-        routes.forEach(route => {
-            let toh = typeof route.handler;
+        routes.forEach( route => {
+            let toh = typeof route.handler.fn;
             if (toh === 'function') {
                 gRoutes.push({
-                    path: path.join(pathPrefix, filename.split('.')[0].replace('-', '/'), route.path),
+                    path: path.join(urlPath, filename.split('.')[0].replace('-', '/'), route.path),
                     authType: route.authType || 'jwt',
                     method: route.method.toUpperCase(),
-                    handler: route.handler
+                    validator: route.handler.val || {},
+                    handler: route.handler.fn
                 });
             } else {
                 logger.error(`Invalid controller method! - ${filename} - ${route.path} - ${toh}`);
             }
         });
     } catch (ex) {
-        logger.error(`Loading ${fullPathName} error! - ${ex.message} - ${ex.stack}`);
+        logger.error(`Load routes from file: ${fullPathName} error! - ${ex.message} - ${ex.stack}`);
     }
+}
+
+function _readDir(urlPathArray, dir) {
+    let curDir = path.join(routeDir, urlPathArray.join('/'), dir);
+    //logger.debug(`Processing current directory: ${curDir}`);
+    let entries = fs.readdirSync(curDir, READDIR_OPTIONS);
+    entries.forEach( dirent => {
+        //logger.debug(`${curDir} - ${dirent.name}`);
+        if (isExclude(dirent.name)) {
+            return null;
+        }
+        let nextPaths = urlPathArray.slice();
+        nextPaths.push(dir);
+        //logger.debug(`Processing sub directory: ${tools.inspect(nextPaths)}`);
+        if (dirent.isDirectory()) {
+            _readDir(nextPaths, dirent.name);
+        } else {
+            _loadRoutes(nextPaths, dirent.name);
+        }
+    });
 }
 
 // Load and set routes
 (() => {
     try {
-        _loadRoutes();
+        _readDir([''], '');
         //
         gRoutes.forEach(route => {
             logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType}`);
             let method = (route.method || 'USE').toLowerCase();
-            if (route.authType === 'none') {
-                router[method](route.path, route.handler);
-            } else {
-                //route.authType === 'jwt'? router[method](route.path, jwt.validateToken, route.handler) : router[method](route.path, tools.checkSign, route.handler);
-                router[method](route.path, authenticate.bind(null, route.authType), route.handler);
-            }
+            router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler);
         });
     } catch (err) {
-        logger.error(`Dynamic load routes error! - ${err.message}`);
+        logger.error(`Dynamic load routes error! - ${err.message} - ${err.stack}`);
     }
 })();
 
+// Declaring module exports
 module.exports = exports = router;
