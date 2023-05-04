@@ -696,7 +696,7 @@ class EntityController extends ControllerBase {
                                 method: 'updateOne',
                                 data: obj,
                                 headers: {
-                                    updatedKeys: _findUpdatedKeys.call(this, obj, args, params.options)
+                                    updatedKeys: _findUpdatedKeys.call(this, obj, req.$args, params.options)
                                 }
                             }, () => {
                                 this._afterUpdateOne(obj, (err, result) => {
