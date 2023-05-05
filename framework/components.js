@@ -125,6 +125,8 @@ const _defaultCtlSpec = {
     mandatoryAddKeys: [],
     updateVal: {},              // For Update
     chainUpdateKeys: {},        // For chain updates
+    delVal: {},
+    mandatoryDelKeys: [],       // For delete 
     // For database query options
     populate: null,             // For populate
     sort: null,                 // For sort
@@ -701,12 +703,16 @@ class EntityController extends ControllerBase {
             }
         };
         this.deleteOne = {
-            val: {
-                id: {
-                    type: 'ObjectID',
-                    required: true
-                }
-            },
+            val: (() => {
+                let validator = tools.deepAssign({
+                    id: {
+                        type: 'ObjectID',
+                        required: true
+                    }
+                }, this._delVal);
+                _setMandatoryKeys(this._mandatoryDelKeys, validator);
+                return validator;
+            }).call(this),
             fn: (req, res) => {
                 this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
