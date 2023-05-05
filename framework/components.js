@@ -101,14 +101,6 @@ function _publishEvents(options, callback) {
     });
 }
 
-function _packDeleteFilter(args) {
-    let filter = {
-        _id: args.id
-    };
-    this._extDeleteFilter(filter);
-    return filter;
-}
-
 class ControllerBase extends EventModule {
     constructor(props) {
         super(props);
@@ -390,7 +382,7 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeFind(req, args, (err, baseOptions) => {
+                    this._beforeFind(req, (err, baseOptions) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
@@ -721,14 +713,14 @@ class EntityController extends ControllerBase {
                         return res.sendRsp(err.code, err.message);
                     }
                     let dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                    this._allowDelete(args.id, dsName, (err) => {
+                    this._allowDelete(req.$args.id, dsName, (err) => {
                         if (err) {
                             return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                         }
                         //
                         repo.updateOne({
                             filter: {
-                                _id: args.id
+                                _id: req.$args.id
                             },
                             updates: {
                                 $set: {
@@ -742,7 +734,7 @@ class EntityController extends ControllerBase {
                             }
                             let options = {
                                 filter: tools.deepAssign({
-                                    _id: args.id
+                                    _id: req.$args.id
                                 }, this._deleteOptions || {})
                             }
                             this._beforeDeleteOne(options);
