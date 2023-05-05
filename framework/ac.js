@@ -428,7 +428,7 @@ function _authorize(req, callback) {
 function _accessCtl (authType, validator, req, res, next) {
     _authenticate(authType, req, err => {
         if (err) {
-            return res.sendRsp(err.code, err.message);
+            return res.sendStatus(err.code);
         }
         let params = Object.assign({}, req.params, req.query, req.body);
         _parseParameters(params, validator, (err, args) => {
