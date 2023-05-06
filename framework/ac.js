@@ -297,7 +297,6 @@ function _unifyValidator(validator) {
 }
 
 function _parseParameters (params, validator, callback) {
-    logger.debug(`Parsing request parameters: ${tools.inspect(params)}`);
     if (typeof validator === 'function') {
         callback = validator;
         validator = {};
@@ -431,6 +430,7 @@ function _accessCtl (authType, validator, req, res, next) {
             return res.sendStatus(err.code);
         }
         let params = Object.assign({}, req.params, req.query, req.body);
+        logger.debug(`Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
         _parseParameters(params, validator, (err, args) => {
             if (err) {
                 return res.sendRsp(err.code, err.message);
