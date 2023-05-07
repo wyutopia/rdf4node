@@ -65,13 +65,18 @@ function _loadRoutes(urlPathArray, filename) {
         routes.forEach( route => {
             let toh = typeof route.handler.fn;
             if (toh === 'function') {
-                gRoutes.push({
-                    path: path.join(urlPath, filename.split('.')[0].replace('-', '/'), route.path),
+                let subPath = filename.split('.')[0].replace('-', '/');
+                let r = {
+                    path: path.join(urlPath, subPath, route.path),
                     authType: route.authType || 'jwt',
                     method: route.method.toUpperCase(),
                     validator: route.handler.val || {},
                     handler: route.handler.fn
-                });
+                };
+                if (route.oldPath) {
+                    r.oldPath = path.join(urlPath, subPath, route.path);
+                }
+                gRoutes.push(r);
             } else {
                 logger.error(`Invalid controller method! - ${filename} - ${route.path} - ${toh}`);
             }
