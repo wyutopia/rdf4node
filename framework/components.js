@@ -124,6 +124,7 @@ const _defaultCtlSpec = {
     addVal: {},                 // For create
     mandatoryAddKeys: [],
     updateVal: {},              // For Update
+    mandatoryUpdateKeys: [],    // 
     chainUpdateKeys: {},        // For chain updates
     delVal: {},
     mandatoryDelKeys: [],       // For delete 
@@ -665,12 +666,16 @@ class EntityController extends ControllerBase {
             }
         };
         this.updateOne = {
-            val: Object.assign({
-                id: {
-                    type: 'ObjectID',
-                    required: true
-                }
-            }, this._updateVal),
+            val: (() => {
+                let validator = tools.deepAssign({
+                    id: {
+                        type: 'ObjectID',
+                        required: true
+                    }
+                }, this._updateVal);
+                _setMandatoryKeys(this._mandatoryUpdateKeys, validator);
+                return validator;
+            }).call(this),
             fn: (req, res) => {
                 this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {

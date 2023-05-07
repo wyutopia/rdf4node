@@ -57,6 +57,24 @@ function isExclude(filename) {
     return EXCLUDE_FILES.indexOf(filename) !== -1;
 }
 
+const reDelKey = new RegExp(/^--/);
+const reNotRequired = new RegExp(/^-/);
+function _modifyValidators (r, modSpec) {
+    if (modSpec !== undefined) {
+        modSpec.forEach(key => {
+            if (reDelKey.test(key)) {
+                let realKey = key.replace('--', '');
+                delete r.validator[realKey]
+            } else if (reNotRequired.test(key)) {
+                let realKey = key.replace('-', '');
+                delete r.validator[realKey][required];
+            } else if (r.validator[key] !== undefined) {
+                r.validator[key].required = true;
+            }
+        });
+    }
+}
+
 function _loadRoutes(urlPathArray, filename) {
     let urlPath = urlPathArray.join('/');
     let fullPathName = path.join(routeDir, urlPath, filename);
@@ -76,12 +94,8 @@ function _loadRoutes(urlPathArray, filename) {
                 if (route.oldPath) {
                     r.oldPath = path.join(urlPath, subPath, route.path);
                 }
-                if (route.requiredKeys !== undefined) {
-                    route.requiredKeys.forEach(key => {
-                        if (r.validator[key] !== undefined) {
-                            r.validator[key].required = true;
-                        }
-                    });
+                if (route.modValidators !== undefined) {
+                    _modifyValidators(r, route.modValidators);
                 }
                 gRoutes.push(r);
             } else {
