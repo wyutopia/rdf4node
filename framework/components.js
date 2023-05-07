@@ -442,12 +442,16 @@ class EntityController extends ControllerBase {
         };
         // 
         this.findById = {
-            val: {
-                id: {
-                    type: 'ObjectID',
-                    required: true
-                }
-            },
+            val: (() => {
+                let validator = tools.deepAssign({}, this._searchVal, {
+                    id: {
+                        type: 'ObjectID',
+                        required: true
+                    }
+                });
+                _setMandatoryKeys(this._mandatorySearchKeys, validator);
+                return validator;
+            }).call(this),
             fn: (req, res) => {
                 this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
@@ -475,13 +479,17 @@ class EntityController extends ControllerBase {
             }
         };
         this.findByProject = {
-            val: Object.assign({
-                project: {
-                    type: 'ObjectID',
-                    required: true
-                },
-                brief: {}
-            }, this._searchVal),
+            val: (() => {
+                let validator = tools.deepAssign({}, this._searchVal, {
+                    project: {
+                        type: 'ObjectID',
+                        required: true
+                    },
+                    brief: {}
+                });
+                _setMandatoryKeys(this._mandatorySearchKeys, validator);
+                return validator;
+            }).call(this),
             fn: (req, res) => {
                 this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
@@ -514,13 +522,16 @@ class EntityController extends ControllerBase {
             }
         };
         this.findByUser = {
-            val: Object.assign({
-                user: {
-                    type: 'ObjectID',
-                    required: true
-                },
-                brief: {}
-            }, this._searchVal),
+            val: (() => {
+                let validator = tools.deepAssign({}, this._searchVal, {
+                    user: {
+                        type: 'ObjectID',
+                        required: true
+                    },
+                    });
+                _setMandatoryKeys(this._mandatorySearchKeys, validator);
+                return validator;
+            }).call(this),
             fn: (req, res) => {
                 this.getRepo(req.dataSource, (err, repo) => {
                     if (err) {
@@ -550,13 +561,14 @@ class EntityController extends ControllerBase {
         };
         this.findByGroup = {
             val: (() => {
-                let validator = Object.assign({
+                let validator = tools.deepAssign({}, this._searchVal, {
                     group: {
                         type: 'ObjectID',
                         required: true
                     },
                     brief: {}
-                }, this._searchVal);
+                });
+                _setMandatoryKeys(this._mandatorySearchKeys, validator);
                 return validator;
             }).call(this),
             fn: (req, res) => {
