@@ -76,6 +76,13 @@ function _loadRoutes(urlPathArray, filename) {
                 if (route.oldPath) {
                     r.oldPath = path.join(urlPath, subPath, route.path);
                 }
+                if (route.requiredKeys !== undefined) {
+                    route.requiredKeys.forEach(key => {
+                        if (r.validator[key] !== undefined) {
+                            r.validator[key].required = true;
+                        }
+                    });
+                }
                 gRoutes.push(r);
             } else {
                 logger.error(`Invalid controller method! - ${filename} - ${route.path} - ${toh}`);
