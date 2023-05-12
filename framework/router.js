@@ -89,7 +89,8 @@ function _loadRoutes(urlPathArray, filename) {
                     authType: route.authType || 'jwt',
                     method: route.method.toUpperCase(),
                     validator: route.handler.val || {},
-                    handler: route.handler.fn
+                    handler: route.handler.fn,
+                    isNew: route.isNew
                 };
                 if (route.oldPath) {
                     r.oldPath = path.join(urlPath, subPath, route.path);
