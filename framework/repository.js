@@ -104,6 +104,7 @@ function _updateOne(params, callback) {
 }
 
 function _$parseCacheKey (doc, cacheSpec) {
+    logger.debug(`Parse cacheKey: ${tools.inspect(doc)} - ${tools.inspect(cacheSpec)}`);
     if (tools.isTypeOfPrimitive(doc)) {
         return doc;
     }
@@ -112,18 +113,12 @@ function _$parseCacheKey (doc, cacheSpec) {
     }
     let template = cacheSpec.keyNameTemplate;
     if (template === undefined) {
-        return template;
+        return doc['_id'];   // Using _id as default key
     }
-    let keyNameArray = []
-    let fields = template.split(':');
-    for (let i = 0; i < fields.length; i++) {
-        let field = fields[i];
-        let namePart = '*';
-        if (doc[field] !== undefined) {
-            namePart = doc[field]._id === undefined? doc[field] : doc[field]._id;
-        };
-        keyNameArray.push(namePart);
-    }
+    let keyNameArray = [];
+    template.split(':').forEach( field => {
+        keyNameArray.push(doc[field] === undefined? '*' : tools.stringifyDocId(doc[field]));
+    });
     return keyNameArray.join(':');
 }
 
@@ -160,54 +155,64 @@ function _$buildQueryFilter(data, cacheSpec) {
 class Repository extends EventObject {
     constructor(props) {
         super(props);
-        //
+        // Set model property and declaring member variable
         this.modelName = props.modelName || 'User';
         this.modelSchema = props.modelSchema || {};
         this.modelRefs = props.modelRefs || [];
         this.dsName = props.dsName || 'default';
-        //
+        this._model = null;
+        this.getModel = () => {
+            return this._model;
+        };
+        // Set cache property and declaring member variable
         this.allowCache = props.allowCache !== undefined? props.allowCache : false;
         this.cacheSpec = props.cacheSpec || {
             dataType: eDataType.Kv,
             loadPolicy: eLoadPolicy.SetAfterFound,
             keyName: '_id'
         };
-        // Declaring private member variables
-        this._model = null;
-        this._cache = {};
-        this.getModel = () => {
-            return this._model;
-        };
+        this._cache = null;
         this.getCache = () => {
             return this._cache;
         };
         // Implementing cache methods
-        this.cacheGet = (key, callback) => {
+        this.cacheGet = (options, callback) => {
             if (this.allowCache === false) {
                 return callback({
                     code: eRetCodes.METHOD_NOT_ALLOWED,
                     message: 'Set allowCache=true before using.'
                 });
             }
-            let cacheKey = _$parseCacheKey(key, this.cacheSpec);
+            let cacheKey = _$parseCacheKey(options, this.cacheSpec);
+            logger.debug(`The cacheKey: ${cacheKey}`);
             let v = this._cache[cacheKey];
             if (v !== undefined || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
                 return callback(null, v);
             }
-            let filter = _$buildQueryFilter(key, this.cacheSpec);
+            logger.debug(`Cache not hit! Load ${this.modelName} from database...`);
+            let filter = _$buildQueryFilter(options, this.cacheSpec);
+            logger.debug(`The query filter: ${tools.inspect(filter)}`);
             if (Object.keys(filter).length === 0) {
                 return callback({
                     code: eRetCodes.BAD_REQUEST,
                     message: 'Invalid cache key!'
                 });
             }
-            this.findOne({
-                filter: filter
-            }, (err, doc) => {
-                if (doc && this.cacheSpec.loadPolicy === eLoadPolicy.SetAfterFound) {
-                    this._cache[cacheKey] = doc.toObject();
+            this.findMany({
+                filter: filter,
+                populate: this._populate
+            }, (err, docs) => {
+                if (err) {
+                    return callback(err);
                 }
-                return callback(err, doc);
+                logger.debug(`Documents found: ${tools.inspect(docs)}`);
+                _appendCache.call(this, docs, (err, count) => {
+                    return callback(null, docs);
+                });
+                // if (doc && this.cacheSpec.loadPolicy === eLoadPolicy.SetAfterFound) {
+                //     this._cache[cacheKey] = doc.toObject();
+                // }
+                // return callback(err, docs);
             });
         };
         // Create one or many documents
@@ -519,9 +524,9 @@ class Repository extends EventObject {
             if (ds) {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
-            // if (this.allowCache === true) {
-            //     this._cache = cacheFactory.getCache(this.modelName, props.cacheSpec);
-            // }
+            if (this.allowCache === true) {
+                this._cache = cacheFactory.getCache(this.modelName, props.cacheSpec);
+            }
         })();
     }
 }

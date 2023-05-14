@@ -89,7 +89,7 @@ class CacheFactory extends EventModule {
         super(props);
         //
         this._caches = {};
-        this.getCache = (name, cacheSpecOptions, callback) => {
+        this.getCache = (name, cacheSpecOptions) => {
             let db = cacheSpecOptions.db || 0;
             let bktId = `${name}#${db}`;
             if (this._caches[bktId] === undefined) {

@@ -460,6 +460,10 @@ exports.deleteFromArray = function (arr, item) {
     return null;
 };
 
-exports.getObjectId = function (oid) {
-    return oid instanceof ObjectId? oid : (oid !== undefined? oid._id : oid);
+function _stringifyDocId (doc) {
+    if (!doc || typeof doc === 'string' || doc instanceof ObjectId) {
+        return doc;
+    }
+    return _stringifyDocId(doc._id);
 }
+exports.stringifyDocId = _stringifyDocId;
