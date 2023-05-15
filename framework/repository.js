@@ -200,10 +200,16 @@ class Repository extends EventObject {
                     message: 'Invalid cache key!'
                 });
             }
-            this.findMany({
-                filter: filter,
-                populate: this._populate
-            }, (err, docs) => {
+            let queryOptions = {
+                filter: filter
+            };
+            if (this.cacheSpec.populate) {
+                queryOptions.populate = this.cacheSpec.populate;
+            }
+            if (this.cacheSpec.valueSelect) {
+                queryOptions.select = this.cacheSpec.valueSelect;
+            }
+            this.findMany(queryOptions, (err, docs) => {
                 if (err) {
                     return callback(err);
                 }
