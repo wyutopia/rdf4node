@@ -688,10 +688,10 @@ module.exports = exports = {
     _DS_DEFAULT_: 'default',
     paginationVal: {
         pageSize: {
-            type: 'Number'
+            type: 'String'
         },
         page: {
-            type: 'Number'
+            type: 'String'
         }
     },
     repoFactory: new RepositoryFactory({
