@@ -47,8 +47,8 @@ function _loadDatabaseSchemas(callback) {
                     schema: modelSpec.modelSchema,
                     refs: modelSpec.modelRefs || [],
                     // Cache options
-                    allowCache: modelSpec.allowCache,
-                    cacheSpec: modelSpec.cacheSpec
+                    allowCache: modelSpec.allowCache !== undefined? modelSpec.allowCache : false,
+                    cacheSpec: modelSpec.cacheSpec || {}
                 });
                 allModels.push(modelName);
             }

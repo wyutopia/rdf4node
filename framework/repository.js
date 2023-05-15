@@ -169,9 +169,11 @@ class Repository extends EventObject {
         this.cacheSpec = props.cacheSpec || {
             dataType: eDataType.Kv,
             loadPolicy: eLoadPolicy.SetAfterFound,
-            keyName: '_id'
+            keyName: '_id',
+            populate: null,
+            valueKeys: null
         };
-        this._cache = null;
+        this._cache = {};
         this.getCache = () => {
             return this._cache;
         };
@@ -524,9 +526,9 @@ class Repository extends EventObject {
             if (ds) {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
-            if (this.allowCache === true) {
-                this._cache = cacheFactory.getCache(this.modelName, props.cacheSpec);
-            }
+            // if (this.allowCache === true) {
+            //     this._cache = cacheFactory.getCache(this.modelName, props.cacheSpec);
+            // }
         })();
     }
 }

@@ -27,7 +27,14 @@ const eLoadPolicy = {
 
 const _defaultCacheProps = {
     type: sysdefs.eCacheType.PROCMEM,   // Set default cache to local process memory
+    //
     prefix: null,                       // No default key prefix
+    dataType: eDataType.Kv,
+    loadPolicy: eLoadPolicy.SetAfterFound,
+    keyName: '_id',
+    KeyNameTemplate: null,
+    populate: null,
+    valueKeys: null
 };
 
 function _initCache (options) {
