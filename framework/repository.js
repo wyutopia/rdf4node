@@ -103,23 +103,36 @@ function _updateOne(params, callback) {
     });
 }
 
-function _$parseCacheKey (doc, cacheSpec) {
-    logger.debug(`Parse cacheKey: ${tools.inspect(doc)} - ${tools.inspect(cacheSpec)}`);
-    if (tools.isTypeOfPrimitive(doc)) {
-        return doc;
+function _$parseCacheKey (options, cacheSpec) {
+    logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${tools.inspect(cacheSpec)}`);
+    if (tools.isTypeOfPrimitive(options)) {
+        return options;
     }
     if (cacheSpec.keyName) {
-        return doc[cacheSpec.keyName];
+        return options[cacheSpec.keyName];
     }
     let template = cacheSpec.keyNameTemplate;
     if (template === undefined) {
-        return doc['_id'];   // Using _id as default key
+        return options['_id'];   // Using _id as default key
     }
     let keyNameArray = [];
     template.split(':').forEach( field => {
-        keyNameArray.push(doc[field] === undefined? '*' : tools.stringifyDocId(doc[field]));
+        keyNameArray.push(options[field] === undefined? '*' : tools.stringifyDocId(options[field]));
     });
     return keyNameArray.join(':');
+}
+
+function _parseCacheValue(doc, valueKeys) {
+    if (!valueKeys) {
+        return doc;
+    }
+    let cv = {};
+    valueKeys.forEach (key => {
+        if (doc[key]) {
+            cv[key] = doc[key];
+        }
+    })
+    return cv;
 }
 
 function _appendCache(data, callback) {
@@ -130,8 +143,8 @@ function _appendCache(data, callback) {
     //
     async.each(docs, (doc, next) => {
         let cacheKey = _$parseCacheKey(doc, this.cacheSpec);
-        this._cache[cacheKey] = doc.toObject();    // TODO: replace with cacheRepository opeartions
-        return process.nextTick(next);
+        let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);
+        return this._cache.set(cacheKey, cacheVal, next);
     }, () => {
         return callback();
     });
@@ -171,6 +184,7 @@ class Repository extends EventObject {
             loadPolicy: eLoadPolicy.SetAfterFound,
             keyName: '_id',
             populate: null,
+            select: null,
             valueKeys: null
         };
         this._cache = {};
@@ -187,34 +201,37 @@ class Repository extends EventObject {
             }
             let cacheKey = _$parseCacheKey(options, this.cacheSpec);
             logger.debug(`The cacheKey: ${cacheKey}`);
-            let v = this._cache[cacheKey];
-            if (v !== undefined || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
-                return callback(null, v);
-            }
-            logger.debug(`Cache not hit! Load ${this.modelName} from database...`);
-            let filter = _$buildQueryFilter(options, this.cacheSpec);
-            logger.debug(`The query filter: ${tools.inspect(filter)}`);
-            if (Object.keys(filter).length === 0) {
-                return callback({
-                    code: eRetCodes.BAD_REQUEST,
-                    message: 'Invalid cache key!'
-                });
-            }
-            this.findMany({
-                filter: filter,
-                populate: this._populate
-            }, (err, docs) => {
-                if (err) {
-                    return callback(err);
+            this._cache.get(cacheKey, (err, v) => {
+                if (v !== undefined || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
+                    return callback(null, v);
                 }
-                logger.debug(`Documents found: ${tools.inspect(docs)}`);
-                _appendCache.call(this, docs, (err, count) => {
-                    return callback(null, docs);
+                logger.debug(`Cache not hit! Load ${this.modelName} from database...`);
+                let filter = _$buildQueryFilter(options, this.cacheSpec);
+                logger.debug(`The query filter: ${tools.inspect(filter)}`);
+                if (Object.keys(filter).length === 0) {
+                    return callback({
+                        code: eRetCodes.BAD_REQUEST,
+                        message: 'Invalid cache key!'
+                    });
+                }
+                let queryOptions = {
+                    filter: filter
+                };
+                if (this.cacheSpec.populate) {
+                    queryOptions.populate = this.cacheSpec.populate;
+                }
+                if (this.cacheSpec.select) {
+                    queryOptions.select = this.cacheSpec.select;
+                }
+                this.findOne(queryOptions, (err, doc) => {
+                    if (err) {
+                        return callback(err);
+                    }
+                    logger.debug(`Document found: ${tools.inspect(doc)}`);
+                    _appendCache.call(this, doc, (err, cacheVal) => {
+                        return callback(null, cacheVal);
+                    });
                 });
-                // if (doc && this.cacheSpec.loadPolicy === eLoadPolicy.SetAfterFound) {
-                //     this._cache[cacheKey] = doc.toObject();
-                // }
-                // return callback(err, docs);
             });
         };
         // Create one or many documents
@@ -526,9 +543,9 @@ class Repository extends EventObject {
             if (ds) {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
-            // if (this.allowCache === true) {
-            //     this._cache = cacheFactory.getCache(this.modelName, props.cacheSpec);
-            // }
+            if (this.allowCache === true) {
+                this._cache = cacheFactory.getCache(this.$name, this.cacheSpec);
+            }
         })();
     }
 }

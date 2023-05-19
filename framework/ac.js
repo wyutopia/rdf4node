@@ -133,7 +133,12 @@ function _validateTypedArray(field, validator, args) {
         errMsg = `${field} should be array!`;
         return errMsg;
     }
-    let t = typeExtractRe.exec(validator.type)[0];
+    let result = typeExtractRe.exec(validator.type);
+    if (!result) {
+        errMsg = `Unrecognized parameter type: ${field}`;
+        return errMsg;
+    }
+    let t = result[0];
     for (let i = 0; i < args.length; i++) {
         let argv = args[i];
         switch(t) {
@@ -436,6 +441,9 @@ function _accessCtl (authType, validator, req, res, next) {
                 return res.sendRsp(err.code, err.message);
             }
             req.$args = args;
+            if (authType === 'none') {
+                return next();
+            }
             _authorize(req, err => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);

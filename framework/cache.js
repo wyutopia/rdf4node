@@ -34,6 +34,7 @@ const _defaultCacheProps = {
     keyName: '_id',
     KeyNameTemplate: null,
     populate: null,
+    select: null,
     valueKeys: null
 };
 
