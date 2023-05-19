@@ -143,8 +143,8 @@ function _appendCache(data, callback) {
     //
     async.each(docs, (doc, next) => {
         let cacheKey = _$parseCacheKey(doc, this.cacheSpec);
-        this._cache[cacheKey] = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);    // TODO: replace with cacheRepository opeartions
-        return process.nextTick(next);
+        let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);
+        return this._cache.set(cacheKey, cacheVal, next);
     }, () => {
         return callback();
     });
@@ -184,6 +184,7 @@ class Repository extends EventObject {
             loadPolicy: eLoadPolicy.SetAfterFound,
             keyName: '_id',
             populate: null,
+            select: null,
             valueKeys: null
         };
         this._cache = {};
@@ -200,40 +201,37 @@ class Repository extends EventObject {
             }
             let cacheKey = _$parseCacheKey(options, this.cacheSpec);
             logger.debug(`The cacheKey: ${cacheKey}`);
-            let v = this._cache[cacheKey];
-            if (v !== undefined || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
-                return callback(null, v);
-            }
-            logger.debug(`Cache not hit! Load ${this.modelName} from database...`);
-            let filter = _$buildQueryFilter(options, this.cacheSpec);
-            logger.debug(`The query filter: ${tools.inspect(filter)}`);
-            if (Object.keys(filter).length === 0) {
-                return callback({
-                    code: eRetCodes.BAD_REQUEST,
-                    message: 'Invalid cache key!'
-                });
-            }
-            let queryOptions = {
-                filter: filter
-            };
-            if (this.cacheSpec.populate) {
-                queryOptions.populate = this.cacheSpec.populate;
-            }
-            if (this.cacheSpec.valueSelect) {
-                queryOptions.select = this.cacheSpec.valueSelect;
-            }
-            this.findOne(queryOptions, (err, doc) => {
-                if (err) {
-                    return callback(err);
+            this._cache.get(cacheKey, (err, v) => {
+                if (v !== undefined || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
+                    return callback(null, v);
                 }
-                logger.debug(`Document found: ${tools.inspect(doc)}`);
-                _appendCache.call(this, doc, (err, count) => {
-                    return callback(null, this._cache[cacheKey]);
+                logger.debug(`Cache not hit! Load ${this.modelName} from database...`);
+                let filter = _$buildQueryFilter(options, this.cacheSpec);
+                logger.debug(`The query filter: ${tools.inspect(filter)}`);
+                if (Object.keys(filter).length === 0) {
+                    return callback({
+                        code: eRetCodes.BAD_REQUEST,
+                        message: 'Invalid cache key!'
+                    });
+                }
+                let queryOptions = {
+                    filter: filter
+                };
+                if (this.cacheSpec.populate) {
+                    queryOptions.populate = this.cacheSpec.populate;
+                }
+                if (this.cacheSpec.select) {
+                    queryOptions.select = this.cacheSpec.select;
+                }
+                this.findOne(queryOptions, (err, doc) => {
+                    if (err) {
+                        return callback(err);
+                    }
+                    logger.debug(`Document found: ${tools.inspect(doc)}`);
+                    _appendCache.call(this, doc, (err, cacheVal) => {
+                        return callback(null, cacheVal);
+                    });
                 });
-                // if (doc && this.cacheSpec.loadPolicy === eLoadPolicy.SetAfterFound) {
-                //     this._cache[cacheKey] = doc.toObject();
-                // }
-                // return callback(err, docs);
             });
         };
         // Create one or many documents
@@ -545,9 +543,9 @@ class Repository extends EventObject {
             if (ds) {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
-            // if (this.allowCache === true) {
-            //     this._cache = cacheFactory.getCache(this.modelName, props.cacheSpec);
-            // }
+            if (this.allowCache === true) {
+                this._cache = cacheFactory.getCache(this.$name, this.cacheSpec);
+            }
         })();
     }
 }
