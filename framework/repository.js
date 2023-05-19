@@ -103,23 +103,36 @@ function _updateOne(params, callback) {
     });
 }
 
-function _$parseCacheKey (doc, cacheSpec) {
-    logger.debug(`Parse cacheKey: ${tools.inspect(doc)} - ${tools.inspect(cacheSpec)}`);
-    if (tools.isTypeOfPrimitive(doc)) {
-        return doc;
+function _$parseCacheKey (options, cacheSpec) {
+    logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${tools.inspect(cacheSpec)}`);
+    if (tools.isTypeOfPrimitive(options)) {
+        return options;
     }
     if (cacheSpec.keyName) {
-        return doc[cacheSpec.keyName];
+        return options[cacheSpec.keyName];
     }
     let template = cacheSpec.keyNameTemplate;
     if (template === undefined) {
-        return doc['_id'];   // Using _id as default key
+        return options['_id'];   // Using _id as default key
     }
     let keyNameArray = [];
     template.split(':').forEach( field => {
-        keyNameArray.push(doc[field] === undefined? '*' : tools.stringifyDocId(doc[field]));
+        keyNameArray.push(options[field] === undefined? '*' : tools.stringifyDocId(options[field]));
     });
     return keyNameArray.join(':');
+}
+
+function _parseCacheValue(doc, valueKeys) {
+    if (!valueKeys) {
+        return doc;
+    }
+    let cv = {};
+    valueKeys.forEach (key => {
+        if (doc[key]) {
+            cv[key] = doc[key];
+        }
+    })
+    return cv;
 }
 
 function _appendCache(data, callback) {
@@ -130,7 +143,7 @@ function _appendCache(data, callback) {
     //
     async.each(docs, (doc, next) => {
         let cacheKey = _$parseCacheKey(doc, this.cacheSpec);
-        this._cache[cacheKey] = doc.toObject();    // TODO: replace with cacheRepository opeartions
+        this._cache[cacheKey] = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);    // TODO: replace with cacheRepository opeartions
         return process.nextTick(next);
     }, () => {
         return callback();
@@ -200,16 +213,22 @@ class Repository extends EventObject {
                     message: 'Invalid cache key!'
                 });
             }
-            this.findMany({
-                filter: filter,
-                populate: this._populate
-            }, (err, docs) => {
+            let queryOptions = {
+                filter: filter
+            };
+            if (this.cacheSpec.populate) {
+                queryOptions.populate = this.cacheSpec.populate;
+            }
+            if (this.cacheSpec.valueSelect) {
+                queryOptions.select = this.cacheSpec.valueSelect;
+            }
+            this.findOne(queryOptions, (err, doc) => {
                 if (err) {
                     return callback(err);
                 }
-                logger.debug(`Documents found: ${tools.inspect(docs)}`);
-                _appendCache.call(this, docs, (err, count) => {
-                    return callback(null, docs);
+                logger.debug(`Document found: ${tools.inspect(doc)}`);
+                _appendCache.call(this, doc, (err, count) => {
+                    return callback(null, this._cache[cacheKey]);
                 });
                 // if (doc && this.cacheSpec.loadPolicy === eLoadPolicy.SetAfterFound) {
                 //     this._cache[cacheKey] = doc.toObject();
