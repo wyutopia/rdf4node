@@ -139,14 +139,16 @@ function _appendCache(data, callback) {
     if (this.allowCache === false || !data) {
         return callback(null, data);
     }
+    let cacheValues = [];
     let docs = Array.isArray(data)? data : [data];
     //
     async.each(docs, (doc, next) => {
         let cacheKey = _$parseCacheKey(doc, this.cacheSpec);
         let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);
+        cacheValues.push(cacheVal);
         return this._cache.set(cacheKey, cacheVal, next);
     }, () => {
-        return callback();
+        return callback(null, tools.isTypeOfArray(data)? cacheValues : cacheValues[0]);
     });
 }
 
