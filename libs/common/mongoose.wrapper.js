@@ -65,7 +65,7 @@ function _extractValidator (path, options) {
     if (pathType === 'Array<EmbeddedObject>') {
         let subDocPaths = tools.safeGetJsonValue(path, 'schema.paths');
         if (subDocPaths) {
-            validator.$embeddedValidators = _extractValidatorsFromPaths(subDocPaths);
+            validator.$embeddedValidators = _extractValidatorsFromPaths(subDocPaths, options);
         }
     }
     return validator;
