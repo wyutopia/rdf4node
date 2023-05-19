@@ -1,6 +1,6 @@
 {
     "name": "@icedeer/rdf4node",
-    "version": "0.23.1-DEV",
+    "version": "0.23.3-DEV",
     "description": "A rapid develop framework based on express for nodejs",
     "author": {
         "name": "Eric Wang",
@@ -33,6 +33,7 @@
         "moment": "^2.29.4",
         "mongoose": "^6.10.0",
         "morgan": "^1.10.0",
+        "multer": "^1.4.5-lts.1",
         "mysql2": "^2.3.3",
         "node-schedule": "2.1.1",
         "pg": "^8.10.0",

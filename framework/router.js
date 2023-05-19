@@ -3,8 +3,10 @@
  */
 const fs = require('fs');
 const path = require('path');
-let express = require('express');
-let router = express.Router();
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const upload = multer({dest: 'uploads/'});
 const appRoot = require('app-root-path');
 const routeDir = path.join(appRoot.path, 'routes');
 // Framework
@@ -98,6 +100,9 @@ function _loadRoutes(urlPathArray, filename) {
                 if (route.modValidators !== undefined) {
                     _modifyValidators(r, route.modValidators);
                 }
+                if (route.multer !== undefined) {
+                    r.multer = route.multer;
+                }
                 gRoutes.push(r);
             } else {
                 logger.error(`Invalid controller method! - ${filename} - ${route.path} - ${toh}`);
@@ -136,7 +141,12 @@ function _readDir(urlPathArray, dir) {
         gRoutes.forEach(route => {
             logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType}`);
             let method = (route.method || 'USE').toLowerCase();
-            router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler);
+            if (method === 'post' && route.multer) {
+                const fnUpload = upload.single(route.multer.name || 'pic');
+                router[method](route.path, fnUpload, accessCtl.bind(null, route.authType, route.validator), route.handler);
+            } else {
+                router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler);
+            }
         });
     } catch (err) {
         logger.error(`Dynamic load routes error! - ${err.message} - ${err.stack}`);
