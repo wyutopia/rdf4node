@@ -151,7 +151,7 @@ const _defaultCtlSpec = {
             updates: req.$args
         }); 
     },
-    afterAdd: function (doc, callback) { return callback(null, doc); },
+    afterAdd: function (req, doc, callback) { return callback(null, doc); },
     //
     beforeUpdate: function (req, callback) {
         let setData = tools.deepAssign({}, req.$args);
@@ -627,7 +627,7 @@ class EntityController extends ControllerBase {
                                     method: 'addOne',
                                     data: obj
                                 }, () => {
-                                    this._afterAdd(obj, (err, result) => {
+                                    this._afterAdd(req, doc, (err, result) => {
                                         if (err) {
                                             return res.sendRsp(err.code, err.message);
                                         }
@@ -665,7 +665,7 @@ class EntityController extends ControllerBase {
                                 method: 'inertOne',
                                 data: obj
                             }, () => {
-                                this._afterAdd(obj, (err, result) => {
+                                this._afterAdd(req, doc, (err, result) => {
                                     if (err) {
                                         return res.sendRsp(err.code, err.message);
                                     }
