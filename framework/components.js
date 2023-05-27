@@ -183,7 +183,7 @@ const _defaultCtlSpec = {
         return callback(null, params);
     },
 //    beforeUpdateOne: tools.noop,
-    afterUpdateOne: function (doc, callback) { return callback(null, doc); },
+    afterUpdateOne: function (req, doc, callback) { return callback(null, doc); },
     //
     allowDelete: function (id, dsName, callback) { 
         return callback({
@@ -710,7 +710,7 @@ class EntityController extends ControllerBase {
                                     updatedKeys: _findUpdatedKeys.call(this, obj, req.$args, params.options)
                                 }
                             }, () => {
-                                this._afterUpdateOne(obj, (err, result) => {
+                                this._afterUpdateOne(req, doc, (err, result) => {
                                     return res.sendSuccess(result);
                                 });
                             });
