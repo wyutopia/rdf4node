@@ -191,7 +191,8 @@ const _defaultCtlSpec = {
             message: 'Not allowed!'
         });
     },
-    beforeDeleteOne: tools.noop
+    beforeDeleteOne: tools.noop,
+    afterDeleteOne: function (req, doc, callback) { return callback(null, doc); }
 };
 function _initCtlSpec(ctlSpec) {
     Object.keys(_defaultCtlSpec).forEach( key => {
@@ -770,9 +771,11 @@ class EntityController extends ControllerBase {
                                 }
                                 _publishEvents.call(this, {
                                     method: 'deleteOne',
-                                    data: doc
+                                    data: doc.toObject()
                                 }, () => {
-                                    return res.sendSuccess(result);
+                                    this._afterDeleteOne(req, doc, () => {
+                                        return res.sendSuccess(result);
+                                    })
                                 });
                             });
                         });
