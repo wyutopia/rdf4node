@@ -151,7 +151,7 @@ const _defaultCtlSpec = {
             updates: req.$args
         }); 
     },
-    afterAdd: function (doc, callback) { return callback(null, doc); },
+    afterAdd: function (req, doc, callback) { return callback(null, doc); },
     //
     beforeUpdate: function (req, callback) {
         let setData = tools.deepAssign({}, req.$args);
@@ -183,7 +183,7 @@ const _defaultCtlSpec = {
         return callback(null, params);
     },
 //    beforeUpdateOne: tools.noop,
-    afterUpdateOne: function (doc, callback) { return callback(null, doc); },
+    afterUpdateOne: function (req, doc, callback) { return callback(null, doc); },
     //
     allowDelete: function (id, dsName, callback) { 
         return callback({
@@ -191,7 +191,8 @@ const _defaultCtlSpec = {
             message: 'Not allowed!'
         });
     },
-    beforeDeleteOne: tools.noop
+    beforeDeleteOne: tools.noop,
+    afterDeleteOne: function (req, doc, callback) { return callback(null, doc); }
 };
 function _initCtlSpec(ctlSpec) {
     Object.keys(_defaultCtlSpec).forEach( key => {
@@ -627,7 +628,7 @@ class EntityController extends ControllerBase {
                                     method: 'addOne',
                                     data: obj
                                 }, () => {
-                                    this._afterAdd(obj, (err, result) => {
+                                    this._afterAdd(req, doc, (err, result) => {
                                         if (err) {
                                             return res.sendRsp(err.code, err.message);
                                         }
@@ -665,7 +666,7 @@ class EntityController extends ControllerBase {
                                 method: 'inertOne',
                                 data: obj
                             }, () => {
-                                this._afterAdd(obj, (err, result) => {
+                                this._afterAdd(req, doc, (err, result) => {
                                     if (err) {
                                         return res.sendRsp(err.code, err.message);
                                     }
@@ -710,7 +711,7 @@ class EntityController extends ControllerBase {
                                     updatedKeys: _findUpdatedKeys.call(this, obj, req.$args, params.options)
                                 }
                             }, () => {
-                                this._afterUpdateOne(obj, (err, result) => {
+                                this._afterUpdateOne(req, doc, (err, result) => {
                                     return res.sendSuccess(result);
                                 });
                             });
@@ -770,9 +771,11 @@ class EntityController extends ControllerBase {
                                 }
                                 _publishEvents.call(this, {
                                     method: 'deleteOne',
-                                    data: doc
+                                    data: doc.toObject()
                                 }, () => {
-                                    return res.sendSuccess(result);
+                                    this._afterDeleteOne(req, doc, () => {
+                                        return res.sendSuccess(result);
+                                    })
                                 });
                             });
                         });

@@ -264,12 +264,12 @@ class Repository extends EventObject {
                 });
             });
         };
-        this.insert = (options, callback) => {
-            if (typeof options === 'function') {
-                callback = options;
-                options = {};
+        this.insert = (params, callback) => {
+            if (typeof params === 'function') {
+                callback = params;
+                params = {};
             }
-            if (!options.filter || !options.updates) {
+            if (!params.filter || !params.updates) {
                 return callback({
                     code: eRetCodes.DB_ERROR,
                     message: 'Bad request! filter and updates are mandatory.'
@@ -281,12 +281,13 @@ class Repository extends EventObject {
                     message: 'Model should be initialized before using!'
                 });
             }
-            logger.debug(`findOneAndUpdate with upsert=true: ${tools.inspect(options)}`);
-            return this._model.findOneAndUpdate(options.filter, options.updates, {
+            logger.debug(`findOneAndUpdate with params: ${tools.inspect(params)}`);
+            let options = params.options || {
                 upsert: true,
                 setDefaultsOnInsert: true,
                 new: true
-            }, (err, doc) => {
+            };
+            return this._model.findOneAndUpdate(params.filter, params.updates, options, (err, doc) => {
                 if (err) {
                     let msg = `Insert error! - ${err.message}`;
                     logger.error(msg);
