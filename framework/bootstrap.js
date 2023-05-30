@@ -27,18 +27,19 @@ function _initFramework() {
     logger.info('++++++ Step 1: Initializing framwork ++++++');
 }
 
-function _loadDatabaseSchemas(callback) {
-    let modelDir = path.join(appRoot.path, bsConf.modelDir);
-    logger.info(`++++++ Step 2: Load all database schemas from ${modelDir} ++++++`);
-    let allModels = [];
+const _excludeModelDirs = ['.DS_Store', 'templates'];
+function _readModelDirSync(modelEntries, modelDir) {
     let entries = fs.readdirSync(modelDir, {
         withFileTypes: true
     });
     entries.forEach(dirent => {
-        if (dirent.isDirectory()) { // Ignore directory
-            return null;
-        }
         let filePath = path.join(modelDir, dirent.name);
+        if (dirent.isDirectory()) {
+            if (_excludeModelDirs.indexOf(dirent.name) !== -1) { // Ignore excluded folers
+                return null;
+            }
+            return _readModelDirSync(modelEntries, filePath);
+        }
         try {
             let modelSpec = require(filePath);
             let modelName = modelSpec.modelName;
@@ -50,13 +51,21 @@ function _loadDatabaseSchemas(callback) {
                     allowCache: modelSpec.allowCache !== undefined? modelSpec.allowCache : false,
                     cacheSpec: modelSpec.cacheSpec || {}
                 });
-                allModels.push(modelName);
+                modelEntries.push(modelName);
             }
         } catch (ex) {
             logger.error(`Load database schema from: ${dirent.name} error! - ${ex.message}`);
         }
     });
-    logger.debug(`>>> Registered database schemas: ${tools.inspect(allModels)}`);
+    return null;
+}
+
+function _loadDatabaseSchemas(callback) {
+    let modelDir = path.join(appRoot.path, bsConf.modelDir);
+    logger.info(`++++++ Step 2: Load all database schemas from ${modelDir} ++++++`);
+    let allModels = [];
+    _readModelDirSync(allModels, modelDir);
+    logger.debug(`>>> Total ${allModels.length} database schemas registered. - ${tools.inspect(allModels)}`);
     if (callback) {
         return callback();
     }
