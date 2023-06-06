@@ -689,11 +689,10 @@ class RepositoryFactory extends EventModule {
                     if (err) {
                         logger.error(`Find ${modelName} entites error! - ${err.message}`);
                         return next();
-                    } else {
-                        docs.forEach(doc => {
-                            results[doc._id] = doc;
-                        });
                     }
+                    docs.forEach(doc => {
+                        results[doc._id] = doc;
+                    });
                     return next();
                 });
             }, () => {
