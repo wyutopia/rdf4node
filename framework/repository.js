@@ -35,13 +35,13 @@ function _uniQuery(query, options, callback) {
                 message: msg
             })
         }
-        if (!result) {
-            return callback({
-                code: eRetCodes.NOT_FOUND,
-                message: `${this.$name}: Specified document not exists!`
-            })
+        if (options.allowEmpty || result) {
+            return callback(null, result);
         }
-        return callback(null, result);
+        return callback({
+            code: eRetCodes.NOT_FOUND,
+            message: `${this.$name}: Specified document not exists!`
+        })
     });
 }
 
