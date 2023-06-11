@@ -425,11 +425,11 @@ class EntityController extends ControllerBase {
                         }
                         let options = _packFindOption.call(this, req, baseOptions);
                         this.emit('before_find_partial', req, options);
-                        repo.findPartial(options, (err, results) => {
+                        repo.findPartial(options, (err, result) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindPartial(req, results, (err, outcomes) => {
+                            this._afterFindPartial(req, result, (err, outcomes) => {
                                 if (err) {
                                     return res.sendRsp(err.code, err.message);
                                 }

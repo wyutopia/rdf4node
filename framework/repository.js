@@ -373,14 +373,14 @@ class Repository extends EventObject {
                         message: msg
                     });
                 }
-                let results = {
+                let result = {
                     total: total,
                     pageSize: ps,
                     page: pn
                 };
                 if (total === 0) {
-                    results.values = [];
-                    return callback(null, results);
+                    result.values = [];
+                    return callback(null, result);
                 }
                 // Assemble query promise
                 let query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
@@ -398,10 +398,10 @@ class Repository extends EventObject {
                             message: msg
                         });
                     }
-                    results.values = docs;
+                    result.values = docs;
                     // Append cache
                     _appendCache.call(this, docs, () => {
-                        return callback(null, results);
+                        return callback(null, result);
                     });
                 });
             });
