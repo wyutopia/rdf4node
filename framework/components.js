@@ -139,9 +139,9 @@ const _defaultCtlSpec = {
         return callback(null, {});
     },
     //
-    afterFindOne: function (doc, callback) { return callback(null, doc); },      // For only one document
-    afterFindMany: function (docs, callback) { return callback(null, docs); },     // For one or array results
-    afterFindPartial: function (results, callback) { return callback(null, results); },  // For pagination results
+    afterFindOne: function (req, doc, callback) { return callback(null, doc); },      // For only one document
+    afterFindMany: function (req, docs, callback) { return callback(null, docs); },     // For one or array results
+    afterFindPartial: function (req, results, callback) { return callback(null, results); },  // For pagination results
     //
     allowAdd: function (req, callback) { return callback(); },
     beforeAdd: function (req, callback) { return callback(null, req.$args); },
@@ -364,7 +364,7 @@ class EntityController extends ControllerBase {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindMany(docs, (err, results) => {
+                            this._afterFindMany(req, docs, (err, results) => {
                                 if (err) {
                                     return res.sendRsp(err.code, err.message);
                                 }
@@ -396,7 +396,7 @@ class EntityController extends ControllerBase {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindOne(doc, (err, result) => {
+                            this._afterFindOne(req, doc, (err, result) => {
                                 if (err) {
                                     return res.sendRsp(err.code, err.message);
                                 }
@@ -429,7 +429,7 @@ class EntityController extends ControllerBase {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindPartial(results, (err, outcomes) => {
+                            this._afterFindPartial(req, results, (err, outcomes) => {
                                 if (err) {
                                     return res.sendRsp(err.code, err.message);
                                 }
@@ -468,7 +468,7 @@ class EntityController extends ControllerBase {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindOne(doc, (err, result) => {
+                            this._afterFindOne(req, doc, (err, result) => {
                                 if (err) {
                                     return res.sendRsp(err.code, err.message);
                                 }
@@ -510,7 +510,7 @@ class EntityController extends ControllerBase {
                                 method: 'findByProject',
                                 data: docs
                             }, () => {
-                                this._afterFindMany(docs, (err, results) => {
+                                this._afterFindMany(req, docs, (err, results) => {
                                     if (err) {
                                         return res.sendRsp(err.code, err.message);
                                     }
@@ -549,7 +549,7 @@ class EntityController extends ControllerBase {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindMany(docs, (err, results) => {
+                            this._afterFindMany(req, docs, (err, results) => {
                                 if (err) {
                                     return res.sendRsp(err.code, err.message);
                                 }
@@ -588,7 +588,7 @@ class EntityController extends ControllerBase {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindMany(docs, (err, results) => {
+                            this._afterFindMany(req, docs, (err, results) => {
                                 if (err) {
                                     return res.sendRsp(err.code, err.message);
                                 }
