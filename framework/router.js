@@ -69,7 +69,7 @@ function _modifyValidators (r, modSpec) {
                 delete r.validator[realKey]
             } else if (reNotRequired.test(key)) {
                 let realKey = key.replace('-', '');
-                delete r.validator[realKey][required];
+                delete r.validator[realKey].required;
             } else if (r.validator[key] !== undefined) {
                 r.validator[key].required = true;
             }
