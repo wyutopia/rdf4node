@@ -27,7 +27,7 @@ function _initFramework() {
     logger.info('++++++ Step 1: Initializing framwork ++++++');
 }
 
-const _excludeModelDirs = ['.DS_Store', 'templates'];
+const _excludeModelDirs = ['.DS_Store', '_templates'];
 function _readModelDirSync(modelEntries, modelDir) {
     let entries = fs.readdirSync(modelDir, {
         withFileTypes: true
