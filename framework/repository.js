@@ -126,8 +126,9 @@ function _parseCacheValue(doc, valueKeys) {
     if (!valueKeys) {
         return doc;
     }
+    let keys = typeof valueKeys === 'string'? valueKeys.split(' ') : valueKeys;
     let cv = {};
-    valueKeys.forEach (key => {
+    keys.forEach (key => {
         if (doc[key]) {
             cv[key] = doc[key];
         }
