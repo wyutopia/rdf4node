@@ -83,8 +83,7 @@ function _loadRoutes(urlPathArray, filename) {
     try {
         let routes = require(fullPathName);
         routes.forEach( route => {
-            let toh = typeof route.handler.fn;
-            if (toh === 'function') {
+            if (route.handler.fn !== undefined) {
                 let subPath = filename.split('.')[0].replace('-', '/');
                 let r = {
                     path: path.join(urlPath, subPath, route.path),
@@ -143,9 +142,17 @@ function _readDir(urlPathArray, dir) {
             let method = (route.method || 'USE').toLowerCase();
             if (method === 'post' && route.multer) {
                 const fnUpload = upload.single(route.multer.name || 'pic');
-                router[method](route.path, fnUpload, accessCtl.bind(null, route.authType, route.validator), route.handler);
+                if (typeof route.handler === 'function') {
+                    router[method](route.path, fnUpload, accessCtl.bind(null, route.authType, route.validator), route.handler);
+                } else {
+                    router[method](route.path, fnUpload, accessCtl.bind(null, route.authType, route.validator), route.handler[0], route.handler[1])
+                }
             } else {
-                router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler);
+                if (typeof route.handler === 'function') {
+                    router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler);
+                } else {
+                    router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler[0], route.handler[1]);
+                }
             }
         });
     } catch (err) {
