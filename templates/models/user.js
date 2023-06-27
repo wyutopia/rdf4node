@@ -1,7 +1,10 @@
 /**
  * Created by Eric on 2023/02/16
  */
-const {mongoose: db} = require('@icedeer/rdf4node');
+const {
+    mongoose: db,
+    cache: {eDataType, eLoadPolicy}
+} = require('@icedeer/rdf4node');
 const Schema = db.Schema;
 const ObjectId = Schema.Types.ObjectId;
 const pubdefs = require('../common/pubdefs');
@@ -45,9 +48,9 @@ const _addVal = schema.extractValidators(['username', 'password', 'mobile', 'ema
 const _updateVal = schema.extractValidators(['mobile', 'email', 'status']);
 
 // Declaring module exports
-const _MODEL_NAME_ = 'User';
+const _MODEL_NAME = 'User';
 module.exports = exports = {
-    modelName: _MODEL_NAME_,
+    modelName: _MODEL_NAME,
     modelSchema: schema,
     modelRefs: [], // Add ref model  names here to advance registering model schemas
     // Controller properties
@@ -55,8 +58,18 @@ module.exports = exports = {
         searchVal: _searchVal,
         addVal: _addVal,
         mandatoryAddKeys: ['username', 'password'],
-        updateVal: _updateVal,
+        updateVal: _updateVal
+    },
+    queryOptions: {
         populate: [],
-        selectKeys: null
+        select: 'username'
+    },
+    // Cache options
+    allowCache: false,   // Default is false
+    cacheOptions: {
+        eDataType: eDataType.Kv,
+        eLoadPolicy: eLoadPolicy.SetAfterFound,
+        keyName: 'username',
+        valueKeys: '_id status'
     }
 }

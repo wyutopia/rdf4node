@@ -22,7 +22,7 @@
     "httpMonitor": true,
     "dataSources": {
       "default": {
-        "type": "procmem",
+        "type": "mongo",
         "config": {
           "ip": "127.0.0.1",
           "port": 27017,
