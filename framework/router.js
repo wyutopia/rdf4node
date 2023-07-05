@@ -156,7 +156,7 @@ function _readDir(urlPathArray, dir) {
                     }
                 }
             } catch (ex) {
-                logger.error(`Set ${method} error! - ${ex.message} - ${ex.stack}`);
+                logger.error(`Set [${method}] ${route.path} error! - ${ex.message} - ${ex.stack}`);
             }
         });
     } catch (err) {
