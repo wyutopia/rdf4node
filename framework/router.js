@@ -132,29 +132,43 @@ function _readDir(urlPathArray, dir) {
     });
 }
 
+function _setRoute(method, urlPath, funcs) {
+    let evalExp = 'router[method](urlPath';
+    for (let i = 0; i < funcs.length; i++) {
+        evalExp += `, funcs[${i}]`;
+    }
+    evalExp += ');';
+    eval(evalExp);
+}
+
 // Load and set routes
 (() => {
     try {
         _readDir([''], '');
         //
         gRoutes.forEach(route => {
-            logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType}`);
             let method = (route.method || 'USE').toLowerCase();
-            try {
-                if (method === 'post' && route.multer) {
-                    const fnUpload = upload.single(route.multer.name || 'pic');
-                    if (typeof route.handler === 'function') {
-                        router[method](route.path, fnUpload, accessCtl.bind(null, route.authType, route.validator), route.handler);
-                    } else {
-                        router[method](route.path, fnUpload, accessCtl.bind(null, route.authType, route.validator), route.handler[0], route.handler[1])
-                    }
-                } else {
-                    if (typeof route.handler === 'function') {
-                        router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler);
-                    } else {
-                        router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler[0], route.handler[1]);
+            let funcs = [];
+            // Add multer middleware if exists
+            if (method === 'post' && typeof route.multerFunc === 'function') {
+                funcs.push(route.multerFunc);
+            }
+            // Add accessCtl middleware
+            funcs.push(accessCtl.bind(null, route.authType, route.validator));
+            // Add sequence middlewares or handler
+            if (typeof route.handler === 'function') {
+                funcs.push(route.handler);
+            } else {
+                for (let i = 0; i < route.handler.length; i++) {
+                    if (typeof route.handler[i] === 'function') {
+                        funcs.push(route.handler[i])
                     }
                 }
+            }
+            // Perform setting route
+            try {
+                _setRoute(method, route.path, funcs);
+                logger.info(`Route: ${route.method} - ${route.path} - ${route.authType} set.`);
             } catch (ex) {
                 logger.error(`Set [${method}] ${route.path} error! - ${ex.message} - ${ex.stack}`);
             }
