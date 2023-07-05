@@ -33,7 +33,7 @@ exports.netWrapper = require('./libs/common/net.wrapper');
 if (config.rateLimit) {
     exports.rateLimiter = require('./libs/base/ratelimit.wrapper');
 }
-exports.upload = require('./libs/common/upload');
+exports.getUpload = require('./libs/common/upload');
 
 // Database libs
 if (config.mongodb || config.dbTypes.indexOf('mongo') !== -1) {

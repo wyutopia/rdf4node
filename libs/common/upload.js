@@ -3,10 +3,19 @@
  */
 const appRoot = require('app-root-path');
 const path = require('path');
-const destDir = process.env.UPLOAD_DIR || path.join(appRoot.path, 'public/uploads/');
-console.log('>>>>>> The upload dir:', destDir);
+const _DEFAULT_DIR = process.env.UPLOAD_DIR || path.join(appRoot.path, 'public/uploads/');
+console.log('>>>>>> The default upload dir: ', _DEFAULT_DIR);
 const multer = require('multer');
-const upload = multer({dest: destDir});
 
 //
-module.exports = exports = upload;
+const _uploads = {};
+function getUpload (absDir, options) {
+    let destDir = absDir || _DEFAULT_DIR;
+    let key = tools.md5Sign(destDir);
+    if (_uploads[key] === undefined) {
+        _uploads[key] = multer({dest: destDir});
+    }
+    return _uploads[key];
+}
+
+module.exports = exports = getUpload;
