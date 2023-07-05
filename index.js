@@ -28,12 +28,12 @@ exports.MorganWrapper = require('./libs/base/morgan.wrapper');
 exports.winstonWrapper = require('./libs/base/winston.wrapper');
 exports.monitor = require('./libs/base/prom.wrapper');
 
-
 // common libs
 exports.netWrapper = require('./libs/common/net.wrapper');
 if (config.rateLimit) {
     exports.rateLimiter = require('./libs/base/ratelimit.wrapper');
 }
+exports.uploads = require('./libs/common/uploads');
 
 // Database libs
 if (config.mongodb || config.dbTypes.indexOf('mongo') !== -1) {
