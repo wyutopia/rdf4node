@@ -4,7 +4,7 @@
  */
  const async = require('async');
  const assert = require('assert');
- const appRootPath = require('app-root-path');
+ const appRoot = require('app-root-path');
  const fs = require('fs');
  const path = require('path');
  const moment = require('moment');
@@ -62,7 +62,7 @@
  }
  
  function _getProgramVersion() {
-     let pkgFile = path.join(appRootPath.path, 'package.json');
+     let pkgFile = path.join(appRoot.path, 'package.json');
      return JSON.parse(fs.readFileSync(pkgFile).toString()).version;
  }
  
@@ -70,7 +70,7 @@
      let error = null;
      try {
          MAIN_VERSION = _getProgramVersion();
-         const verFile = path.join(appRootPath.path, 'conf/version.json');
+         const verFile = path.join(appRoot.path, 'conf/version.json');
          let rawData = fs.readFileSync(verFile).toString();
          let verData = JSON.parse(rawData.toString());
          verData.version = MAIN_VERSION;

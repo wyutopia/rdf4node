@@ -2,7 +2,7 @@
  * Caution: Only for winston v3
  * Created by Eric on 2021/09/28.
  */
- const appRootPath = require('app-root-path');
+ const appRoot = require('app-root-path');
  const fs = require('fs');
  const path = require('path');
  const winston = require('winston');
@@ -10,7 +10,7 @@
  const { combine, timestamp, label, printf } = winston.format;
  
  const logLevel = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'development'? 'debug' : 'info');
- const logDir = process.env.LOG_DIR || path.join(appRootPath.path, 'logs');
+ const logDir = process.env.LOG_DIR || path.join(appRoot.path, 'logs');
  console.log('>>>>>> Log parameters:', logDir, logLevel);
  
  if (!fs.existsSync(logDir)) {
