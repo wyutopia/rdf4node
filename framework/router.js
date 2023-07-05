@@ -140,23 +140,27 @@ function _readDir(urlPathArray, dir) {
         gRoutes.forEach(route => {
             logger.info(`Set system route: ${route.path} - ${route.method} - ${route.authType}`);
             let method = (route.method || 'USE').toLowerCase();
-            if (method === 'post' && route.multer) {
-                const fnUpload = upload.single(route.multer.name || 'pic');
-                if (typeof route.handler === 'function') {
-                    router[method](route.path, fnUpload, accessCtl.bind(null, route.authType, route.validator), route.handler);
+            try {
+                if (method === 'post' && route.multer) {
+                    const fnUpload = upload.single(route.multer.name || 'pic');
+                    if (typeof route.handler === 'function') {
+                        router[method](route.path, fnUpload, accessCtl.bind(null, route.authType, route.validator), route.handler);
+                    } else {
+                        router[method](route.path, fnUpload, accessCtl.bind(null, route.authType, route.validator), route.handler[0], route.handler[1])
+                    }
                 } else {
-                    router[method](route.path, fnUpload, accessCtl.bind(null, route.authType, route.validator), route.handler[0], route.handler[1])
+                    if (typeof route.handler === 'function') {
+                        router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler);
+                    } else {
+                        router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler[0], route.handler[1]);
+                    }
                 }
-            } else {
-                if (typeof route.handler === 'function') {
-                    router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler);
-                } else {
-                    router[method](route.path, accessCtl.bind(null, route.authType, route.validator), route.handler[0], route.handler[1]);
-                }
+            } catch (ex) {
+                logger.error(`Set ${method} error! - ${ex.message} - ${ex.stack}`);
             }
         });
     } catch (err) {
-        logger.error(`Dynamic load routes error! - ${err.message} - ${err.stack}`);
+        logger.error(`Read route directory error! - ${err.message} - ${err.stack}`);
     }
 })();
 
