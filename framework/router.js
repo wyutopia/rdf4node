@@ -90,6 +90,7 @@ function _loadRoutes(urlPathArray, filename) {
                     authType: route.authType || 'jwt',
                     method: route.method.toUpperCase(),
                     validator: route.handler.val || {},
+                    multerFunc: route.multerFunc, 
                     handler: route.handler.fn,
                     isNew: route.isNew
                 };
