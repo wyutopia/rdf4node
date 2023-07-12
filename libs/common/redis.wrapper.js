@@ -4,10 +4,12 @@
 const async = require('async');
 const { createClient } = require('redis');
 // Framework libs
-const theApp = require('../../bootstrap');
+const theApp = require('../../app');
 const eRetCodes = require('../../include/retcodes');
 const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
+const sysconf = require('../../framework/config');
+
 const { EventObject, EventModule } = require('../../include/events');
 
 const tools = require('../../utils/tools');
@@ -41,22 +43,27 @@ function _onConnectionEnd(clientId, parent) {
     }
 }
 
-function _assembleRealConfig(rawConf) {
-    let sockConf = {
-        host: rawConf.host || '127.0.0.1',
-        port: rawConf.port || 6379,
-        reconnectStrategy: (retries) => {
-            if (this.state === eClientState.Closing || retries > this.maxRetryTimes) {
-                logger.error(`${this.$name}: Max retry times (${this.maxRetryTimes}) exceeded.`);
-                return new Error('Closing or Max retry times exceed.');
-            }
-            return this.retryInterval;
-        }
+function _reconnectStrategy (retries) {
+    if (this.state === eClientState.Closing || retries > this.maxRetryTimes) {
+        logger.error(`${this.$name}: Max retry times (${this.maxRetryTimes}) exceeded.`);
+        return false;
     }
+    return this.retryInterval;
+}
+
+function _assembleRealConfig(rawConf) {
     let config = {
-        socket: sockConf,
         legacyMode: true
     };
+    if (rawConf.url) {
+        config.url = rawConf.url;
+    } else {
+        config.socket = {
+            host: rawConf.host || '127.0.0.1',
+            port: rawConf.port || 6379,
+            reconnectStrategy: _reconnectStrategy.bind(this)
+        }
+    }
     ['username', 'password', 'database'].forEach(key => {
         if (rawConf[key] !== undefined) {
             config[key] = rawConf[key];
@@ -80,10 +87,11 @@ class RedisClient extends EventObject {
         super(props);
         //
         this.id = props.id;
+        this.$parent = props.parent;
         this.$name = props.name || props.id;
-        this.config = _assembleRealConfig(props.config); // Refer to gClientConfig
-        //this.maxRetryTimes = props.maxRetryTimes || 100;
-        //this.retryInterval = props.retryInterval || 1000;
+        this.config = _assembleRealConfig.call(this, props.config); // Refer to gClientConfig
+        this.maxRetryTimes = props.maxRetryTimes || 100;
+        this.retryInterval = props.retryInterval || 1000;
         //
         this.state = eClientState.Null;
         this._client = null;
@@ -96,7 +104,7 @@ class RedisClient extends EventObject {
         }
         this.execute = (method, args, callback) => {
             if (!this.isConnected()) {
-                let msg = `${this.$name}[${this.state}]: disconnected.`;
+                let msg = `${this.$name}[${this.state}]: client disconnected.`;
                 logger.error(msg);
                 return callback({
                     code: eRetCodes.REDIS_CONN_ERR,
@@ -223,7 +231,7 @@ class RedisClient extends EventObject {
             client.on('end', () => {
                 logger.info(`${this.$name}[${this.state}]: Connection closed!`);
                 this.state = eClientState.Pending;
-                this.emit('end', this.id);
+                this.$parent.emit('client-end', this.id);
                 this.state = eClientState.Null;
             });
         })();
@@ -237,35 +245,48 @@ const gClientSpecOptions = {
     config: {}
 };
 
+function _genClientId (dbShare, config) {
+    let seed = dbShare? `` : ``
+}
+
 // The wrapper class
 class RedisWrapper extends EventModule {
     constructor(props) {
         super(props)
         //
+        let moduleConf = props.config || {};
+        this.clientShare = moduleConf.clientShare !== undefined? props.clientShare : false;
+        this.dbShare = moduleConf.dbShare !== undefined? props.dbShare : false;
+        this.profiles = moduleConf.profiles || {
+            default: {
+                type: 'procmem',
+                config: {}
+            }
+        }
         this._clients = {};
+        this.on('client-end', clientId => {
+            logger.info(`${this.$name}: On client end. - ${clientId}`);
+            if (this.isActive()) {
+                delete this._clients[clientId];
+            }
+        });
         /**
          * 
          * @param {mode, db, gClientSpecOptions} options 
          * @returns 
          */
-        this.createClient = (options) => {
-            logger.info(`${this.$name}: Create client with options - ${tools.inspect(options)}`);
-            let name = options.name || 'global';
-            let config = options.config || {};
-            let db = config.database || 0;
-            // 
-            let clientId = `${name}${db}`; //name+db;
+        this.createClient = (name, profile = 'default') => {
+            logger.info(`${this.$name}: Create client with ${name} - ${profile}`);
+            //
+            let clientConf = this.profiles[profile].config || {};
+            let clientId = this.clientShare? _genClientId(this.dbShare, clientConf) : tools.uuidv4();
             if (this._clients[clientId] === undefined) {
-                let client = new RedisClient({
+                this._clients[clientId] = new RedisClient({
+                    parent: this,
+                    //
                     id: clientId,
-                    name: name,
-                    config: options
-                });
-                client.on('end', (clientId) => {
-                    logger.info(`${this.$name}: On client end. - ${clientId}`);
-                    if (this.isActive()) {
-                        delete this._clients[clientId];
-                    }
+                    $name: name,
+                    config: clientConf
                 });
             }
             return this._clients[clientId];
@@ -297,6 +318,7 @@ const redisWrapper = new RedisWrapper({
     $name: MODULE_NAME,
     mandatory: true,
     type: sysdefs.eModuleType.CONN,
-    state: sysdefs.eModuleState.ACTIVE
+    state: sysdefs.eModuleState.ACTIVE,
+    config: sysconf.caches || {}
 });
 module.exports = redisWrapper;

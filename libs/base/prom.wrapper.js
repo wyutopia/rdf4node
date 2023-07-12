@@ -3,8 +3,8 @@
  */
 const assert = require('assert');
 const client = require('prom-client');
-const theApp = require('../../bootstrap');
-const pubdefs = require('../../include/sysdefs');
+const theApp = require('../../app');
+const sysdefs = require('../../include/sysdefs');
 
 const register = client.register;
 
@@ -55,9 +55,9 @@ exports.regMetrics = function (options) {
         let name = `${prefix}_${metric.name}`
         let help = metric.help || `${name}_help`;
         let labelNames = metric.labelNames || [];
-        if (metric.type === pubdefs.eMetricType.COUNTER) {
+        if (metric.type === sysdefs.eMetricType.COUNTER) {
             collectors[metric.name] = _regCounter(name, help, labelNames);
-        } else if (metric.type === pubdefs.eMetricType.GAUGE) {
+        } else if (metric.type === sysdefs.eMetricType.GAUGE) {
             if (metric.fnCollectAsync) {
                 _regGaugeAsync(name, help, labelNames, metric.fnCollectAsync);
             } else {
