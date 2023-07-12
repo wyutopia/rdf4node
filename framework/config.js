@@ -35,12 +35,12 @@
         });
      }
      // caches
-     let caches = tools.safeGetJsonValue(config, 'caches');
-     if (caches) {
-        Object.keys(caches).forEach (key => {
-            let cache = caches[key];
-            if (dbTypes.indexOf(cache.type) === -1) {
-                dbTypes.push(cache.type);
+     let cacheProfiles = tools.safeGetJsonValue(config, 'caches.profiles');
+     if (cacheProfiles) {
+        Object.keys(cacheProfiles).forEach (key => {
+            let profile = cacheProfiles[key];
+            if (dbTypes.indexOf(profile.type) === -1) {
+                dbTypes.push(profile.type);
             }
         })
      }

@@ -35,19 +35,34 @@ if (config.rateLimit) {
 }
 exports.getUpload = require('./libs/common/upload');
 
-// Database libs
-if (config.mongodb || config.dbTypes.indexOf('mongo') !== -1) {
-    exports.mongoose = require('./libs/common/mongoose.wrapper');
-    exports.mongoSession = require('./libs/common/mongo-session.wrapper');
-}
-if (config.influxdb || config.dbTypes.indexOf('influxdb') !== -1) {
-    exports.influxDbWrapper = require('./libs/common/influxdb.wrapper');
-}
+// Expose database wrappers if configured
+config.dbTypes.forEach(dbType => {
+    switch(dbType) {
+        case 'mongo':
+            exports.mongoose = require('./libs/common/mongoose.wrapper');
+            exports.mongoSession = require('./libs/common/mongo-session.wrapper');
+            break;
+        case 'influxdb':
+            exports.influxDbWrapper = require('./libs/common/influxdb.wrapper');
+            break;
+        case 'mysql':
+            exports.mysql2Wrapper = require('./libs/common/mysql2.wrapper');
+            break;
+        case 'mssql':
+            exports.tdsWrapper = require('./libs/common/tedious.wrapper');
+            break;
+        case 'redis':
+            exports.redisWrapper = require('./libs/common/redis.wrapper');
+            break;
+        case 'elastic':
+            exports.elasticWrapper = require('./libs/common/es.wrapper');
+            break;
+    }
+});
+
+//
 if (config.amq || config.mq) {
     exports.rascalWrapper = require('./libs/common/rascal.wrapper');
-}
-if (config.mysql2 || config.dbTypes.indexOf('mysql') !== -1) {
-    exports.mysql2Wrapper = require('./libs/common/mysql2.wrapper');
 }
 if (config.grpc) {
     exports.grpcWrapper = require('./libs/common/grpc.wrapper');
@@ -58,12 +73,4 @@ if (config.ldap) {
 if (config.httpMonitor) {
     exports.httpMonitor = require('./libs/common/http-monitor');
 }
-if (config.redis || config.dbTypes.indexOf('redis') !== -1) {
-    exports.redisWrapper = require('./libs/common/redis.wrapper');
-}
-if (config.tedious || config.dbTypes.indexOf('mssql') !== -1) {
-    exports.tdsWrapper = require('./libs/common/tedious.wrapper');
-}
-if (config.elastic || config.dbTypes.indexOf('elastic') !== -1) {
-    exports.elasticWrapper = require('./libs/common/es.wrapper');
-}
+
