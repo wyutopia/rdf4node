@@ -7,7 +7,7 @@ const async = require('async');
 const assert = require('assert');
 const { Broker } = require('rascal');
 // Framework libs
-const theApp = require('../../bootstrap');
+const theApp = require('../../app');
 const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
 const {EventModule} = require('../../include/events');

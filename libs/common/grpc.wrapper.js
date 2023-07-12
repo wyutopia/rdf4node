@@ -8,7 +8,7 @@ const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 // Project modules
 const sysdefs = require("../../include/sysdefs");
-const theApp = require("../../bootstrap");
+const theApp = require("../../app");
 const {grpc: config} =  require('../../framework/config');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');

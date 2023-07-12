@@ -4,7 +4,7 @@
  const async = require('async');
  const mysql = require('mysql2');
  //
- const theApp = require('../../bootstrap');
+ const theApp = require('../../app');
  const sysdefs = require('../../include/sysdefs');
  const eState = sysdefs.eConnectionState;
  const eRetCodes = require('../../include/retcodes');

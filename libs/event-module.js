@@ -6,7 +6,7 @@
  //
  const pubdefs = require('../include/sysdefs');
  const ePrimitives = pubdefs.ePrimitives;
- const theApp = require('../bootstrap');
+ const theApp = require('../app');
  const tools = require('../utils/tools');
  const mntService = require('./base/prom.wrapper');
  

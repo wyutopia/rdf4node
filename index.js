@@ -1,7 +1,7 @@
 /**
  * Created by Eric on 2021/11/10
  */
-exports.theApp = require('./bootstrap');
+exports.theApp = require('./app');
 
 // Definitions
 exports.eRetCodes = require('./include/retcodes');

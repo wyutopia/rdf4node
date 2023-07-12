@@ -7,7 +7,7 @@ const async = require('async');
 const schedule = require('node-schedule');
 // 
 const sysdefs = require('../include/sysdefs');
-const theApp = require('../bootstrap');
+const theApp = require('../app');
 const tools = require('../utils/tools');
 const { WinstonLogger } = require('./base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'xtask');
