@@ -2,10 +2,11 @@
  * Created by Eric on 2023/02/07
  */
 // Step 1: Load bootstrap config
-// Step 2: Load application config
-// Step 3: Perform system check and initializing framework
-//TODO: Load all database schemas from folder <project-root>/models
-//TODO: Load all controllers 
+// Step 2: Init framework components
+// Step 3: Load database schemas
+// Step 4: Build caches
+// Step 5: Start application modules (Controllers, Services, DaemonTasks)
+// Step 6: Prepare system monitoring metrics
 
 // Node libs
 const fs = require('fs');
@@ -23,8 +24,9 @@ const {cacheFactory} = require('./cache');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
 const bsConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 
-function _initFramework() {
+function _initFramework(callback) {
     logger.info('++++++ Step 1: Initializing framwork ++++++');
+    return callback();
 }
 
 const _excludeModelDirs = ['.DS_Store', '_templates'];
@@ -72,7 +74,7 @@ function _loadDatabaseSchemas(callback) {
 }
 
 const enabledServices = bsConf.enabledServices || [];
-function _loadServices(callback) {
+function _startServices(callback) {
     let serviceDir = path.join(appRoot.path, bsConf.serviceDir);
     logger.info(`++++++ Step 3: Load all services module from ${serviceDir} ++++++`);
     let allServices = [];
@@ -99,7 +101,7 @@ function _loadServices(callback) {
 }
 
 const enabledCaches = bsConf.enabledCaches || [];
-function _buildSysCache(callback) {
+function _buildCaches(callback) {
     return callback();
 }
 
@@ -107,14 +109,19 @@ function _createEndpoints(callback) { // Only http endpoint is supported current
     return callback();
 }
 
+function _createEventBus(callback) {
+    return callback();
+}
+
 function _bootstrap(callback) {
     async.series([
+        _initFramework,
         _loadDatabaseSchemas,
-        _loadServices,
-        _buildSysCache,
+        _buildCaches,
+        _startServices,
         _createEndpoints
-    ], () => {
-        return callback();
+    ], (err) => {
+        return callback(err);
     });
 }
 

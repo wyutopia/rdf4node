@@ -51,6 +51,7 @@ exports.eDeployMode = eDeployMode;
 const eFrameworkModules = {
     CONFIG          : '_config_',
     REGISTRY        : '_registry_',
+    EBUS            : '_ebus_',
     ICP             : '_icp_',
     TIMER           : '_timer_',
     DATASOURCE      : '_datasource_',
