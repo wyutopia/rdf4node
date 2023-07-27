@@ -108,7 +108,8 @@ class RedisClient extends EventObject {
         this.getClient = () => {
             return this._client;
         }
-        this.execute = (method, ...argv) => {
+        this.execute = (method, ...args) => {
+            let callback = args[args.length - 1];
             if (!this.isConnected()) {
                 let msg = `${this.$name}[${this.state}]: client disconnected.`;
                 logger.error(msg);
@@ -126,82 +127,7 @@ class RedisClient extends EventObject {
                     message: msg
                 });
             }
-            return func.apply(this._client, argv);
-        }
-        this._exec = (method, args, callback) => {
-            if (!this.isConnected()) {
-                let msg = `${this.$name}[${this.state}]: client disconnected.`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.REDIS_CONN_ERR,
-                    message: msg
-                });
-            }
-            if (typeof args === 'function') {
-                callback = args;
-                args = [];
-            }
-            if (typeof this._client[method] !== 'function') {
-                let msg = `${this.$name}[${this.state}]: Invalid method - ${method}`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.REDIS_METHOD_NOTEXISTS,
-                    message: msg
-                });
-            }
-            if (!tools.isTypeOfArray(args)) {
-                let msg = `${this.$name}[${this.state}]: Invalid args format! - Should be array.`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.REDIS_BAD_REQUEST,
-                    message: msg
-                });
-            }
-            let argc = args.length;
-            if (argc === 0) {
-                let msg = `${this.$name}[${this.state}]: Empty args!`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.REDIS_BAD_REQUEST,
-                    message: msg
-                });
-            }
-            if (argc === 1) {
-                return this._client[method](args[0], callback);
-            }
-            if (argc === 2) {
-                return this._client[method](args[0], args[1], callback);
-            }
-            if (argc === 3) {
-                return this._client[method](args[0], args[1], args[2], callback);
-            }
-            if (argc === 4) {
-                return this._client[method](args[0], args[1], args[2], args[3], callback);
-            }
-            if (argc === 5) {
-                return this._client[method](args[0], args[1], args[2], args[3], args[4], callback);
-            }
-            if (argc === 6) {
-                return this._client[method](args[0], args[1], args[2], args[3], args[4], args[5], callback);
-            }
-            if (argc === 7) {
-                return this._client[method](args[0], args[1], args[2], args[3], args[4], args[5], args[6], callback);
-            }
-            if (argc === 8) {
-                return this._client[method](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], callback);
-            }
-            if (argc === 9) {
-                return this._client[method](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], callback);
-            }
-            if (argc === 10) {
-                return this._client[method](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], callback);
-            }
-            let msg = `${this.$name}[${this.state}]: Too many parameters - ${method} - ${tools.inspect(args)}`;
-            logger.error(msg);
-            return callback({
-                code: eRetCodes.REDIS_METHOD_TOOMANYPARAMS,
-                message: msg
-            });
+            return func.apply(this._client, args);
         }
         this.dispose = (callback) => {
             if (this.isConnected()) {

@@ -34,17 +34,19 @@
       }
     },
     "caches": {
-      "default": {
-        "type": "procmem"
-      },
-      "demo": {
-        "type": "redis",
-        "config": {
-
+      "clientShared": false,
+      "databaseShared": false,
+      "redis": {
+        "default": {
+          "host": "127.0.0.1",
+          "port": 6379,
+          "database": 1,
+          "password": "Dev#2023"
         }
       }
     },
     "icp": {
+      "routePolicy": "alwaysExternal",
       "disabledEvents": []
     }
   }
