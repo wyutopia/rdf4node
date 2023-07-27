@@ -133,15 +133,6 @@ function _readDir(urlPathArray, dir) {
     });
 }
 
-function _setRoute(method, urlPath, funcs) {
-    let evalExp = 'router[method](urlPath';
-    for (let i = 0; i < funcs.length; i++) {
-        evalExp += `, funcs[${i}]`;
-    }
-    evalExp += ');';
-    eval(evalExp);
-}
-
 // Load and set routes
 (() => {
     try {
@@ -149,26 +140,26 @@ function _setRoute(method, urlPath, funcs) {
         //
         gRoutes.forEach(route => {
             let method = (route.method || 'USE').toLowerCase();
-            let funcs = [];
+            let argv = [route.path];
             // Add multer middleware if exists
             if (method === 'post' && typeof route.multerFunc === 'function') {
-                funcs.push(route.multerFunc);
+                argv.push(route.multerFunc);
             }
             // Add accessCtl middleware
-            funcs.push(accessCtl.bind(null, route.authType, route.validator));
+            argv.push(accessCtl.bind(null, route.authType, route.validator));
             // Add sequence middlewares or handler
             if (typeof route.handler === 'function') {
-                funcs.push(route.handler);
+                argv.push(route.handler);
             } else {
                 for (let i = 0; i < route.handler.length; i++) {
                     if (typeof route.handler[i] === 'function') {
-                        funcs.push(route.handler[i])
+                        argv.push(route.handler[i])
                     }
                 }
             }
             // Perform setting route
             try {
-                _setRoute(method, route.path, funcs);
+                router[method].apply(router, argv);
                 logger.info(`Route: ${route.method} - ${route.path} - ${route.authType} set.`);
             } catch (ex) {
                 logger.error(`Set [${method}] ${route.path} error! - ${ex.message} - ${ex.stack}`);

@@ -279,11 +279,11 @@ const eDbType = {
 };
 exports.eDbType = eDbType;
 
-const eCacheType = {
+const eCacheEngine = {
     PROCMEM       : 'procmem',
     REDIS         : 'redis',
 };
-exports.eCacheType = eCacheType;
+exports.eCacheEngine = eCacheEngine;
 
 const eClientState = {
     Null: 'null',

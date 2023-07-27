@@ -8,7 +8,6 @@ const fs = require('fs');
 const path = require('path');
 const appRoot = require('app-root-path');
 const ObjectId = require('mongoose').Types.ObjectId;
-const bootstrapConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 // Framework libs
 const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY;
 const eRetCodes = require('../include/retcodes');
@@ -103,13 +102,15 @@ function _updateOne(params, callback) {
     });
 }
 
+// Should return string
 function _$parseCacheKey (options, cacheSpec) {
     logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${tools.inspect(cacheSpec)}`);
     if (tools.isTypeOfPrimitive(options)) {
         return options;
     }
     if (cacheSpec.keyName) {
-        return options[cacheSpec.keyName];
+        let cacheKey = options[cacheSpec.keyName];
+        return typeof cacheKey === 'string'? cacheKey : cacheKey.toString();
     }
     let template = cacheSpec.keyNameTemplate;
     if (template === undefined) {
@@ -182,15 +183,8 @@ class Repository extends EventObject {
         };
         // Set cache property and declaring member variable
         this.allowCache = props.allowCache !== undefined? props.allowCache : false;
-        this.cacheSpec = props.cacheSpec || {
-            dataType: eDataType.Kv,
-            loadPolicy: eLoadPolicy.SetAfterFound,
-            keyName: '_id',
-            populate: null,
-            select: null,
-            valueKeys: null
-        };
-        this._cache = {};
+        this.cacheSpec = props.cacheSpec || {};
+        this._cache = null;
         this.getCache = () => {
             return this._cache;
         };
@@ -203,8 +197,10 @@ class Repository extends EventObject {
                 });
             }
             let cacheKey = _$parseCacheKey(options, this.cacheSpec);
-            logger.debug(`The cacheKey: ${cacheKey}`);
             this._cache.get(cacheKey, (err, v) => {
+                if (err) {
+                    logger.error(`cacheGet error! - ${err.message}`);
+                }
                 if (v !== undefined || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
                     return callback(null, v);
                 }

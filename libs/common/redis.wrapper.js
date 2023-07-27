@@ -17,14 +17,14 @@ const mntService = require('../base/prom.wrapper');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'redis');
 
-const MODULE_NAME = 'REDIS_CONN';
+const _MODULE_NAME = 'REDIS_CONN';
 
 const eMetricNames = {
     activeConnection: 'act_conn'
 };
 
 const metricCollector = mntService.regMetrics({
-    moduleName: MODULE_NAME,
+    moduleName: _MODULE_NAME,
     metrics: [{
         name: eMetricNames.activeConnection,
         type: sysdefs.eMetricType.GAUGE
@@ -72,7 +72,7 @@ function _assembleRealConfig(rawConf) {
     return config;
 }
 
-const gClientConfig = {
+const _typeClientConfig = {
     host: '127.0.0.1',
     port: 6379,
     database: 0,            // Optional, default 0
@@ -81,17 +81,23 @@ const gClientConfig = {
     username: 'admin',      // Optional
     password: 'Dev#2022'    // Optional
 };
+
+const _typeClientProps = {
+    name: 'string',
+    parent: 'object',
+    config: '_typeClientConfig'
+};
+
 // The class
 class RedisClient extends EventObject {
     constructor(props) {
         super(props);
         //
-        this.id = props.id;
+        this.$name = props.$name || this.id;
         this.$parent = props.parent;
-        this.$name = props.name || props.id;
-        this.config = _assembleRealConfig.call(this, props.config); // Refer to gClientConfig
-        this.maxRetryTimes = props.maxRetryTimes || 100;
-        this.retryInterval = props.retryInterval || 1000;
+        this.config = _assembleRealConfig.call(this, props.config); // Refer to _typeClientConfig
+        this.maxRetryTimes = props.config.maxRetryTimes || 100;
+        this.retryInterval = props.config.retryInterval || 1000;
         //
         this.state = eClientState.Null;
         this._client = null;
@@ -102,7 +108,27 @@ class RedisClient extends EventObject {
         this.getClient = () => {
             return this._client;
         }
-        this.execute = (method, args, callback) => {
+        this.execute = (method, ...argv) => {
+            if (!this.isConnected()) {
+                let msg = `${this.$name}[${this.state}]: client disconnected.`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.REDIS_CONN_ERR,
+                    message: msg
+                });
+            }
+            let func = this._client[method];
+            if (typeof func !== 'function') {
+                let msg = `${this.$name}[${this.state}]: Invalid method - ${method}`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.REDIS_METHOD_NOTEXISTS,
+                    message: msg
+                });
+            }
+            return func.apply(this._client, argv);
+        }
+        this._exec = (method, args, callback) => {
             if (!this.isConnected()) {
                 let msg = `${this.$name}[${this.state}]: client disconnected.`;
                 logger.error(msg);
@@ -189,25 +215,22 @@ class RedisClient extends EventObject {
         //
         (() => {
             logger.info(`${this.$name}[${this.state}]: Create client ...`);
-            let client = createClient(this.config);
-            this.state = eClientState.Init;
-            client.connect();
-            client.on('connect', () => {
+            this._client = createClient(this.config);
+            this._client.on('connect', () => {
                 if (this.state === eClientState.Init) {
                     logger.info(`${this.$name}[${this.state}]: Connecting...`);
                 } else {
                     logger.error(`${this.$name}[${this.state}]: On [CONNECT] - Invalid state!`);
                 }
             });
-            client.on('ready', () => {
-                this._client = client;
+            this._client.on('ready', () => {
                 this.state = eClientState.Conn;
                 metricCollector[eMetricNames.activeConnection].inc();
                 //
                 let hostInfo = tools.safeGetJsonValue(this.config, 'socket.host') || this.config.url;
                 logger.info(`${this.$name}[${this.state}]: Server<${hostInfo}> connected.`);
             });
-            client.on('error', (err) => {
+            this._client.on('error', (err) => {
                 switch (this.state) {
                     case eClientState.Init:
                         logger.error(`${this.$name}[${this.state}]: On [ERROR] - Connecting failed! - ${err.message}`);
@@ -225,15 +248,18 @@ class RedisClient extends EventObject {
                         break;
                 }
             });
-            client.on('reconnection', () => {
+            this._client.on('reconnection', () => {
                 logger.debug(`${this.$name}[${this.state}]: On [RECONNECTION].`);
             });
-            client.on('end', () => {
+            this._client.on('end', () => {
                 logger.info(`${this.$name}[${this.state}]: Connection closed!`);
                 this.state = eClientState.Pending;
                 this.$parent.emit('client-end', this.id);
                 this.state = eClientState.Null;
             });
+            // Initializing connection
+            this.state = eClientState.Init;
+            this._client.connect();
         })();
     }
 }
@@ -245,48 +271,53 @@ const gClientSpecOptions = {
     config: {}
 };
 
-function _genClientId (dbShare, config) {
-    let seed = dbShare? `` : ``
+function _genClientId (config) {
+    if (!this.clientShared) {
+        return tools.uuidv4();
+    }
+    let seed = this.databaseShared? `${config.host}:${config.port}` : `${config.database}@${config.host}:${config.port}`
+    return tools.md5Sign(seed);
 }
+
+const _typeRedisWrapperProps = {
+    name: 'string',
+    clientShared: 'boolean',
+    databaseShared: 'boolean'
+};
 
 // The wrapper class
 class RedisWrapper extends EventModule {
     constructor(props) {
         super(props)
         //
-        let moduleConf = props.config || {};
-        this.clientShare = moduleConf.clientShare !== undefined? props.clientShare : false;
-        this.dbShare = moduleConf.dbShare !== undefined? props.dbShare : false;
-        this.profiles = moduleConf.profiles || {
-            default: {
-                type: 'procmem',
-                config: {}
-            }
-        }
+        this.clientShared = props.clientShared !== undefined? props.clientShared : false;
+        this.databaseShared = props.databaseShared !== undefined? props.databaseShared : false;
+        // Define member variable
         this._clients = {};
+        // Implementing event handlers
         this.on('client-end', clientId => {
             logger.info(`${this.$name}: On client end. - ${clientId}`);
             if (this.isActive()) {
                 delete this._clients[clientId];
             }
         });
+        // Implementing member methods
         /**
          * 
          * @param {mode, db, gClientSpecOptions} options 
          * @returns 
          */
-        this.createClient = (name, profile = 'default') => {
-            logger.info(`${this.$name}: Create client with ${name} - ${profile}`);
+        this.createClient = (name, config) => {
+            logger.info(`${this.$name}: Create client with ${name} - ${tools.inspect(config)}`);
             //
-            let clientConf = this.profiles[profile].config || {};
-            let clientId = this.clientShare? _genClientId(this.dbShare, clientConf) : tools.uuidv4();
+            let clientId = _genClientId.call(this, config);
             if (this._clients[clientId] === undefined) {
                 this._clients[clientId] = new RedisClient({
-                    parent: this,
-                    //
                     id: clientId,
                     $name: name,
-                    config: clientConf
+                    config: config,
+                    //
+                    parent: this,
                 });
             }
             return this._clients[clientId];
@@ -295,7 +326,7 @@ class RedisWrapper extends EventModule {
             this.state = sysdefs.eModuleState.STOP_PENDING;
             logger.info(`${this.$name}: Closing all client connections ...`);
             let keys = Object.keys(this._clients);
-            async.eachLimit(keys, 4, (key, next) => {
+            async.eachLimit(keys, 3, (key, next) => {
                 let client = this._clients[key];
                 if (client === undefined) {
                     return process.nextTick(next);
@@ -315,10 +346,11 @@ class RedisWrapper extends EventModule {
 }
 
 const redisWrapper = new RedisWrapper({
-    $name: MODULE_NAME,
+    $name: _MODULE_NAME,
     mandatory: true,
     type: sysdefs.eModuleType.CONN,
     state: sysdefs.eModuleState.ACTIVE,
+    //
     config: sysconf.caches || {}
 });
 module.exports = redisWrapper;
