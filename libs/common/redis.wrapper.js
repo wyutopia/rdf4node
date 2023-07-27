@@ -198,17 +198,17 @@ const gClientSpecOptions = {
 };
 
 function _genClientId (config) {
-    if (!this.clientShared) {
+    if (!this.shareClient) {
         return tools.uuidv4();
     }
-    let seed = this.databaseShared? `${config.host}:${config.port}` : `${config.database}@${config.host}:${config.port}`
+    let seed = this.shareDatabase? `${config.host}:${config.port}` : `${config.database}@${config.host}:${config.port}`
     return tools.md5Sign(seed);
 }
 
 const _typeRedisWrapperProps = {
     name: 'string',
-    clientShared: 'boolean',
-    databaseShared: 'boolean'
+    shareClient: 'boolean',
+    shareDatabase: 'boolean'
 };
 
 // The wrapper class
@@ -216,8 +216,8 @@ class RedisWrapper extends EventModule {
     constructor(props) {
         super(props)
         //
-        this.clientShared = props.clientShared !== undefined? props.clientShared : false;
-        this.databaseShared = props.databaseShared !== undefined? props.databaseShared : false;
+        this.shareClient = props.shareClient !== undefined? props.shareClient : false;
+        this.shareDatabase = props.shareDatabase !== undefined? props.shareDatabase : false;
         // Define member variable
         this._clients = {};
         // Implementing event handlers

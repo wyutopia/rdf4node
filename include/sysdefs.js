@@ -281,6 +281,7 @@ exports.eDbType = eDbType;
 
 const eCacheEngine = {
     PROCMEM       : 'procmem',
+    RESIDENT      : 'resident',
     REDIS         : 'redis',
 };
 exports.eCacheEngine = eCacheEngine;

@@ -102,12 +102,6 @@ class Cache extends EventModule {
             }
             return this._client.execute('set', key, this._json? JSON.stringify(val) : val, callback);
         };
-        this.unset = (key, callback) => {
-            if (this._engine === sysdefs.eCacheEngine.PROCMEM) {
-                return _unsetValue.call(this, key, callback);
-            }
-            return this._client.execute('unset', key, callback);
-        };
         this.get = (key, callback) => {
             if (this._engine === sysdefs.eCacheEngine.PROCMEM) {
                 return _getvalue.call(this, key, callback);
@@ -117,6 +111,35 @@ class Cache extends EventModule {
                     return callback(err);
                 }
                 return callback(null, this._json? JSON.parse(result) : result);
+            });
+        };
+        this.unset = (key, callback) => {
+            if (this._engine === sysdefs.eCacheEngine.PROCMEM) {
+                return _unsetValue.call(this, key, callback);
+            }
+            return this._client.execute('unset', key, callback);
+        };
+        //
+        this.mset = (data, options, callback) => {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            }
+            if (this._engine === sysdefs.eCacheEngine.PROCMEM) {
+                return _setMultiValues.call(this, data, options, callback);
+            }
+            let args = [];
+            Object.keys(data).forEach(key => {
+                args.push(key);
+                args.push(data[key].toString());
+            });
+            args.push(callback);
+            return this._client.invokeApply('mset', args);
+        };
+        this.mget = (keys, callback) => {
+            return callback({
+                code: eRetCodes.REDIS_METHOD_NOTEXISTS,
+                message: 'Method not available!'
             });
         };
         //

@@ -34,8 +34,8 @@
       }
     },
     "caches": {
-      "clientShared": false,
-      "databaseShared": false,
+      "shareClient": false,
+      "shareDatabase": false,
       "redis": {
         "default": {
           "host": "127.0.0.1",

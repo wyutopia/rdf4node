@@ -15,7 +15,7 @@ const tools = require('../../utils/tools');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
 
-const MODULE_NAME = 'AMQP_CONN';
+const _MODULE_NAME = 'AMQP_CONN';
 
 class RascalClientMangager extends EventModule {
     constructor(props) {
@@ -77,12 +77,19 @@ function onMessage(content = {}) {
     logger.debug(`${this.$name}: Content = ${tools.inspect(content)}`);
 }
 
+const _typeClientProps = {
+    id: 'string',
+    $name: 'string',
+    $parent: 'object'
+};
+
 class RascalClient {
     constructor(props) {
         // Declaring member variables
-        this.parent = props.parent;
         this.id = props.id || tools.uuidv4();
-        this.$name = props.name || `rascalClient#${this.id}`;
+        this.$name = props.$name || `rascalClient#${this.id}`;
+        this.$parent = props.$parent;
+        //
         this.broker = null;
         this.state = eClientState.Null;
         this.pubKeys = [];
@@ -249,7 +256,7 @@ class RascalClient {
 }
 
 module.exports = exports = new RascalClientMangager({
-    $name: MODULE_NAME,
+    $name: _MODULE_NAME,
     mandatory: true,
     state: sysdefs.eModuleState.ACTIVE,
     type: sysdefs.eModuleType.CONN
