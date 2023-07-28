@@ -10,7 +10,7 @@
  const eRetCodes = require('../../include/retcodes');
  const {EventEmitter, EventModule} = require('../../include/events');
  const tools = require('../../utils/tools');
- const {mysql: config} = require('../../framework/config');
+ const {mysql: config} = require('../../include/config');
  const {WinstonLogger} = require('../base/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'mysql2');
  
@@ -319,7 +319,7 @@ class MysqlWrapper extends EventModule {
          */
         this.createConnection = (dbConf) => {
             let conn = null;
-            if (this.state !== sysdefs.eModuleState.ACTIVE) {
+            if (this.state !== sysdefs.eModuleStatus.ACTIVE) {
                 return conn;
             }
             let poolId = tools.genSign(`${dbConf.host}:${dbConf.port}:${dbConf.database}`);

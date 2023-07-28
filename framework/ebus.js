@@ -6,9 +6,10 @@ const assert = require('assert');
 const async = require('async');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 // Framework libs
-const { objectInit, moduleInit, CommonModule, CommonObject } = require('../include/common');
+const sysdefs = require('../include/sysdefs');
+const {CommonModule} = require('../include/base');
+const _eventLogger = global._$eventLogger;
 
 const _defaultProps = {
     engine: 'RESIDENT',
@@ -23,8 +24,16 @@ function _initSelf(props) {
     });
 }
 
+function _residentSub() {
+
+}
+
+function _residentPub() {
+
+}
+
 // Define the EventBus class
-class EventBus extends CommonObject {
+class EventBus extends CommonModule {
     constructor(props) {
         super(props);
         //
@@ -60,7 +69,7 @@ class EventBus extends CommonObject {
             // TODO: Resume publish and consume events
         };
         this.subscribe = (eventCodes, moduleName, callback) => {
-            let err = null;
+            if (this._engine === )
             eventCodes.forEach(code => {
                 if (this._subscribers[code] === undefined) {
                     this._subscribers[code] = [];
@@ -70,10 +79,7 @@ class EventBus extends CommonObject {
                 }
             });
             //
-            if (typeof callback === 'function') {
-                return callback(err);
-            }
-            return err;
+            return callback();
         };
         this.publish = (event, options, callback) => {
             if (typeof options === 'function') {
@@ -85,8 +91,7 @@ class EventBus extends CommonObject {
                 logger.debug(`Ignore event: ${event.code}`);
                 return callback();
             }
-            return eventLogger.publish(event, options, () => {
-                let err = null;
+            return _eventLogger(event, options, () => {
                 //
                 let subscribers = this._subscribers[event.code];
                 if (tools.isTypeOfArray(subscribers)) {
@@ -102,12 +107,8 @@ class EventBus extends CommonObject {
                             logger.error(`Emit app-event error for module: ${moduleName} - ${tools.inspect(ex)}`);
                         }
                     });
-                } // Discard event if no subscribers
-                //
-                if (typeof callback === 'function') {
-                    return callback(err);
                 }
-                return err;
+                return callback();
             });
         }
     }
@@ -115,5 +116,5 @@ class EventBus extends CommonObject {
 
 // Define module
 module.exports = exports = {
-    EventBus: EventBus
-};
+    EventBus
+}

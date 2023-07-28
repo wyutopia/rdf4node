@@ -4,11 +4,11 @@
 const async = require('async');
 const { createClient } = require('redis');
 // Framework libs
-const theApp = require('../../app');
+const theApp = require('../../framework/app');
 const eRetCodes = require('../../include/retcodes');
 const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
-const sysconf = require('../../framework/config');
+const sysconf = require('../../include/config');
 
 const { EventObject, EventModule } = require('../../include/events');
 

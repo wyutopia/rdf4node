@@ -5,7 +5,6 @@ const fs = require('fs');
 const path = require('path');
 // Framework libs
 const sysdefs = require('../../include/sysdefs');
-const theApp = require('../../app');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
 

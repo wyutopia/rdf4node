@@ -10,8 +10,8 @@ const os = require('os');
 const EventEmitter = require('events');
 // Framework libs
 const sysdefs = require('./sysdefs');
-const {objectInit, moduleInit, CommonModule, CommonObject} = require('./common');
 const eRetCodes = require('./retcodes');
+const {objectInit, moduleInit, CommonModule, CommonObject} = require('./base');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'events');
 const tools = require('../utils/tools');
@@ -79,7 +79,7 @@ class EventLogger extends CommonObject {
     }
 }
 const eventLogger = new EventLogger({
-    name: '_EventLogger_'
+    $name: '_EventLogger_'
 });
 
 // Declaring the EventObject
@@ -87,8 +87,6 @@ class EventObject extends EventEmitter {
     constructor(props) {
         super(props);
         objectInit.call(this, props);
-        // Bind ebus
-        this._ebus = global._$ebus !== undefiend? global._$ebus : null;
         // Additional properties go here ...
     }
 }
@@ -98,6 +96,8 @@ class EventModule extends EventObject {
     constructor(props) {
         super(props);
         moduleInit.call(this, props);
+        // Bind ebus
+        this._ebus = global._$ebus !== undefined? global._$ebus : null;
         this._eventHandlers = props.eventHandlers || {};
         //
         this.pubEvent = (event, options, callback) => {
@@ -148,5 +148,5 @@ module.exports = exports = {
     eventLogger: eventLogger,
     EventObject: EventObject,
     EventModule: EventModule,
-    sysEvents: sysEvents
+    eSysEvents: sysEvents
 };

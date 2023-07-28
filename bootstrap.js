@@ -14,18 +14,30 @@ const path = require('path');
 // 3rd libs
 const async = require('async');
 const appRoot = require('app-root-path');
+// Common definitions and utilities
+const sysdefs = require('./include/sysdefs');
+const tools = require('./utils/tools');
 // Framework libs
-const tools = require('../utils/tools');
-const {WinstonLogger} = require('../libs/base/winston.wrapper');
-const {repoFactory} = require('./repository');
-const registry = require('./registry');
-const {cacheFactory} = require('./cache');
+const config = require('./include/config');
+const Rdf4Node = require('./framework/app');
+const EventBus = require('./framework/ebus');
+const {repoFactory} = require('./framework/repository');
+const {cacheFactory} = require('./framework/cache');
+const {WinstonLogger} = require('./libs/base/winston.wrapper');
+//const registry = require('./framework/registry');
 // Local variables
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
 const bsConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 
 function _initFramework(callback) {
-    logger.info('++++++ Step 1: Initializing framwork ++++++');
+    logger.info('++++++ Stage 1: Initializing framwork ++++++');
+    // Step 1: Create application instance
+    global._$theApp = new Rdf4Node(config.app);
+    // Step 2: Create event-bus 
+    global._$ebus = new EventBus(Object.assign({
+        $name: sysdefs.eFrameworkModules.EBUS,
+    }, config.events));
+    // Step 3: Create timer
     return callback();
 }
 
@@ -68,9 +80,7 @@ function _loadDatabaseSchemas(callback) {
     let allModels = [];
     _readModelDirSync(allModels, modelDir);
     logger.debug(`>>> Total ${allModels.length} database schemas registered. - ${tools.inspect(allModels)}`);
-    if (callback) {
-        return callback();
-    }
+    return callback();
 }
 
 const enabledServices = bsConf.enabledServices || [];
@@ -95,9 +105,7 @@ function _startServices(callback) {
         }
     });
     logger.debug(`>>> All available services: ${tools.inspect(allServices)}`);
-    if (callback) {
-        return callback();
-    }
+    return callback();
 }
 
 const enabledCaches = bsConf.enabledCaches || [];

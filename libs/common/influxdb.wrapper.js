@@ -160,6 +160,6 @@ class ClientFactory extends EventModule {
 exports.clientFactory = new ClientFactory({
     $name: 'InfluxDBClientFactory',
     mandatory: false,
-    state: sysdefs.eModuleState.ACTIVE,
+    state: sysdefs.eModuleStatus.ACTIVE,
     type: sysdefs.eModuleType.CONN
 });

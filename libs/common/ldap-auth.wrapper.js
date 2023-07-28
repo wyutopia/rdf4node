@@ -3,7 +3,7 @@
  * Modified by eric on 2022/03/25
  */
 const { authenticate } = require('ldap-authentication');
-const config = require('../../framework/config');
+const config = require('../../include/config');
 const ldapConf = config.ldap || {};
 const tools = require('../../utils/tools');
 const { WinstonLogger } = require('../base/winston.wrapper');

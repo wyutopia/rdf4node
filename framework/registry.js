@@ -3,7 +3,7 @@
  */
 const assert = require('assert');
 const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REGISTRY;
-const {CommonObject} = require('../include/common');
+const {CommonObject} = require('../include/base');
 const {winstonWrapper: {WinstonLogger}} = require('../libs');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 

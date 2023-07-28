@@ -35,12 +35,12 @@
     });
 })();
 
-const eSysMode = {
+const eSysStatus = {
     OFFLINE    : "offline",
     MAINTAIN   : "maintain",
     ONLINE     : "online"
 };
-exports.eSysMode = eSysMode;
+exports.eSysStatus = eSysStatus;
 
 const eDeployMode = {
     NATIVE     : 'native',
@@ -62,15 +62,15 @@ const eFrameworkModules = {
 };
 exports.eFrameworkModules = eFrameworkModules;
 
-const eModuleState = {
+const eModuleStatus = {
     INIT         : 'init',
     ACTIVE       : 'active',
     SUSPEND      : 'suspend',
     STOP_PENDING : 'pending'
 };
-exports.eModuleState = eModuleState;
-exports.isValidModuleState = function (s) {
-    return Object.values(eModuleState).indexOf(s) > -1;
+exports.eModuleStatus = eModuleStatus;
+exports.isValidModuleStatus = function (s) {
+    return Object.values(eModuleStatus).indexOf(s) > -1;
 };
 
 const eModuleType = {

@@ -3,9 +3,9 @@
  */
 const assert = require('assert');
 const client = require('prom-client');
-const theApp = require('../../app');
 const sysdefs = require('../../include/sysdefs');
-
+//
+const theApp = global._$theApp;
 const register = client.register;
 
 const collectDefaultMetrics = client.collectDefaultMetrics;
@@ -14,7 +14,7 @@ collectDefaultMetrics({
 });
 
 const defaultLabels = {
-    service: theApp.getRegistry(),
+    service: theApp.getName(),
     instance: theApp.getInstance()
 };
 register.setDefaultLabels(defaultLabels);

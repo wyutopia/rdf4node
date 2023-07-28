@@ -2,7 +2,7 @@
  * Created by Eric on 16/6/13.
  */
  let assert = require('assert');
- const {mongodb: config} = require('../../framework/config');
+ const {mongodb: config} = require('../../include/config');
  let session = require('express-session');
  let MongoDBStore = require('connect-mongodb-session')(session);
  
