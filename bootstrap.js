@@ -116,10 +116,6 @@ function _createEndpoints(callback) { // Only http endpoint is supported current
     return callback();
 }
 
-function _createEventBus(callback) {
-    return callback();
-}
-
 function _bootstrap(callback) {
     async.series([
         _initFramework,
