@@ -7,10 +7,8 @@ const mongoose = require('mongoose');
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.DATASOURCE;
 const {EventModule, EventObject} = require('../include/events');
-const {
-    sysConf, 
-    winstonWrapper: {WinstonLogger}
-} = require('../libs');
+const sysConf = require('../include/config');
+const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 

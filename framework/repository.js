@@ -12,7 +12,7 @@ const ObjectId = require('mongoose').Types.ObjectId;
 const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY;
 const eRetCodes = require('../include/retcodes');
 const { EventModule, EventObject, sysEvents } = require('../include/events');
-const { winstonWrapper: { WinstonLogger } } = require('../libs');
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 //

@@ -9,7 +9,7 @@ const moment = require('moment');
 
 const eRetCodes = require('../include/retcodes.js');
 const tools = require('./tools');
-const XTask = require('../libs/xtask');
+const XTask = require('../framework/xtask.js');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'logdir');
 const {parseParameters} = require('../framework/ac');

@@ -7,8 +7,8 @@ const ObjectId = require('mongoose').Types.ObjectId;
 // Framework libs
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
-const {EventModule, icp, sysEvents} = require('../include/events');
-const {winstonWrapper: {WinstonLogger}} = require('../libs');
+const {EventModule} = require('../include/events');
+const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'comp');
 const tools = require('../utils/tools');
 const {parseParameters} = require('./ac');

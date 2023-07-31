@@ -9,7 +9,6 @@ function _initObject(props) {
     this.$name = props.$name || `rdf4node_${this.id}`;
     this.$type = props.$type || sysdefs.eModuleType.OBJ;
 }
-exports.objectInit = _objectInit;
 
 function _initModule(props) {
     //
@@ -19,7 +18,6 @@ function _initModule(props) {
         return this.state === sysdefs.eModuleState.ACTIVE;
     }
 }
-exports.moduleInit = _moduleInit;
 
 class CommonObject {
     constructor(props) {

@@ -166,7 +166,7 @@
   * @param options
   * @constructor
   */
- class EventModule extends EventEmitter {
+ class _xEventModule extends EventEmitter {
      constructor(options) {
          assert(options !== undefined);
          super(options);

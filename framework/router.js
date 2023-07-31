@@ -14,7 +14,7 @@ const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
 const {accessCtl} = require('./ac');
 const tools = require('../utils/tools');
-const config = require('./config');
+const config = require('../include/config');
 const securityConf = config.security || {};
 /**
  * Middleware to Support CORS

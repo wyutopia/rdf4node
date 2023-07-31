@@ -1,17 +1,19 @@
 /**
  * Created by Eric on 2023/07/27
  */
-const _MODULE_NAME = "ebus";
-
 // System libs
 const assert = require('assert');
 const async = require('async');
 const fs = require('fs');
 const path = require('path');
 // Framework libs
+const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
+const _MODULE_NAME = sysdefs.eFrameworkModules.EBUS;
 const {CommonObject, CommonModule} = require('../include/base');
 const eRetCodes = require('../include/retcodes');
+const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 // Define the eventLogger instance
 class EventLogger extends CommonObject {

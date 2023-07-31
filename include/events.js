@@ -11,7 +11,7 @@ const EventEmitter = require('events');
 // Framework libs
 const sysdefs = require('./sysdefs');
 const eRetCodes = require('./retcodes');
-const {objectInit, moduleInit, CommonModule, CommonObject} = require('./base');
+const {initObject, initModule, CommonModule, CommonObject} = require('./base');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'events');
 const tools = require('../utils/tools');
@@ -42,51 +42,11 @@ const sysEvents = {
     // Append new events here ...
 };
 
-class EventLogger extends CommonObject {
-    constructor(props) {
-        super(props);
-        //
-        this._execPersistent = (persistentOptions, callback) => {
-            return callback();
-        };
-        this._pub = (evt, options, callback) => {
-            let src = tools.safeGetJsonValue(evt, 'headers.source');
-            if (process.env.NODE_ENV === 'production') {
-                logger.info(`Publish event: ${evt.code} - ${src}`);
-            } else {
-                logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)}`);
-            }
-            return this._execPersistent({
-                publisher: src,
-                code: evt.code,
-                headers: evt.headers,
-                body: evt.body,
-                options: options
-            }, callback);
-        };
-        this.publish = this._pub;
-        this._con = (evt, consumer, callback) => {
-            let src = tools.safeGetJsonValue(evt, 'headers.source');
-            logger.info(`Consume event: ${evt.code} - ${src} - ${consumer}`);
-            return this._execPersistent({
-                consumer: consumer,
-                code: evt.code,
-                headers: evt.headers,
-                body: evt.body
-            }, callback);
-        };
-        this.consume = this._con;
-    }
-}
-const eventLogger = new EventLogger({
-    $name: '_EventLogger_'
-});
-
 // Declaring the EventObject
 class EventObject extends EventEmitter {
     constructor(props) {
         super(props);
-        objectInit.call(this, props);
+        initObject.call(this, props);
         // Additional properties go here ...
     }
 }
@@ -95,7 +55,7 @@ class EventObject extends EventEmitter {
 class EventModule extends EventObject {
     constructor(props) {
         super(props);
-        moduleInit.call(this, props);
+        initModule.call(this, props);
         // Bind ebus
         this._ebus = global._$ebus !== undefined? global._$ebus : null;
         this._eventHandlers = props.eventHandlers || {};
@@ -124,9 +84,10 @@ class EventModule extends EventObject {
             if (handler === undefined) {
                 return ackOrNack(false);
             }
-            eventLogger.consume(msg, `${handler.name}@${this.$name}`, () => {
-                return handler.call(this, msg, ackOrNack);
-            });
+            return handler.call(this, msg, ackOrNack);
+            // eventLogger.consume(msg, `${handler.name}@${this.$name}`, () => {
+            //     return handler.call(this, msg, ackOrNack);
+            // });
         };
         this.on('message', (msg, ackOrNack) => {
             setTimeout(this._msgProc.bind(this, msg, ackOrNack), 5); // Reduce the interval to increase performnace
@@ -137,7 +98,7 @@ class EventModule extends EventObject {
                 this._ebus.register(this.$name, this);
                 // Subscribe events
                 let allEvents = Object.values(sysEvents).concat(Object.keys(this._eventHandlers));
-                this._ebus.subscribe(allEvents, this.$name);
+                this._ebus.subscribe(allEvents, this.$name, tools.noop);
             }
         })();
     }
@@ -145,7 +106,6 @@ class EventModule extends EventObject {
 
 // Declaring module exports
 module.exports = exports = {
-    eventLogger: eventLogger,
     EventObject: EventObject,
     EventModule: EventModule,
     eSysEvents: sysEvents

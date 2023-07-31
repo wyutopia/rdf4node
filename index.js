@@ -1,8 +1,6 @@
 /**
  * Created by Eric on 2021/11/10
  */
-exports.theApp = require('./app');
-
 // Definitions
 exports.eRetCodes = require('./include/retcodes');
 exports.base = require('./include/base');
@@ -20,7 +18,7 @@ exports.tools = require('./utils/tools');
 exports.logDir = require('./utils/logdir-maint');
 
 // base libs
-exports.XTask = require('./libs/xtask');
+exports.XTask = require('./framework/xtask');
 //exports.moduleWrapper = require('./libs/event-module');
 exports.expressWrapper = require('./libs/base/express.wrapper');
 exports.MorganWrapper = require('./libs/base/morgan.wrapper');

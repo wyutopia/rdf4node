@@ -11,11 +11,12 @@ const os = require('os');
 // project libs
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
+const tools = require('../utils/tools');
+//
 const {app: config} = require('../include/config');
 const consulClient = (config.consul? require('../libs/base/consul.wrapper') : null);
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
-const tools = require('../utils/tools');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
 
 let version = null;
 let consulSignIn = false;
@@ -94,7 +95,10 @@ function _buildModuleArch() {
     return arch;
 }
 
-function _initApp(config) {
+const _typeAppConfig = {
+
+}
+function _initApp(props) {
 
 }
 
@@ -103,30 +107,30 @@ class TheApp extends EventEmitter {
     constructor(props) {
         super();
         // Declaring member variables
-        this._id = `${appConf.registry}_${process.env.DEPLOY === sysdefs.eDeployMode.NATIVE? tools.uuidv4() : os.hostname()}`;
+        this._id = `${props.registry}_${process.env.DEPLOY === sysdefs.eDeployMode.NATIVE? tools.uuidv4() : os.hostname()}`;
+        this.$name = props.name || this._id;
+        _initApp.call(this, props);
+        
         this._config = Object.assign(config, {pushAlarm: true});
         this._state = sysdefs.eModuleState.INIT;
         this._modules = {};
         this._arch = _buildModuleArch();
         this._isMaster = false;
         // Implementing member methods
+        this.getName = () => {
+            return this.$name;
+        }
+        this.getInstance = () => {
+            return this._id;
+        }
         this.fetchServices = (callback) => {
             return consulClient.listServices(callback);
         }
         this.fetchServiceNodes = (serviceName, callback) => {
             return consulClient.listServiceNodes(serviceName, callback);
         }
-        this.getServiceName = () => {
-            return appConf.name;
-        }
-        this.getServiceAlias = () => {
-            return appConf.alias;
-        }
         this.getRegistry = () => {
             return appConf.registry;
-        }
-        this.getInstance = () => {
-            return this._id;
         }
         this.setState = (s) => {
             this._state = s;
@@ -308,17 +312,6 @@ class TheApp extends EventEmitter {
         this.isMaster = () => {
             return (process.env.NODE_ENV === 'production' && this._isMaster === true);
         }
-        this.sendMessage = (msg) =>  {
-            let hostModule = null;
-            if (msg && msg.host && msg.host.mid) {
-                hostModule = this._modules[msg.host.mid];
-            }
-            if (hostModule) {
-                hostModule.emit('MESSAGE', msg);
-            } else {
-                logger.error('Invalid host module!', tools.inspect(msg));
-            }
-        }
         (() => {
             let beginTime = new Date();
             logger.info('>>>>>> System initializing <<<<<<');
@@ -340,4 +333,5 @@ process.on('SIGINT', () => {
     theApp.setState(sysdefs.eModuleState.STOP_PENDING);
     theApp.gracefulExit();
 });
-module.exports = theApp;
+
+module.exports = exports = theApp;

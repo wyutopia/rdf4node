@@ -17,27 +17,26 @@ const appRoot = require('app-root-path');
 // Common definitions and utilities
 const sysdefs = require('./include/sysdefs');
 const tools = require('./utils/tools');
-// Framework libs
+// Create application core instance
 const config = require('./include/config');
-const AppCore = require('./framework/app');
+global._$theApp = require('./framework/app');
+// Framework libs
 const {EventBus} = require('./framework/ebus');
 const {repoFactory} = require('./framework/repository');
 const {cacheFactory} = require('./framework/cache');
 const {WinstonLogger} = require('./libs/base/winston.wrapper');
-//const registry = require('./framework/registry');
+const registry = require('./framework/registry');
 // Local variables
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
 const bsConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 
 function _initFramework(callback) {
     logger.info('++++++ Stage 1: Initializing framwork ++++++');
-    // Step 1: Create application instance
-    global._$theApp = new AppCore(config.app);
-    // Step 2: Create event-bus 
+    // Step 1: Create event-bus 
     global._$ebus = new EventBus(Object.assign({
         $name: sysdefs.eFrameworkModules.EBUS,
     }, config.events));
-    // Step 3: Create timer
+    // Step 2: Create timer
     return callback();
 }
 

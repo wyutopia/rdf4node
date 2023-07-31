@@ -7,7 +7,7 @@ const async = require('async');
 const net = require('net');
 
 // Project modules
-const theApp = require('../../app');
+const theApp = global._$theApp;
 const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
 const {EventObject} =  require('../../include/events');
