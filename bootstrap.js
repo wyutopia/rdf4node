@@ -19,8 +19,8 @@ const sysdefs = require('./include/sysdefs');
 const tools = require('./utils/tools');
 // Framework libs
 const config = require('./include/config');
-const Rdf4Node = require('./framework/app');
-const EventBus = require('./framework/ebus');
+const AppCore = require('./framework/app');
+const {EventBus} = require('./framework/ebus');
 const {repoFactory} = require('./framework/repository');
 const {cacheFactory} = require('./framework/cache');
 const {WinstonLogger} = require('./libs/base/winston.wrapper');
@@ -32,7 +32,7 @@ const bsConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 function _initFramework(callback) {
     logger.info('++++++ Stage 1: Initializing framwork ++++++');
     // Step 1: Create application instance
-    global._$theApp = new Rdf4Node(config.app);
+    global._$theApp = new AppCore(config.app);
     // Step 2: Create event-bus 
     global._$ebus = new EventBus(Object.assign({
         $name: sysdefs.eFrameworkModules.EBUS,

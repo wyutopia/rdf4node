@@ -14,9 +14,9 @@ exports.objectInit = _objectInit;
 function _initModule(props) {
     //
     this.mandatory = true;
-    this.status = props.status || sysdefs.eModuleStatus.INIT;
+    this.state = props.status || sysdefs.eModuleState.INIT;
     this.isActive = () => {
-        return this.status === sysdefs.eModuleStatus.ACTIVE;
+        return this.state === sysdefs.eModuleState.ACTIVE;
     }
 }
 exports.moduleInit = _moduleInit;

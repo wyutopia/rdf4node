@@ -319,7 +319,7 @@ class MysqlWrapper extends EventModule {
          */
         this.createConnection = (dbConf) => {
             let conn = null;
-            if (this.state !== sysdefs.eModuleStatus.ACTIVE) {
+            if (this.state !== sysdefs.eModuleState.ACTIVE) {
                 return conn;
             }
             let poolId = tools.genSign(`${dbConf.host}:${dbConf.port}:${dbConf.database}`);

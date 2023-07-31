@@ -1,6 +1,8 @@
 /**
  * Created by Eric on 2023/07/27
  */
+const _MODULE_NAME = "ebus";
+
 // System libs
 const assert = require('assert');
 const async = require('async');
@@ -8,29 +10,96 @@ const fs = require('fs');
 const path = require('path');
 // Framework libs
 const sysdefs = require('../include/sysdefs');
-const {CommonModule} = require('../include/base');
-const _eventLogger = global._$eventLogger;
+const {CommonObject, CommonModule} = require('../include/base');
+const eRetCodes = require('../include/retcodes');
 
-const _defaultProps = {
-    engine: 'RESIDENT',
+// Define the eventLogger instance
+class EventLogger extends CommonObject {
+    constructor(props) {
+        super(props);
+        // Implenting member methods
+        this._execPersistent = (options, callback) => {
+            return callback();
+        };
+        this.pub = (evt, options, callback) => {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            }
+            let src = tools.safeGetJsonValue(evt, 'headers.source');
+            if (process.env.NODE_ENV === 'production') {
+                logger.info(`Publish event: ${evt.code} - ${src}`);
+            } else {
+                logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)}`);
+            }
+            return this._execPersistent({
+                publisher: src,
+                code: evt.code,
+                headers: evt.headers,
+                body: evt.body,
+                options: options
+            }, callback);
+        };
+        this.con = (evt, consumer, callback) => {
+            let src = tools.safeGetJsonValue(evt, 'headers.source');
+            logger.info(`Consume event: ${evt.code} - ${src} - ${consumer}`);
+            return this._execPersistent({
+                consumer: consumer,
+                code: evt.code,
+                headers: evt.headers,
+                body: evt.body
+            }, callback);            
+        };
+    }
+}
+global._$eventLogger = new EventLogger({
+    $name: sysdefs.eFrameworkModules.EVTLOGGER
+});
+
+
+const _typeEventBusProps = {
+    engine: sysdefs.eCacheEngine.RESIDENT,
     persistent: false,
     disabledEvents: []
 };
 
 function _initSelf(props) {
-    Object.keys(_defaultProps).forEach(key => {
+    Object.keys(_typeEventBusProps).forEach(key => {
         let propKey = `_${key}`;
-        this[propKey] = props[key] !== undefined? props[key] : _defaultProps[key];
+        this[propKey] = props[key] !== undefined? props[key] : _typeEventBusProps[key];
     });
+    //
+    this._eventLogger = global._$eventLogger;
 }
 
-function _residentSub() {
+function _residentSub(eventCodes, moduleName, callback) {
+    eventCodes.forEach(code => {
+        if (this._subscribers[code] === undefined) {
+            this._subscribers[code] = [];
+        }
+        if (this._subscribers[code].indexOf(moduleName) === -1) {
+            this._subscribers[code].push(moduleName);
+        }
+    });
+    //
+    return callback();
+}
+
+function _extMqSub(moduleName, options, callback) {
+    if (!options) {
+        return callback({
+            code: eRetCodes.MQ_ERR,
+            message: 'Subscribe options not provided!'
+        });
+    }
 
 }
 
 function _residentPub() {
 
 }
+
+
 
 // Define the EventBus class
 class EventBus extends CommonModule {
@@ -42,6 +111,7 @@ class EventBus extends CommonModule {
         // Define member variables
         this._registries = {};
         this._subscribers = {};
+        this._mqClients = {};
         // Implementing methods
         this.register = (moduleName, instRef, callback) => {
             let err = null;
@@ -68,19 +138,32 @@ class EventBus extends CommonModule {
         this.resume = (moduleName) => {
             // TODO: Resume publish and consume events
         };
-        this.subscribe = (eventCodes, moduleName, callback) => {
-            if (this._engine === )
-            eventCodes.forEach(code => {
-                if (this._subscribers[code] === undefined) {
-                    this._subscribers[code] = [];
-                }
-                if (this._subscribers[code].indexOf(moduleName) === -1) {
-                    this._subscribers[code].push(moduleName);
-                }
-            });
-            //
-            return callback();
+        /**
+         * 
+         * @param {Array<String>} eventCodes 
+         * @param {String} moduleName 
+         * @param {Object: {engine, spec}} options 
+         * @param {Error, Result} callback 
+         * @returns 
+         */
+        this.subscribe = (eventCodes, moduleName, options, callback) => {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
+            }
+            let engineOpt = options.engine || this._engine;
+            if (engineOpt === sysdefs.eCacheEngine.RESIDENT) {
+                return _residentSub.call(this, eventCodes, moduleName, callback);
+            }
+            return _extMqSub.call(this, moduleName, options.spec, callback);
         };
+        /**
+         * 
+         * @param {Object: {code, headers, body}} event 
+         * @param {*} options 
+         * @param {Error, Result} callback 
+         * @returns 
+         */
         this.publish = (event, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -91,7 +174,7 @@ class EventBus extends CommonModule {
                 logger.debug(`Ignore event: ${event.code}`);
                 return callback();
             }
-            return _eventLogger(event, options, () => {
+            return this._eventLogger.pub(event, options, () => {
                 //
                 let subscribers = this._subscribers[event.code];
                 if (tools.isTypeOfArray(subscribers)) {
@@ -117,4 +200,4 @@ class EventBus extends CommonModule {
 // Define module
 module.exports = exports = {
     EventBus
-}
+};

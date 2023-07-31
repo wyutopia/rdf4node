@@ -2,20 +2,20 @@
  * Created by Eric on 2022/01/02
  * To replace amqp.wrapper in the future
  */
+const _MODULE_NAME = 'AMQP_MNG';
 // System libs
 const async = require('async');
 const assert = require('assert');
 const { Broker } = require('rascal');
 // Framework libs
-const theApp = require('../../app');
+
 const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
 const {EventModule} = require('../../include/events');
 const tools = require('../../utils/tools');
 const { WinstonLogger } = require('../base/winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
-
-const _MODULE_NAME = 'AMQP_CONN';
+const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
+const theApp = global._$theApp;
 
 class RascalClientMangager extends EventModule {
     constructor(props) {
@@ -31,8 +31,7 @@ class RascalClientMangager extends EventModule {
         }
         this.dispose = (callback) => {
             logger.info(`${this.$name}: Destroy all amqp clients ...`);
-            let ids = Object.keys(this._clients);
-            async.eachLimit(ids, 4, (id, next) => {
+            async.eachLimit(Object.keys(this._clients), 3, (id, next) => {
                 let client = this._clients[id];
                 if (client === undefined) {
                     return process.nextTick(next);
@@ -55,13 +54,14 @@ class RascalClientMangager extends EventModule {
     }
 }
 
+const _configKeys = ['exchanges', 'queues', 'bindings', 'publications', 'subscriptions'];
 function assembleTotalConfig({ vhost, conn, params }) {
     assert(conn !== undefined);
     assert(params !== undefined);
     let conf = {
         connection: conn
     };
-    ['exchanges', 'queues', 'bindings', 'publications', 'subscriptions'].forEach((key) => {
+    _configKeys.forEach((key) => {
         if (params[key] !== undefined) {
             conf[key] = params[key];
         }
@@ -83,6 +83,7 @@ const _typeClientProps = {
     $parent: 'object'
 };
 
+// The client class
 class RascalClient {
     constructor(props) {
         // Declaring member variables

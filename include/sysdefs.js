@@ -52,6 +52,7 @@ const eFrameworkModules = {
     CONFIG          : '_config_',
     REGISTRY        : '_registry_',
     EBUS            : '_ebus_',
+    EVTLOGGER       : '_evtlogger_',
     ICP             : '_icp_',
     TIMER           : '_timer_',
     DATASOURCE      : '_datasource_',
@@ -62,15 +63,15 @@ const eFrameworkModules = {
 };
 exports.eFrameworkModules = eFrameworkModules;
 
-const eModuleStatus = {
+const eModuleState = {
     INIT         : 'init',
     ACTIVE       : 'active',
     SUSPEND      : 'suspend',
     STOP_PENDING : 'pending'
 };
-exports.eModuleStatus = eModuleStatus;
+exports.eModuleState = eModuleState;
 exports.isValidModuleStatus = function (s) {
-    return Object.values(eModuleStatus).indexOf(s) > -1;
+    return Object.values(eModuleState).indexOf(s) > -1;
 };
 
 const eModuleType = {

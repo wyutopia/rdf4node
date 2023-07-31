@@ -105,7 +105,7 @@ class TheApp extends EventEmitter {
         // Declaring member variables
         this._id = `${appConf.registry}_${process.env.DEPLOY === sysdefs.eDeployMode.NATIVE? tools.uuidv4() : os.hostname()}`;
         this._config = Object.assign(config, {pushAlarm: true});
-        this._state = sysdefs.eModuleStatus.INIT;
+        this._state = sysdefs.eModuleState.INIT;
         this._modules = {};
         this._arch = _buildModuleArch();
         this._isMaster = false;
@@ -198,7 +198,7 @@ class TheApp extends EventEmitter {
             let keys = Object.keys(this._modules);
             for (let i = 0; i < keys.length; i++) {
                 let key = keys[i];
-                if (this._modules[key].mandatory === true && this._modules[key].state !== sysdefs.eModuleStatus.ACTIVE) {
+                if (this._modules[key].mandatory === true && this._modules[key].state !== sysdefs.eModuleState.ACTIVE) {
                     active = false;
                     break;
                 }
@@ -230,7 +230,7 @@ class TheApp extends EventEmitter {
             });
         }
         this.isActive = () => {
-            return this._state === sysdefs.eModuleStatus.ACTIVE;
+            return this._state === sysdefs.eModuleState.ACTIVE;
         }
         this.setInnerToken = (token) => {
             this._prevToken = this._innerToken;
@@ -327,7 +327,7 @@ class TheApp extends EventEmitter {
                 fireStartupAlarm: _raiseStartupAlarm.bind(this)
             }, () => {
                 logger.info(`>>>>>> System startup in ${new Date().valueOf() - beginTime.valueOf()}ms`);
-                this._state = sysdefs.eModuleStatus.ACTIVE;
+                this._state = sysdefs.eModuleState.ACTIVE;
                 return null;
             });
         })();
@@ -337,7 +337,7 @@ class TheApp extends EventEmitter {
 let theApp = new TheApp(config);
 process.on('SIGINT', () => {
     logger.info('>>>>>> On SIGINT <<<<<<');
-    theApp.setState(sysdefs.eModuleStatus.STOP_PENDING);
+    theApp.setState(sysdefs.eModuleState.STOP_PENDING);
     theApp.gracefulExit();
 });
 module.exports = theApp;

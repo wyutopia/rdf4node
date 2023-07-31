@@ -65,7 +65,7 @@ class XTaskManager extends EventModule {
 const taskMng = new XTaskManager({
     $name: MODULE_NAME,
     mandatory: true,
-    state: sysdefs.eModuleStatus.ACTIVE,
+    state: sysdefs.eModuleState.ACTIVE,
     type: sysdefs.eModuleType.TASK
 });
 
