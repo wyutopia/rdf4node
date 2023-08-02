@@ -90,15 +90,16 @@ class EventModule extends EventObject {
             // });
         };
         this.on('message', (msg, ackOrNack) => {
-            setTimeout(this._msgProc.bind(this, msg, ackOrNack), 5); // Reduce the interval to increase performnace
+            setTimeout(this._msgProc.bind(this, msg, ackOrNack), 1);
         });
         // Perform initiliazing codes...
         (() => {
             if (this._ebus) {
-                this._ebus.register(this.$name, this);
-                // Subscribe events
-                let allEvents = Object.values(sysEvents).concat(Object.keys(this._eventHandlers));
-                this._ebus.subscribe(allEvents, this.$name, tools.noop);
+                this._ebus.register2(this, {
+                    engine: props.engine || sysdefs.eEventBusEngine.RESIDENT,
+                    subEvents: Object.keys(this._eventHandlers),
+                    mqConfig: props.mqConfig || {}
+                }, tools.noop);
             }
         })();
     }

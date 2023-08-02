@@ -207,7 +207,8 @@ class TdsWrapper extends CommonModule {
 }
 const tdsWrapper = new TdsWrapper({
     $name: 'TdsClientManager',
-    type: sysdefs.eModuleType.CONN,
+    $type: sysdefs.eModuleType.CM,
+    //
     mandatory: true,
     state: sysdefs.eModuleState.ACTIVE
 });

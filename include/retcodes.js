@@ -84,6 +84,8 @@ const eRetCodes = {
     REDIS_BAD_REQUEST: 604,
     // MQ ERRORs
     MQ_ERR: 700,
+    MQ_SUB_ERR: 701,
+    MQ_PUB_ERR: 703, 
     // TEDIOUS ERRORs
     TEDIOUS_ERROR: 1433
 };

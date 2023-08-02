@@ -374,7 +374,8 @@ class MysqlWrapper extends EventModule {
  
  const mysqlWrapper = new MysqlWrapper({
      $name: MODULE_NAME,
-     type: sysdefs.eModuleType.CONN,
+     $type: sysdefs.eModuleType.CM,
+     //
      mandatory: true,
      state: sysdefs.eModuleState.ACTIVE,
      config: config

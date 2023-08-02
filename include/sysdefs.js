@@ -78,8 +78,8 @@ const eModuleType = {
     OBJ          : 'obj',
     TASK         : 'task',
     APP          : 'app',
-    CONN         : 'conn',
-    OSEXT        : 'osext'
+    CM           : 'cm',   // connection manager
+    LIB          : 'lib'
 };
 exports.eModuleType = eModuleType;
 exports.isValidModuleType = function (s) {
@@ -287,6 +287,14 @@ const eCacheEngine = {
     REDIS         : 'redis',
 };
 exports.eCacheEngine = eCacheEngine;
+
+const eEventBusEngine = {
+    RESIDENT      : 'resident',
+    RABBITMQ      : 'rabbitmq',
+    ROCKETMQ      : 'rocketmq',
+    REDIS         : 'redis'
+};
+exports.eEventBusEngine = eEventBusEngine;
 
 const eClientState = {
     Null: 'null',

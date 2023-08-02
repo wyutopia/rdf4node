@@ -10,7 +10,9 @@ const { Broker } = require('rascal');
 // Framework libs
 
 const sysdefs = require('../../include/sysdefs');
+const eRetCodes = require('../../include/retcodes');
 const eClientState = sysdefs.eClientState;
+const {CommonObject} = require('../../include/base');
 const {EventModule} = require('../../include/events');
 const tools = require('../../utils/tools');
 const { WinstonLogger } = require('../base/winston.wrapper');
@@ -55,7 +57,7 @@ class RascalClientMangager extends EventModule {
 }
 
 const _configKeys = ['exchanges', 'queues', 'bindings', 'publications', 'subscriptions'];
-function assembleTotalConfig({ vhost, conn, params }) {
+function _assembleClientConfig({ vhost, conn, params }) {
     assert(conn !== undefined);
     assert(params !== undefined);
     let conf = {
@@ -80,33 +82,108 @@ function onMessage(content = {}) {
 const _typeClientProps = {
     id: 'string',
     $name: 'string',
-    $parent: 'object'
+    $parent: 'object',
+    config: 'object'
 };
 
+function _initClient(options) {
+    let clientConf = _assembleClientConfig(options);
+    logger.info(`${this.$name}: Create new RacalClient with ${tools.inspect(clientConf)}`);
+    this.state = eClientState.Init;
+    Broker.create(clientConf, (err, broker) => {
+        if (err) {
+            logger.error(`${this.$name}[${this.state}]: Creating broker error! - ${err.message}`);
+            this.state = eClientState.Null;
+            return null;
+        }
+        broker.on('error', (err) => {
+            logger.error(`${this.$name}[${this.state}]: Broker error! - ${err.message}`);
+            this.state = eClientState.Null;
+            this.$parent.emit('end', err);
+        });
+        // Perform subscribe and store publication keys
+        const self = this;
+        let params = options.params;
+        async.parallel([
+            // Perform subscription
+            function (callback) {
+                // Perform subscriptions
+                let subscriptions = params.subscriptions;
+                if (subscriptions === undefined) {
+                    return process.nextTick(callback);
+                }
+                let keys = Object.keys(subscriptions);
+                logger.info(`${self.$name}[${self.state}]: Subscription keys= ${tools.inspect(keys)}`);
+                async.each(keys, (key, next) => {
+                    broker.subscribe(key, (err, sub) => {
+                        if (err) {
+                            let msg = `${self.$name}[${self.state}]: Subscribe key=${key} error! - ${err.message}`;
+                            logger.error(msg);
+                            return next();
+                        }
+                        sub.on('message', (message, content, ackOrNack) => {
+                            logger.debug(`${self.$name}[${self.state}]: Content= ${tools.inspect(content)}`);
+                            let evt = {
+                                msgId: message.properties.messageId,
+                                primitive: message.fields.routingKey,
+                                content: null
+                            };
+                            // Parsing content to JSON
+                            if (message.properties.contentType === 'text/plain') {
+                                try {
+                                    evt.content = JSON.parse(content);
+                                } catch (ex) {
+                                    logger.error(`${self.$name}[${self.state}]: Parsing content error! - Should be json - ${content}`);
+                                }
+                            } else if (message.properties.contentType === 'application/json') {
+                                evt.content = content
+                            } else {
+                                logger.error(`${self.$name}[${self.state}]: Unrecognized contentType! Should be text/plain or application/json`);
+                            }
+                            // Processing message
+                            self.$parent.emit('message', evt, ackOrNack);
+                        }).on('error', (err) => {
+                            logger.error(`${self.$name}[${self.state}]: Handle message error! - ${err.code}#${err.message}`);
+                        });
+                        return next();
+                    });
+                }, () => {
+                    return callback();
+                });
+            },
+            // Register publications keys
+            function (callback) {
+                let publications = params.publications;
+                if (publications !== undefined) {
+                    self._pubKeys = Object.keys(publications);
+                }
+                return process.nextTick(callback);
+            }
+        ], () => {
+            // Save broker and activate client
+            this._broker = broker;
+            this.state = eClientState.Conn;
+        });
+    });
+}
+
 // The client class
-class RascalClient {
+class RascalClient extends CommonObject {
     constructor(props) {
+        super(props);
         // Declaring member variables
-        this.id = props.id || tools.uuidv4();
-        this.$name = props.$name || `rascalClient#${this.id}`;
         this.$parent = props.$parent;
         //
-        this.broker = null;
         this.state = eClientState.Null;
-        this.pubKeys = [];
-        //
-        this.onMessageImpl = typeof props.onMessage === 'function'? props.onMessage : onMessage;
-        this.onMessage = evt => {
-            setImmediate(this.onMessageImpl.bind(this, evt));
-        };
-
+        this._broker = null;
+        this._pubKeys = [];
         // Implementing methods
         this.dispose = (callback) => {
-            if (this.broker === null || this.state !== eClientState.Conn) {
+            if (this._broker === null || this.state !== eClientState.Conn) {
                 return process.nextTick(callback);
             }
             this.state = eClientState.Closing;
-            this.broker.shutdown(err => {
+            this._broker.shutdown(err => {
                 if (err) {
                     logger.error(`${this.$name}[${this.state}]: shutdown error! - ${err.message}`);
                 } else {
@@ -116,40 +193,41 @@ class RascalClient {
                 return callback();
             });
         };
-        // Perform publish
+        // Perform publishing
         this.publish = (pubKey, data, options, callback) => {
-            logger.info(`${this.$name}[${this.state}]: Publish - ${pubKey}, ${tools.inspect(data)}, ${tools.inspect(options)}`);
+            logger.debug(`${this.$name}[${this.state}]: Publish - ${pubKey}, ${tools.inspect(data)}, ${tools.inspect(options)}`);
             if (this.state !== eClientState.Conn) {
                 let msg = `${this.$name}[${this.state}]: Please execute initializing before use.`
                 logger.error(msg);
                 return callback({
-                    code: 6666,
+                    code: eRetCodes.MQ_PUB_ERR,
                     message: msg
                 });
             }
-            if (this.pubKeys.indexOf(pubKey) === -1) {
+            if (this._pubKeys.indexOf(pubKey) === -1) {
                 let msg = `${this.$name}[${this.state}]: Invalid publication configure! - key=${pubKey}`;
                 logger.error(msg);
                 return callback({
-                    code: 6666,
+                    code: eRetCodes.MQ_PUB_ERR,
                     message: msg
                 });
             }
-            this.broker.publish(pubKey, data, options, (err, pubSession) => {
+            return this._broker.publish(pubKey, data, options, (err, pubSession) => {
                 if (err) {
                     let msg = `${this.$name}[${this.state}]: Publish error! - ${err.message}`;
                     logger.error(msg);
                     return callback({
-                        code: 6666,
+                        code: MQ_PUB_ERR,
                         messaeg: msg
                     });
                 }
                 pubSession.on('error', err => {
                     logger.error(`${this.$name}[${this.state}]: PubSession on [ERROR]! - ${err.message}`);
+                    return callback(err);
                 });
                 pubSession.on('success', (msgId) => {
                     logger.debug(`${this.$name}[${this.state}]: PubSession on [SUCCESS] - ${msgId}`);
-                    return callback(null, pubSession);
+                    return callback(null, msgId);
                 });
                 pubSession.on('return', (message) => {
                     logger.debug(`${this.$name}[${this.state}]: PubSession on [RETURN] - ${tools.inspect(message)}`);
@@ -158,107 +236,16 @@ class RascalClient {
             });
         }
         // Implementing event handlers
-
-        //
-        (() => {
-            let config = props.config;
-            let realCfg = assembleTotalConfig(config);
-            logger.info(`${this.$name}: Create new RacalClient with ${tools.inspect(realCfg)}`);
-            this.state = eClientState.Init;
-            let self = this;
-            Broker.create(realCfg, (err, broker) => {
-                if (err) {
-                    logger.error(`${self.name}[${self.state}]: Create broker error! - ${err.message}`);
-                    self.state = eClientState.Null;
-                    return null;
-                }
-                broker.on('error', (err) => {
-                    logger.error(`${self.name}[${self.state}]: Broker error! - ${err.message}`);
-                    self.state = eClientState.Null;
-                    self.broker = null;
-                    self.parent.emit('end', err);
-                });
-                // Perform subscribe and store publication keys
-                let params = config.params;
-                async.parallel({
-                    // Subscription
-                    sub: (callback) => {
-                        // Perform subscriptions
-                        let subscriptions = params.subscriptions;
-                        if (subscriptions === undefined) {
-                            return process.nextTick(callback);
-                        }
-                        let keys = Object.keys(subscriptions);
-                        logger.info(`${self.name}[${self.state}]: Subscription keys= ${tools.inspect(keys)}`);
-                        async.each(keys, (key, next) => {
-                            broker.subscribe(key, (err, sub) => {
-                                if (err) {
-                                    let msg = `${self.name}[${self.state}]: Subscribe key=${key} error! - ${err.message}`;
-                                    logger.error(msg);
-                                    return next();
-                                }
-                                sub.on('message', (message, content, ackOrNack) => {
-                                    logger.debug(`${self.name}[${self.state}]: Content= ${tools.inspect(content)}`);
-                                    let evt = {
-                                        msgId: message.properties.messageId,
-                                        primitive: message.fields.routingKey,
-                                        content: null
-                                    };
-                                    // Parsing content to JSON
-                                    if (message.properties.contentType === 'text/plain') {
-                                        try {
-                                            evt.content = JSON.parse(content);
-                                        } catch (ex) {
-                                            logger.error(`${self.name}[${self.state}]: Parsing content error! - ${ex.message} - ${content}`);
-                                        }
-                                    } else if (message.properties.contentType === 'application/json') {
-                                        evt.content = content
-                                    } else {
-                                        logger.error(`${self.name}[${self.state}]: Unrecognized contentType! Should be text/plain or application/json`);
-                                    }
-                                    // Handle message
-                                    self.onMessage(evt);
-                                    // if (evt) {
-                                    //     if (evt.uuid && evt.msg) {
-                                    //         if (evt.body === undefined) {
-                                    //             evt.body = {};
-                                    //         }
-                                    //
-                                    //     } else {
-                                    //         logger.error(`${self.name}[${self.state}]: Bad message format! uuid or msg missing`)
-                                    //     }
-                                    // }
-                                    ackOrNack();
-                                }).on('error', (err) => {
-                                    logger.error(`${self.name}[${self.state}]: Handle message error! - ${err.code}#${err.message}`);
-                                });
-                                return next();
-                            });
-                        }, () => {
-                            return callback();
-                        });
-                    },
-                    // Publication
-                    pub: (callback) => {
-                        let publications = params.publications;
-                        if (publications !== undefined) {
-                            self.pubKeys = Object.keys(publications);
-                        }
-                        return process.nextTick(callback);
-                    }
-                }, () => {
-                    // Save broker and activate client
-                    self.broker = broker;
-                    self.state = eClientState.Conn;
-                });
-            });
-        })();
+        _initClient.call(this, props.config);
     }
 }
 
-module.exports = exports = new RascalClientMangager({
+
+// Define module
+const rascalWrapper = new RascalClientMangager({
     $name: _MODULE_NAME,
+    $type: sysdefs.eModuleType.CM,
     mandatory: true,
     state: sysdefs.eModuleState.ACTIVE,
-    type: sysdefs.eModuleType.CONN
 });
+module.exports = exports = rascalWrapper;
