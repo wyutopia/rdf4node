@@ -203,7 +203,7 @@ class EventBus extends EventEmitter {
                 this._clients[channel] = rascalWrapper.createClient({
                     id: channel,
                     $parent: this,
-                    $name: `rascal@${clientId}`,
+                    $name: `rascal@${channel}`,
                     config: {
                         vhost: engineConfig.vhost,
                         conn: engineConfig.connection,
