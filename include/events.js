@@ -100,12 +100,10 @@ class EventModule extends EventObject {
         (() => {
             if (this._ebus) {
                 let options = {
-                    engine: props.engine || sysdefs.eEventBusEngine.RESIDENT,
+                    engine: props.engine,
                     subEvents: Object.keys(this._eventHandlers),
-                    clientName: props.clientName || _DEFAULT_CLIENT,
-                    pubKey: props.pubKey || _DEFAULT_PUB_KEY
+                    channel: props.channel
                 };
-                options.mqConfig = tools.safeGetJsonValue(config, `rabbitmq.${options.clientName}`);
                 logger.debug(`${this.$name}: Register to EventBus with - ${tools.inspect(options)}`);
                 this._ebus.register(this, options, tools.noop);
             }
