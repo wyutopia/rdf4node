@@ -75,17 +75,6 @@ function _assembleClientConfig({ vhost, conn, params }) {
     };
 }
 
-function onMessage(content = {}) {
-    logger.debug(`${this.$name}: Content = ${tools.inspect(content)}`);
-}
-
-const _typeClientProps = {
-    id: 'string',
-    $name: 'string',
-    $parent: 'object',
-    config: 'object'
-};
-
 function _initClient(options) {
     let clientConf = _assembleClientConfig(options);
     logger.debug(`${this.$name}: Create new RacalClient with ${tools.inspect(clientConf)}`);
@@ -168,6 +157,13 @@ function _initClient(options) {
         });
     });
 }
+
+const _typeClientProps = {
+    id: 'string',
+    $name: 'string',
+    $parent: 'object',
+    config: 'object'
+};
 
 // The client class
 class RascalClient extends CommonObject {

@@ -135,8 +135,9 @@ function _extMqPub(event, options, callback) {
 const _typeRegisterOptions = {
     engine: 'string',
     subEvents: 'Array<String>', // Conditional on engine = 'resident'
+    pubKey: 'string', // The default pubKey when engine = 'rabbitmq'
     clientName: 'string',
-    mqConfig: 'Object{}' // Conditional engine != 'resident'
+    mqConfig: 'Object' // Conditional engine != 'resident'
 };
 
 // Define the EventBus class

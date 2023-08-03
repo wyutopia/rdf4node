@@ -103,9 +103,9 @@ class EventModule extends EventObject {
                     engine: props.engine || sysdefs.eEventBusEngine.RESIDENT,
                     subEvents: Object.keys(this._eventHandlers),
                     clientName: props.clientName || _DEFAULT_CLIENT,
-                    defaultPubKey: props.pubKey || _DEFAULT_PUB_KEY
+                    pubKey: props.pubKey || _DEFAULT_PUB_KEY
                 };
-                options.mqConfig = tools.safeGetJsonValue(config, 'rabbitmq.${options.clientName}');
+                options.mqConfig = tools.safeGetJsonValue(config, `rabbitmq.${options.clientName}`);
                 logger.debug(`${this.$name}: Register to EventBus with - ${tools.inspect(options)}`);
                 this._ebus.register(this, options, tools.noop);
             }
