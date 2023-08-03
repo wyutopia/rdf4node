@@ -4,7 +4,6 @@
 // System libs
 const assert = require('assert');
 const async = require('async');
-const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('events');
 // Framework libs

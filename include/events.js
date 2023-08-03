@@ -11,10 +11,14 @@ const EventEmitter = require('events');
 // Framework libs
 const sysdefs = require('./sysdefs');
 const eRetCodes = require('./retcodes');
+const { eventBus: config } = require('./config');
 const {initObject, initModule, CommonModule, CommonObject} = require('./base');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'events');
 const tools = require('../utils/tools');
+
+const _DEFAULT_CLIENT = 'project';
+const _DEFAULT_PUB_KEY = 'pubPrjEvent';
 
 const sysEvents = {
     // Module
@@ -95,11 +99,15 @@ class EventModule extends EventObject {
         // Perform initiliazing codes...
         (() => {
             if (this._ebus) {
-                this._ebus.register(this, {
+                let options = {
                     engine: props.engine || sysdefs.eEventBusEngine.RESIDENT,
                     subEvents: Object.keys(this._eventHandlers),
-                    mqConfig: props.mqConfig || {}
-                }, tools.noop);
+                    clientName: props.clientName || _DEFAULT_CLIENT,
+                    defaultPubKey: props.pubKey || _DEFAULT_PUB_KEY
+                };
+                options.mqConfig = tools.safeGetJsonValue(config, 'rabbitmq.${options.clientName}');
+                logger.debug(`${this.$name}: Register to EventBus with - ${tools.inspect(options)}`);
+                this._ebus.register(this, options, tools.noop);
             }
         })();
     }
