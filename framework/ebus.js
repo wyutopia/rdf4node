@@ -9,6 +9,7 @@ const EventEmitter = require('events');
 // Framework libs
 const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
+const {eventBus: config} = require('../include/config');
 const _MODULE_NAME = sysdefs.eFrameworkModules.EBUS;
 const { initObject, initModule } = require('../include/base');
 const { eSysEvents, EventModule } = require('../include/events');
@@ -64,8 +65,10 @@ global._$eventLogger = new EventLogger({
 
 const _typeEventBusProps = {
     engine: sysdefs.eCacheEngine.RESIDENT,
-    persistent: false,
-    disabledEvents: []
+    lo: true,
+    persistent: true,
+    disabledEvents: [],
+    rabbitmq: {}
 };
 
 function _initEventBusProps(props) {
@@ -136,16 +139,17 @@ const _typeRegisterOptions = {
     engine: 'string',
     subEvents: 'Array<String>', // Conditional on engine = 'resident'
     pubKey: 'string', // The default pubKey when engine = 'rabbitmq'
-    clientName: 'string',
+    channel: 'string',
     mqConfig: 'Object' // Conditional engine != 'resident'
 };
+const _DEFAULT_CHANNEL = 'default';
 
 // Define the EventBus class
 class EventBus extends EventEmitter {
     constructor(props) {
         super(props);
         //
-        _initEventBusProps.call(this, props);
+        _initEventBusProps.call(this, Object.assign({}, props, config));
         //
         // For icp
         this._registries = {};
@@ -192,17 +196,22 @@ class EventBus extends EventEmitter {
             if (engineOpt === sysdefs.eEventBusEngine.RESIDENT) {
                 return callback();
             }
+            let engineConfig = config[engineOpt];
             // Create rabbitmq-client
-            let clientId = options.clientName || moduleName;
-            if (this._clients[clientId] === undefined) {
-                this._clients[clientId] = rascalWrapper.createClient({
-                    id: clientId,
+            let channel = options.channel || _DEFAULT_CHANNEL;
+            if (this._clients[channel] === undefined) {
+                this._clients[channel] = rascalWrapper.createClient({
+                    id: channel,
                     $parent: this,
                     $name: `rascal@${clientId}`,
-                    config: options.mqConfig || {}
+                    config: {
+                        vhost: engineConfig.vhost,
+                        conn: engineConfig.connection,
+                        params: engineConfig[channel]
+                    }
                 });
             }
-            return callback(null, this._clients[clientId]);
+            return callback(null, this._clients[channel]);
         };
         this.on('message', (evt, callback) => {
             return _consumeEvent.call(this, evt, callback);

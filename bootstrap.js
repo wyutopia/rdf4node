@@ -33,9 +33,9 @@ const bsConf = require(path.join(appRoot.path, 'conf/bootstrap.js'));
 function _initFramework(callback) {
     logger.info('++++++ Stage 1: Initializing framwork ++++++');
     // Step 1: Create event-bus 
-    global._$ebus = new EventBus(Object.assign({
+    global._$ebus = new EventBus({
         $name: sysdefs.eFrameworkModules.EBUS,
-    }, config.events));
+    });
     // Step 2: Create timer
     return callback();
 }
