@@ -96,12 +96,12 @@ function _initClient(options) {
             this.state = eClientState.Null;
             return null;
         }
-        logger.info(`${this.$name}[${this.state}]: broker created.`);
         this.state = eClientState.Conn0;
+        logger.info(`${this.$name}[${this.state}]: broker created.`);
         broker.on('error', (err) => {
             logger.error(`${this.$name}[${this.state}]: Broker error! - ${err.message}`);
             this.state = eClientState.Null;
-            this.$parent.emit('end', err);
+            this.$parent.emit('client-end', this.id, err);
         });
         // Perform subscribe and store publication keys
         const self = this;

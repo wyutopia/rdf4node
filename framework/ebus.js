@@ -193,20 +193,24 @@ class EventBus extends EventEmitter {
                 return callback();
             }
             // Create rabbitmq-client
-            let clientName = options.clientName || moduleName;
-            if (this._clients[clientName] === undefined) {
-                this._clients[clientName] = rascalWrapper.createClient({
+            let clientId = options.clientName || moduleName;
+            if (this._clients[clientId] === undefined) {
+                this._clients[clientId] = rascalWrapper.createClient({
+                    id: clientId,
                     $parent: this,
-                    //
-                    $name: `rascal@${clientName}`,
+                    $name: `rascal@${clientId}`,
                     config: options.mqConfig || {}
                 });
             }
-            return callback(null, this._clients[clientName]);
+            return callback(null, this._clients[clientId]);
         };
         this.on('message', (evt, callback) => {
             return _consumeEvent.call(this, evt, callback);
         });
+        this.on('client-end', clientId => {
+            logger.error(`Client#${clientId} end.`);
+        });
+
         this.pause = (moduleName, callback) => {
             // TODO: Stop publish and consume events
         };
