@@ -299,6 +299,7 @@ exports.eEventBusEngine = eEventBusEngine;
 const eClientState = {
     Null: 'null',
     Init: 'init',
+    Conn0: 'conn0',
     Conn: 'connected',
     ConnErr: 'connerr',
     Querying: 'querying',

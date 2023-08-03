@@ -6,11 +6,12 @@ const assert = require('assert');
 const async = require('async');
 const fs = require('fs');
 const path = require('path');
+const EventEmitter = require('events');
 // Framework libs
 const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.EBUS;
-const { CommonObject, CommonModule } = require('../include/base');
+const { initObject, initModule } = require('../include/base');
 const { eSysEvents, EventModule } = require('../include/events');
 const eRetCodes = require('../include/retcodes');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
@@ -18,9 +19,10 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const rascalWrapper = require('../libs/common/rascal.wrapper');
 
 // Define the eventLogger instance
-class EventLogger extends CommonObject {
+class EventLogger extends EventEmitter {
     constructor(props) {
         super(props);
+        initObject.call(this, props);
         // Implenting member methods
         this._execPersistent = (options, callback) => {
             return callback();
@@ -67,7 +69,9 @@ const _typeEventBusProps = {
     disabledEvents: []
 };
 
-function _initProps(props) {
+function _initEventBusProps(props) {
+    initModule.call(this, props);
+    //
     Object.keys(_typeEventBusProps).forEach(key => {
         let propKey = `_${key}`;
         this[propKey] = props[key] !== undefined ? props[key] : _typeEventBusProps[key];
@@ -76,85 +80,72 @@ function _initProps(props) {
     this._eventLogger = global._$eventLogger;
 }
 
-function _residentSub(eventCodes, moduleName, callback) {
-    eventCodes.forEach(code => {
-        if (this._subscribers[code] === undefined) {
-            this._subscribers[code] = [];
-        }
-        if (this._subscribers[code].indexOf(moduleName) === -1) {
-            this._subscribers[code].push(moduleName);
-        }
-    });
-    //
-    return callback();
-}
-
-/**
- * 
- * @param {*} options 
- * @param {*} callback 
- * @returns 
- */
-function _extMqSub(options, callback) {
-    if (!options) {
-        return callback({
-            code: eRetCodes.MQ_ERR,
-            message: 'Subscribe options not provided!'
-        });
-    }
-
-}
-
-function _residentPub(event, options, callback) {
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
-    }
-    //
+function _consumeEvent(event, callback) {
+    logger.debug(`${this.$name}: Perform consuming event: ${tools.inspect(event)}`);
     let subscribers = this._subscribers[event.code];
     if (tools.isTypeOfArray(subscribers)) {
         subscribers.forEach(moduleName => {
             let registry = this._registries[moduleName];
             if (!registry || registry.status !== sysdefs.eStatus.ACTIVE) {
                 logger.info(`Ignore non-active module! - ${moduleName}`);
-                return;
-            }
-            try {
-                registry.moduleRef.emit('message', event);
-            } catch (ex) {
-                logger.error(`Emit app-event error for module: ${moduleName} - ${tools.inspect(ex)}`);
+            } else {
+                try {
+                    registry.moduleRef.emit('message', event);
+                } catch (ex) {
+                    logger.error(`Emit app-event error for module: ${moduleName} - ${tools.inspect(ex)}`);
+                }
             }
         });
     }
     return callback();
 }
 
+const _typeMqPubOptions = {
+    pubKey: 'string',
+    sender: 'string?'
+};
+/**
+ * 
+ * @param {*} event 
+ * @param {_typeMqPubOptions} options 
+ * @param {*} callback 
+ * @returns 
+ */
 function _extMqPub(event, options, callback) {
     if (typeof options === 'function') {
         callback = options;
         options = {};
     }
-    let sender = tools.safeGetJsonValue(options, 'headers.source');
-    if (!sender) {
+    if (options.pubKey === undefined) {
         return callback({
-
+            code: eRetCodes.MQ_PUB_ERR,
+            message: 'Bad request! - options.pubKey is required.'
+        });
+    }
+    let sender = options.sender || tools.safeGetJsonValue(event, 'headers.source');
+    let client = this._clients[sender];
+    if (!client) {
+        return callback({
+            code: eRetCodes.MQ_PUB_ERR,
+            message: `Invalid client! - sender=${sender}`
         })
     }
-    return callback();
+    client.publish(options.pubKey, event, { routingKey: event.code }, callback);
 }
 
 const _typeRegisterOptions = {
     engine: 'string',
     subEvents: 'Array<String>', // Conditional on engine = 'resident'
+    clientName: 'string',
     mqConfig: 'Object{}' // Conditional engine != 'resident'
 };
 
 // Define the EventBus class
-class EventBus extends CommonModule {
+class EventBus extends EventEmitter {
     constructor(props) {
         super(props);
         //
-        _initProps.call(this, props);
+        _initEventBusProps.call(this, props);
         //
         // For icp
         this._registries = {};
@@ -169,7 +160,7 @@ class EventBus extends CommonModule {
          * @param {*} callback 
          * @returns 
          */
-        this.register2 = (moduleRef, options, callback) => {
+        this.register = (moduleRef, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
                 options = {};
@@ -187,66 +178,40 @@ class EventBus extends CommonModule {
                     moduleRef: moduleRef
                 }
             }
-            //
+            // Update subscriptions
+            let allEvents = Object.values(eSysEvents).concat(options.subEvents || []);
+            allEvents.forEach(code => {
+                if (this._subscribers[code] === undefined) {
+                    this._subscribers[code] = [];
+                }
+                if (this._subscribers[code].indexOf(moduleName) === -1) {
+                    this._subscribers[code].push(moduleName);
+                }
+            });
             let engineOpt = options.engine || this._engine;
             if (engineOpt === sysdefs.eEventBusEngine.RESIDENT) {
-                let allEvents = Object.values(eSysEvents).concat(options.subEvents || []); // 
-                return _residentSub.call(this, allEvents, moduleName, callback);
+                return callback();
             }
             // Create rabbitmq-client
-            if (this._clients[moduleName] === undefined) {
-                this._clients[moduleName] = rascalWrapper.createClient({
-                    $name: `rascal@${moduleName}`,
-                    $parent: moduleRef,
+            let clientName = options.clientName || moduleName;
+            if (this._clients[clientName] === undefined) {
+                this._clients[clientName] = rascalWrapper.createClient({
+                    $parent: this,
+                    //
+                    $name: `rascal@${clientName}`,
                     config: options.mqConfig || {}
                 });
-            } 
-            return callback();
-        };
-
-        this.register = (moduleName, instRef, callback) => {
-            let err = null;
-            if (this._registries[moduleName] === undefined) {
-                this._registries[moduleName] = {
-                    name: moduleName,
-                    status: sysdefs.eStatus.ACTIVE,
-                    instRef: instRef
-                }
-            } else {
-                err = {
-                    code: eRetCodes.CONFLICT,
-                    message: 'ModuleName exists!'
-                }
             }
-            if (typeof callback === 'function') {
-                return callback(err);
-            }
-            return err;
+            return callback(null, this._clients[clientName]);
         };
+        this.on('message', (evt, callback) => {
+            return _consumeEvent.call(this, evt, callback);
+        });
         this.pause = (moduleName, callback) => {
             // TODO: Stop publish and consume events
         };
         this.resume = (moduleName) => {
             // TODO: Resume publish and consume events
-        };
-        /**
-         * 
-         * @param {Array<String>} eventCodes 
-         * @param {String} moduleName 
-         * @param {Object: {engine, spec}} options 
-         * @param {Error, Result} callback 
-         * @returns 
-         */
-        this.subscribe = (eventCodes, moduleName, options, callback) => {
-            if (typeof options === 'function') {
-                callback = options;
-                options = {};
-            }
-            let engineOpt = options.engine || this._engine;
-            if (engineOpt === sysdefs.eEventBusEngine.RESIDENT) {
-                return _residentSub.call(this, eventCodes, moduleName, callback);
-            }
-            return _extMqSub.call(this, moduleName, options.spec, callback);
         };
         /**
          * 
@@ -269,7 +234,7 @@ class EventBus extends CommonModule {
                 //
                 let engineOpt = options.engine || this._engine;
                 if (engineOpt === sysdefs.eCacheEngine.RESIDENT) {
-                    return _residentPub.call(this, event, options, callback);
+                    return _consumeEvent.call(this, event, callback);
                 }
                 return _extMqPub.call(this, event, options, callback);
             });

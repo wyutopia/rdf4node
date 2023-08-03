@@ -12,6 +12,8 @@ function _initObject(props) {
 
 function _initModule(props) {
     //
+    _initObject.call(this, props);
+    //
     this.mandatory = true;
     this.state = props.status || sysdefs.eModuleState.INIT;
     this.isActive = () => {
@@ -26,9 +28,8 @@ class CommonObject {
     }
 }
 
-class CommonModule extends CommonObject {
+class CommonModule {
     constructor(props) {
-        super(props);
         _initModule.call(this, props);
         // Additional properties go here ...
     }

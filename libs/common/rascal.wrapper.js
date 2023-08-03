@@ -88,7 +88,7 @@ const _typeClientProps = {
 
 function _initClient(options) {
     let clientConf = _assembleClientConfig(options);
-    logger.info(`${this.$name}: Create new RacalClient with ${tools.inspect(clientConf)}`);
+    logger.debug(`${this.$name}: Create new RacalClient with ${tools.inspect(clientConf)}`);
     this.state = eClientState.Init;
     Broker.create(clientConf, (err, broker) => {
         if (err) {
@@ -96,6 +96,8 @@ function _initClient(options) {
             this.state = eClientState.Null;
             return null;
         }
+        logger.info(`${this.$name}[${this.state}]: broker created.`);
+        this.state = eClientState.Conn0;
         broker.on('error', (err) => {
             logger.error(`${this.$name}[${this.state}]: Broker error! - ${err.message}`);
             this.state = eClientState.Null;
@@ -103,7 +105,7 @@ function _initClient(options) {
         });
         // Perform subscribe and store publication keys
         const self = this;
-        let params = options.params;
+        const params = options.params;
         async.parallel([
             // Perform subscription
             function (callback) {

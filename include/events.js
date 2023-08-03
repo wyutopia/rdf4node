@@ -95,7 +95,7 @@ class EventModule extends EventObject {
         // Perform initiliazing codes...
         (() => {
             if (this._ebus) {
-                this._ebus.register2(this, {
+                this._ebus.register(this, {
                     engine: props.engine || sysdefs.eEventBusEngine.RESIDENT,
                     subEvents: Object.keys(this._eventHandlers),
                     mqConfig: props.mqConfig || {}
