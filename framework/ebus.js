@@ -92,7 +92,7 @@ function _consumeEvent(rawEvent, options, callback) {
         callback = options;
         options = {};
     }
-    logger.debug(`${this.$name}: Perform consuming event: ${tools.inspect(rawEvent)} - ${tools.inspect(options)}`);
+    logger.debug(`Perform consuming event: ${tools.inspect(rawEvent)} - ${tools.inspect(options)}`);
     let event = options.engine === sysdefs.eCacheEngine.RESIDENT? rawEvent : rawEvent.content;
     let subscribers = this._subscribers[event.code];
     if (tools.isTypeOfArray(subscribers)) {
@@ -102,6 +102,7 @@ function _consumeEvent(rawEvent, options, callback) {
                 logger.info(`Ignore non-active module! - ${moduleName}`);
             } else {
                 try {
+                    logger.debug(`Emit message for ${registry.moduleRef.$name}`);
                     registry.moduleRef.emit('message', event);
                 } catch (ex) {
                     logger.error(`Emit app-event error for module: ${moduleName} - ${tools.inspect(ex)}`);
@@ -178,7 +179,7 @@ class EventBus extends EventEmitter {
                 return callback();
             }
             let moduleName = moduleRef.$name;
-            logger.debug(`${this.$name}: register ${moduleName} with options - ${tools.inspect(options)}`);
+            logger.debug(`Register ${moduleName} with options - ${tools.inspect(options)}`);
             if (this._registries[moduleName] === undefined) {
                 this._registries[moduleName] = {
                     name: moduleName,
