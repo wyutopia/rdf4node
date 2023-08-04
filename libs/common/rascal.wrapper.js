@@ -205,7 +205,7 @@ class RascalClient extends CommonObject {
                 });
             }
             if (this._pubKeys.indexOf(pubKey) === -1) {
-                let msg = `${this.$name}[${this.state}]: Invalid publication configure! - key=${pubKey}`;
+                let msg = `${this.$name}[${this.state}]: Unrecognized publication - ${pubKey}!`;
                 logger.error(msg);
                 return callback({
                     code: eRetCodes.MQ_PUB_ERR,

@@ -21,7 +21,7 @@ const rascalWrapper = require('../libs/common/rascal.wrapper');
 
 const _DEFAULT_CHANNEL_ = 'default';
 const _DEFAULT_PUBKEY_ = 'pubEvent';
-const _LOCALHOST_ = 'local';
+const _DEFAULT_DEST_ = 'local';
 
 // Define the eventLogger instance
 class EventLogger extends EventEmitter {
@@ -108,9 +108,9 @@ function _consumeEvent(event, callback) {
 }
 
 const _typePubOptions = {
-    pubKey: 'pubKey',
-    dest: 'local',
-    channel: 'default'
+    pubKey: _DEFAULT_PUBKEY_,
+    dest: _DEFAULT_DEST_,
+    channel: _DEFAULT_CHANNEL_
 };
 /**
  * 
@@ -236,7 +236,7 @@ class EventBus extends EventEmitter {
                 callback = options;
                 options = _typePubOptions;
             }
-            logger.debug(`${this.$name}: Publish event - ${tools.inspect(event)} - ${tools.inspect(options)}`)
+            logger.debug(`Publish event - ${tools.inspect(event)} - ${tools.inspect(options)}`)
             //
             if (this._disabledEvents.indexOf(event.code) !== -1) {
                 logger.debug(`Ignore event: ${event.code}`);
@@ -255,5 +255,5 @@ class EventBus extends EventEmitter {
 
 // Define module
 module.exports = exports = {
-    EventBus, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _LOCALHOST_
+    EventBus, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEFAULT_DEST_
 };
