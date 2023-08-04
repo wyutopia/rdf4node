@@ -9,14 +9,18 @@ const EventEmitter = require('events');
 // Framework libs
 const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
-const {eventBus: config} = require('../include/config');
 const _MODULE_NAME = sysdefs.eFrameworkModules.EBUS;
+const {eventBus: config} = require('../include/config');
 const { initObject, initModule } = require('../include/base');
 const { eSysEvents, EventModule } = require('../include/events');
 const eRetCodes = require('../include/retcodes');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
+//
 const rascalWrapper = require('../libs/common/rascal.wrapper');
+
+const _DEFAULT_PUBKEY_ = 'pubEvent';
+const _LOCALHOST_ = 'local';
 
 // Define the eventLogger instance
 class EventLogger extends EventEmitter {
@@ -102,45 +106,39 @@ function _consumeEvent(event, callback) {
     return callback();
 }
 
-const _typeMqPubOptions = {
-    pubKey: 'string',
-    sender: 'string?'
+const _typePubOptions = {
+    pubKey: 'pubKey',
+    dest: 'local',
+    channel: 'default'
 };
 /**
  * 
  * @param {*} event 
- * @param {_typeMqPubOptions} options 
+ * @param {_typePubOptions} options 
  * @param {*} callback 
  * @returns 
  */
 function _extMqPub(event, options, callback) {
     if (typeof options === 'function') {
         callback = options;
-        options = {};
+        options = _typePubOptions;
     }
-    if (options.pubKey === undefined) {
-        return callback({
-            code: eRetCodes.MQ_PUB_ERR,
-            message: 'Bad request! - options.pubKey is required.'
-        });
-    }
-    let sender = options.sender || tools.safeGetJsonValue(event, 'headers.source');
-    let client = this._clients[sender];
+    let pubKey = options.pubKey || _typePubOptions.pubKey;
+    let channel = options.channel || _typePubOptions.channel;
+    let client = this._clients[channel];
     if (!client) {
         return callback({
             code: eRetCodes.MQ_PUB_ERR,
-            message: `Invalid client! - sender=${sender}`
+            message: `Invalid client! - sender=${options.sender}`
         })
     }
-    client.publish(options.pubKey, event, { routingKey: event.code }, callback);
+    return client.publish(pubKey, event, { routingKey: event.code }, callback);
 }
 
 const _typeRegisterOptions = {
     engine: 'string',
     subEvents: 'Array<String>', // Conditional on engine = 'resident'
-    pubKey: 'string', // The default pubKey when engine = 'rabbitmq'
-    channel: 'string',
-    mqConfig: 'Object' // Conditional engine != 'resident'
+    channel: 'string'
 };
 const _DEFAULT_CHANNEL = 'default';
 
@@ -175,6 +173,7 @@ class EventBus extends EventEmitter {
                 return callback();
             }
             let moduleName = moduleRef.$name;
+            logger.debug(`${this.$name}: register ${moduleName} with options - ${tools.inspect(options)}`);
             if (this._registries[moduleName] === undefined) {
                 this._registries[moduleName] = {
                     name: moduleName,
@@ -229,14 +228,14 @@ class EventBus extends EventEmitter {
         /**
          * 
          * @param {Object: {code, headers, body}} event 
-         * @param {*} options 
+         * @param {_typePubOptions} options 
          * @param {Error, Result} callback 
          * @returns 
          */
         this.publish = (event, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
-                options = {};
+                options = _typePubOptions;
             }
             //
             if (this._disabledEvents.indexOf(event.code) !== -1) {
@@ -246,7 +245,7 @@ class EventBus extends EventEmitter {
             return this._eventLogger.pub(event, options, () => {
                 //
                 let engineOpt = options.engine || this._engine;
-                if (engineOpt === sysdefs.eCacheEngine.RESIDENT) {
+                if (options.dest === 'local' || engineOpt === sysdefs.eCacheEngine.RESIDENT) {
                     return _consumeEvent.call(this, event, callback);
                 }
                 return _extMqPub.call(this, event, options, callback);

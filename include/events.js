@@ -11,7 +11,6 @@ const EventEmitter = require('events');
 // Framework libs
 const sysdefs = require('./sysdefs');
 const eRetCodes = require('./retcodes');
-const { eventBus: config } = require('./config');
 const {initObject, initModule, CommonModule, CommonObject} = require('./base');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'events');
@@ -78,7 +77,7 @@ class EventModule extends EventObject {
                     message: 'Create EventBus before using!'
                 })
             }
-            return this._ebus.publish(event, callback);
+            return this._ebus.publish(event, options, callback);
         };
         this._msgProc = (msg, ackOrNack) => {
             if (typeof ackOrNack !== 'function') {
@@ -104,7 +103,6 @@ class EventModule extends EventObject {
                     subEvents: Object.keys(this._eventHandlers),
                     channel: props.channel
                 };
-                logger.debug(`${this.$name}: Register to EventBus with - ${tools.inspect(options)}`);
                 this._ebus.register(this, options, tools.noop);
             }
         })();
