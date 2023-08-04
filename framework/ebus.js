@@ -137,7 +137,6 @@ function _extMqPub(event, options, callback) {
 }
 
 const _typeRegisterOptions = {
-    engine: 'string',
     subEvents: 'Array<String>', // Conditional on engine = 'resident'
     channel: 'string'
 };
@@ -192,8 +191,7 @@ class EventBus extends EventEmitter {
                     this._subscribers[code].push(moduleName);
                 }
             });
-            let engineOpt = options.engine || this._engine;
-            if (engineOpt === sysdefs.eEventBusEngine.RESIDENT) {
+            if (this._engine === sysdefs.eEventBusEngine.RESIDENT) {
                 return callback();
             }
             let engineConfig = config[engineOpt];
@@ -245,8 +243,7 @@ class EventBus extends EventEmitter {
             }
             return this._eventLogger.pub(event, options, () => {
                 //
-                let engineOpt = options.engine || this._engine;
-                if (options.dest === 'local' || engineOpt === sysdefs.eCacheEngine.RESIDENT) {
+                if (options.dest === 'local' || this._engine === sysdefs.eCacheEngine.RESIDENT) {
                     return _consumeEvent.call(this, event, callback);
                 }
                 return _extMqPub.call(this, event, options, callback);
