@@ -64,7 +64,8 @@ class EventModule extends EventObject {
             if (typeof options === 'function') {
                 callback = options;
                 options = {
-                    routingKey: event.code
+                    pubKey: this._pubKey,
+                    channel: this._channel
                 }
             }
             //
