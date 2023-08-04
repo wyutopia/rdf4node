@@ -87,8 +87,13 @@ function _initEventBusProps(props) {
     this._eventLogger = global._$eventLogger;
 }
 
-function _consumeEvent(event, callback) {
-    logger.debug(`${this.$name}: Perform consuming event: ${tools.inspect(event)}`);
+function _consumeEvent(rawEvent, options, callback) {
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    logger.debug(`${this.$name}: Perform consuming event: ${tools.inspect(rawEvent)} - ${tools.inspect(options)}`);
+    let event = options.engine === sysdefs.eCacheEngine.RESIDENT? rawEvent : rawEvent.content;
     let subscribers = this._subscribers[event.code];
     if (tools.isTypeOfArray(subscribers)) {
         subscribers.forEach(moduleName => {
@@ -245,7 +250,7 @@ class EventBus extends EventEmitter {
             return this._eventLogger.pub(event, options, () => {
                 //
                 if (options.dest === 'local' || this._engine === sysdefs.eCacheEngine.RESIDENT) {
-                    return _consumeEvent.call(this, event, callback);
+                    return _consumeEvent.call(this, event, {engine: sysdefs.eCacheEngine.RESIDENT}, callback);
                 }
                 return _extMqPub.call(this, event, options, callback);
             });
