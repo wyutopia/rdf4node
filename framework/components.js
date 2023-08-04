@@ -311,6 +311,10 @@ class EntityController extends ControllerBase {
         this._entityRepos = {};
         // Init controller properties
         _initCtlSpec.call(this, props.ctlSpec || {});
+        // Register event publishers
+        this._domainEvents = props.domainEvents || {};
+        this._pubKey = props.pubKey;
+        this._channel = props.channel;        
         // Implementing the class methods
         this.getRepo = (dataSourceOption, callback) => {
             if (typeof dataSourceOption === 'function') {
@@ -348,8 +352,6 @@ class EntityController extends ControllerBase {
             }
             return repo;
         };
-        // Register event publishers
-        this._domainEvents = props.domainEvents || {};
         // Implementing basic CRUD methods
         this.find = {
             val: (() => {
