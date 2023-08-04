@@ -26,7 +26,7 @@ class RascalClientMangager extends EventModule {
         this._clients = {};
         // Implementing member methods
         this.createClient = (options) => {
-            options.parent = this;
+            options.manager = this; // Add clientManager reference
             let client = new RascalClient(options);
             this._clients[client.id] = client;
             return client;
@@ -162,6 +162,7 @@ const _typeClientProps = {
     id: 'string',
     $name: 'string',
     $parent: 'object',
+    manager: 'object',
     config: 'object'
 };
 

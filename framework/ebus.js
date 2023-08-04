@@ -19,6 +19,7 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 //
 const rascalWrapper = require('../libs/common/rascal.wrapper');
 
+const _DEFAULT_CHANNEL_ = 'default';
 const _DEFAULT_PUBKEY_ = 'pubEvent';
 const _LOCALHOST_ = 'local';
 
@@ -256,5 +257,5 @@ class EventBus extends EventEmitter {
 
 // Define module
 module.exports = exports = {
-    EventBus
+    EventBus, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _LOCALHOST_
 };

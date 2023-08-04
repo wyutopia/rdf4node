@@ -16,9 +16,6 @@ const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'events');
 const tools = require('../utils/tools');
 
-const _DEFAULT_CLIENT = 'project';
-const _DEFAULT_PUB_KEY = 'pubPrjEvent';
-
 const sysEvents = {
     // Module
     SYS_MODULE_CREATE              : '_module.create',
