@@ -194,7 +194,7 @@ class EventBus extends EventEmitter {
             if (this._engine === sysdefs.eEventBusEngine.RESIDENT) {
                 return callback();
             }
-            let engineConfig = config[engineOpt];
+            let engineConfig = config[this._engine];
             // Create rabbitmq-client
             let channel = options.channel || _DEFAULT_CHANNEL;
             if (this._clients[channel] === undefined) {
@@ -236,6 +236,7 @@ class EventBus extends EventEmitter {
                 callback = options;
                 options = _typePubOptions;
             }
+            logger.debug(`${this.$name}: Publish event - ${tools.inspect(event)} - ${tools.inspect(options)}`)
             //
             if (this._disabledEvents.indexOf(event.code) !== -1) {
                 logger.debug(`Ignore event: ${event.code}`);

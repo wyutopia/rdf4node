@@ -26,7 +26,7 @@ class RascalClientMangager extends EventModule {
         this._clients = {};
         // Implementing member methods
         this.createClient = (options) => {
-            options.manager = this; // Add clientManager reference
+            options.$factory = this; // Add clientManager reference
             let client = new RascalClient(options);
             this._clients[client.id] = client;
             return client;
@@ -45,7 +45,7 @@ class RascalClientMangager extends EventModule {
             });
         }
         // Implementing event handle
-        this.on('end', (clientId, err) => {
+        this.on('client-end', (clientId, err) => {
             logger.info(`${this.$name}: On client [END] - ${clientId} - ${tools.inspect(err)}`);
             delete this._clients[clientId];
         });
@@ -90,7 +90,7 @@ function _initClient(options) {
         broker.on('error', (err) => {
             logger.error(`${this.$name}[${this.state}]: Broker error! - ${err.message}`);
             this.state = eClientState.Null;
-            this.$parent.emit('client-end', this.id, err);
+            this.$factory.emit('client-end', this.id, err);
         });
         // Perform subscribe and store publication keys
         const self = this;
@@ -162,7 +162,7 @@ const _typeClientProps = {
     id: 'string',
     $name: 'string',
     $parent: 'object',
-    manager: 'object',
+    $factory: 'object',
     config: 'object'
 };
 
@@ -172,6 +172,7 @@ class RascalClient extends CommonObject {
         super(props);
         // Declaring member variables
         this.$parent = props.$parent;
+        this.$factory = props.$factory;
         //
         this.state = eClientState.Null;
         this._broker = null;
