@@ -7,12 +7,13 @@ const appRoot = require('app-root-path');
 const sysdefs = require('../include/sysdefs')
 const eRetCodes = require('../include/retcodes');
 const {EventModule, EventObject, sysEvents} = require('../include/events');
-const {sysConf, winstonWrapper: {WinstonLogger}} = require('../libs');
+const sysConf = require('../include/config');
+const _MODULE_NAME = sysdefs.eFrameworkModules.CACHE;
+const {WinstonLogger} =  require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 const redisWrapper = require('../libs/common/redis.wrapper');
 
-const _MODULE_NAME = sysdefs.eFrameworkModules.CACHE;
 const eDataType = {
     Kv              : 'kv',
     List            : 'ls',

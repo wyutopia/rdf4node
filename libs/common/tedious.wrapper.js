@@ -8,8 +8,7 @@ const {Connection, Request, TYPES} = require('tedious');
 const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
 const eRetCodes = require('../../include/retcodes');
-const {CommonObject,  CommonModule} = require('../../include/common');
-const theApp = require('../../app');
+const {CommonObject,  CommonModule} = require('../../include/base');
 const tools = require('../../utils/tools');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
@@ -208,7 +207,8 @@ class TdsWrapper extends CommonModule {
 }
 const tdsWrapper = new TdsWrapper({
     $name: 'TdsClientManager',
-    type: sysdefs.eModuleType.CONN,
+    $type: sysdefs.eModuleType.CM,
+    //
     mandatory: true,
     state: sysdefs.eModuleState.ACTIVE
 });

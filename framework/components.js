@@ -7,12 +7,13 @@ const ObjectId = require('mongoose').Types.ObjectId;
 // Framework libs
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
-const {EventModule, icp, sysEvents} = require('../include/events');
-const {winstonWrapper: {WinstonLogger}} = require('../libs');
+const {EventModule} = require('../include/events');
+const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'comp');
 const tools = require('../utils/tools');
-const {parseParameters} = require('./ac');
+//
 const {repoFactory, paginationVal, _DS_DEFAULT_} = require('./repository');
+const {_DEFAULT_PUBKEY_, _DEFAULT_CHANNEL_} = require('./ebus');
 
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
@@ -93,7 +94,10 @@ function _publishEvents(options, callback) {
             }
         });
     }
-    this.pubEvent(evt, err => {
+    this.pubEvent(evt, {
+        pubKey: this._pubKey,
+        channel: this._channel
+    }, err => {
         if (err) {
             logger.error(`Publish event: ${tools.inspect(evt)} error! - ${err.code}#${err.message}`);
         }
@@ -134,6 +138,9 @@ const _defaultCtlSpec = {
     select: null,               // For select 
     deleteOptions: null,        // For additional delete criterias
     briefSelect: 'name',        // For brief query
+    // For publish events
+    pubKey: _DEFAULT_PUBKEY_,
+    channel: _DEFAULT_CHANNEL_,
     // For overridable query operations
     beforeFind: function (req, callback) {
         return callback(null, {});
@@ -304,6 +311,10 @@ class EntityController extends ControllerBase {
         this._entityRepos = {};
         // Init controller properties
         _initCtlSpec.call(this, props.ctlSpec || {});
+        // Register event publishers
+        this._domainEvents = props.domainEvents || {};
+        this._pubKey = props.pubKey;
+        this._channel = props.channel;        
         // Implementing the class methods
         this.getRepo = (dataSourceOption, callback) => {
             if (typeof dataSourceOption === 'function') {
@@ -341,8 +352,6 @@ class EntityController extends ControllerBase {
             }
             return repo;
         };
-        // Register event publishers
-        this._domainEvents = props.domainEvents || {};
         // Implementing basic CRUD methods
         this.find = {
             val: (() => {

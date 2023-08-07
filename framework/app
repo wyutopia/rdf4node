@@ -9,16 +9,14 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 // project libs
-const pubdefs = require('./include/sysdefs');
-const eRetCodes = require('./include/retcodes');
-const config = require('./framework/config');
-const consulClient = (config.consul? require('./libs/base/consul.wrapper') : null);
-const {WinstonLogger} = require('./libs/base/winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
-const tools = require('./utils/tools');
+const sysdefs = require('../include/sysdefs');
+const eRetCodes = require('../include/retcodes');
+const tools = require('../utils/tools');
 //
-const appConf = config.app;
-const apmConf = tools.safeGetJsonValue(config, 'inet.apm');
+const {app: config} = require('../include/config');
+const consulClient = (config.consul? require('../libs/base/consul.wrapper') : null);
+const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
 
 let version = null;
 let consulSignIn = false;
@@ -75,7 +73,7 @@ function _deregService(callback) {
 
 function _raiseStartupAlarm(callback) {
     let options = {
-        eventId: pubdefs.eAlarmCode.SERVICE_STARTUP,
+        eventId: sysdefs.eAlarmCode.SERVICE_STARTUP,
         content: 'This is a startup alarm test!'
     }
     return this.fireAlarm(options, callback);
@@ -83,7 +81,7 @@ function _raiseStartupAlarm(callback) {
 
 function _raiseGracefulExitAlarm(callback) {
     let options = {
-        eventId: pubdefs.eAlarmCode.GRACEFUL_EXIT,
+        eventId: sysdefs.eAlarmCode.GRACEFUL_EXIT,
         content: 'This is a graceful-exit alarm test!'
     }
     return this.fireAlarm(options, callback);
@@ -91,41 +89,48 @@ function _raiseGracefulExitAlarm(callback) {
 
 function _buildModuleArch() {
     let arch = {};
-    Object.keys(pubdefs.eModuleType).forEach(layer => {
+    Object.keys(sysdefs.eModuleType).forEach(layer => {
         arch[layer.toLowerCase()] = [];
     });
     return arch;
 }
 
+const _typeAppConfig = {
+
+}
+function _initApp(props) {
+
+}
+
 // The application class
 class TheApp extends EventEmitter {
-    constructor(config) {
+    constructor(props) {
         super();
         // Declaring member variables
-        this._id = `${appConf.registry}_${process.env.DEPLOY === pubdefs.eDeployMode.NATIVE? tools.uuidv4() : os.hostname()}`;
+        this._id = `${props.registry}_${process.env.DEPLOY === sysdefs.eDeployMode.NATIVE? tools.uuidv4() : os.hostname()}`;
+        this.$name = props.name || this._id;
+        _initApp.call(this, props);
+        
         this._config = Object.assign(config, {pushAlarm: true});
-        this._state = pubdefs.eModuleState.INIT;
+        this._state = sysdefs.eModuleState.INIT;
         this._modules = {};
         this._arch = _buildModuleArch();
         this._isMaster = false;
         // Implementing member methods
+        this.getName = () => {
+            return this.$name;
+        }
+        this.getInstance = () => {
+            return this._id;
+        }
         this.fetchServices = (callback) => {
             return consulClient.listServices(callback);
         }
         this.fetchServiceNodes = (serviceName, callback) => {
             return consulClient.listServiceNodes(serviceName, callback);
         }
-        this.getServiceName = () => {
-            return appConf.name;
-        }
-        this.getServiceAlias = () => {
-            return appConf.alias;
-        }
         this.getRegistry = () => {
             return appConf.registry;
-        }
-        this.getInstance = () => {
-            return this._id;
         }
         this.setState = (s) => {
             this._state = s;
@@ -175,13 +180,13 @@ class TheApp extends EventEmitter {
             } else {
                 this._modules[mod.$name] = mod;
                 // Add to clean up chain
-                let layer = mod.type || pubdefs.eModuleType.OBJ;
+                let layer = mod.type || sysdefs.eModuleType.OBJ;
                 this._arch[layer].push(mod);
             }
         }
         this.setModuleState = (name, s) => {
             assert(name !== undefined);
-            assert(pubdefs.isValidModuleState(s));
+            assert(sysdefs.isValidModuleState(s));
             if (this._modules[name] !== undefined) {
                 this._modules[name].state = s;
                 logger.info(name, s);
@@ -197,7 +202,7 @@ class TheApp extends EventEmitter {
             let keys = Object.keys(this._modules);
             for (let i = 0; i < keys.length; i++) {
                 let key = keys[i];
-                if (this._modules[key].mandatory === true && this._modules[key].state !== pubdefs.eModuleState.ACTIVE) {
+                if (this._modules[key].mandatory === true && this._modules[key].state !== sysdefs.eModuleState.ACTIVE) {
                     active = false;
                     break;
                 }
@@ -229,7 +234,7 @@ class TheApp extends EventEmitter {
             });
         }
         this.isActive = () => {
-            return this._state === pubdefs.eModuleState.ACTIVE;
+            return this._state === sysdefs.eModuleState.ACTIVE;
         }
         this.setInnerToken = (token) => {
             this._prevToken = this._innerToken;
@@ -246,7 +251,7 @@ class TheApp extends EventEmitter {
                     message: 'Invalid secret!'
                 });
             }
-            let conf = pubdefs.extractValidConfig(args);
+            let conf = sysdefs.extractValidConfig(args);
             this._config = Object.assign(this._config, conf);
             return callback(null, this._config);
         }
@@ -307,17 +312,6 @@ class TheApp extends EventEmitter {
         this.isMaster = () => {
             return (process.env.NODE_ENV === 'production' && this._isMaster === true);
         }
-        this.sendMessage = (msg) =>  {
-            let hostModule = null;
-            if (msg && msg.host && msg.host.mid) {
-                hostModule = this._modules[msg.host.mid];
-            }
-            if (hostModule) {
-                hostModule.emit('MESSAGE', msg);
-            } else {
-                logger.error('Invalid host module!', tools.inspect(msg));
-            }
-        }
         (() => {
             let beginTime = new Date();
             logger.info('>>>>>> System initializing <<<<<<');
@@ -326,7 +320,7 @@ class TheApp extends EventEmitter {
                 fireStartupAlarm: _raiseStartupAlarm.bind(this)
             }, () => {
                 logger.info(`>>>>>> System startup in ${new Date().valueOf() - beginTime.valueOf()}ms`);
-                this._state = pubdefs.eModuleState.ACTIVE;
+                this._state = sysdefs.eModuleState.ACTIVE;
                 return null;
             });
         })();
@@ -336,7 +330,8 @@ class TheApp extends EventEmitter {
 let theApp = new TheApp(config);
 process.on('SIGINT', () => {
     logger.info('>>>>>> On SIGINT <<<<<<');
-    theApp.setState(pubdefs.eModuleState.STOP_PENDING);
+    theApp.setState(sysdefs.eModuleState.STOP_PENDING);
     theApp.gracefulExit();
 });
-module.exports = theApp;
+
+module.exports = exports = theApp;

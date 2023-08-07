@@ -3,7 +3,7 @@
 /**
  * Module dependencies.
  */
-const {sysBootstrap} = require('@icedeer/rdf4node/framework/bootstrap');
+const {sysBootstrap} = require('@icedeer/rdf4node/bootstrap');
 sysBootstrap(err => {
     const {
         sysConfig: config,

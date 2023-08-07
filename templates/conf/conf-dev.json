@@ -30,7 +30,8 @@
           "pwd": "Dev123456",
           "db": "test",
           "authSource": "test"
-        }
+        },
+        "enabled": true
       }
     },
     "caches": {
@@ -45,8 +46,31 @@
         }
       }
     },
-    "icp": {
-      "routePolicy": "alwaysExternal",
-      "disabledEvents": []
+    "eventBus": {
+      "engine": "resident",
+      "lo": true,
+      "disabledEvents": [],
+      "persistent": true,
+      "rabbitmq": {
+        "vhost": "rdf4node",
+        "connection": {
+          "slashes": true,
+          "protocol": "ampq",
+          "hostname": "127.0.0.1",
+          "user": "admin",
+          "password": "Dev#2023",
+          "port": 5672,
+          "options": {
+            "heartbeat": 4
+          }
+        },
+        "default": {
+          "exchanges": {},
+          "queues": [],
+          "publications": {},
+          "bindings": {},
+          "subscriptions": {}
+        }
+      }
     }
   }

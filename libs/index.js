@@ -1,7 +1,7 @@
 /**
  * Created by Eric on 2023/02/12
  */
-const config = require('../framework/config');
+const config = require('../include/config');
 module.exports = exports = {
     // The modules
     sysConf             : config,

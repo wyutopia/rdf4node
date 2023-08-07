@@ -2,11 +2,11 @@
  * Created by Eric on 2023/07/05
  */
 const appRoot = require('app-root-path');
+const multer = require('multer');
 const path = require('path');
 const tools = require('../../utils/tools');
 const _DEFAULT_DIR = process.env.UPLOAD_DIR || path.join(appRoot.path, 'public/uploads/');
 console.log('>>>>>> The default upload dir: ', _DEFAULT_DIR);
-const multer = require('multer');
 
 //
 const _uploads = {};

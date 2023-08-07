@@ -10,7 +10,7 @@
  const eRetCodes = require('../../include/retcodes');
  const {EventEmitter, EventModule} = require('../../include/events');
  const tools = require('../../utils/tools');
- const {mysql: config} = require('../../framework/config');
+ const {mysql: config} = require('../../include/config');
  const {WinstonLogger} = require('../base/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'mysql2');
  
@@ -374,7 +374,8 @@ class MysqlWrapper extends EventModule {
  
  const mysqlWrapper = new MysqlWrapper({
      $name: MODULE_NAME,
-     type: sysdefs.eModuleType.CONN,
+     $type: sysdefs.eModuleType.CM,
+     //
      mandatory: true,
      state: sysdefs.eModuleState.ACTIVE,
      config: config

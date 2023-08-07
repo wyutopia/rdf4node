@@ -166,14 +166,14 @@
   * @param options
   * @constructor
   */
- class EventModule extends EventEmitter {
+ class _xEventModule extends EventEmitter {
      constructor(options) {
          assert(options !== undefined);
          super(options);
          // Declaring member variables
          this.$name = options.name || 'BaseEventModule';
          this.mandatory = options.mandatory || false;
-         this.state = options.state || pubdefs.eModuleState.ACTIVE;
+         this.state = options.state || pubdefs.eModuleStatus.ACTIVE;
          this.verbose = options.verboseOn || false;
          this.maxThreads = options.maxThreads || 0;
          this.fsm = {};

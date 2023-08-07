@@ -35,12 +35,12 @@
     });
 })();
 
-const eSysMode = {
+const eSysStatus = {
     OFFLINE    : "offline",
     MAINTAIN   : "maintain",
     ONLINE     : "online"
 };
-exports.eSysMode = eSysMode;
+exports.eSysStatus = eSysStatus;
 
 const eDeployMode = {
     NATIVE     : 'native',
@@ -51,6 +51,8 @@ exports.eDeployMode = eDeployMode;
 const eFrameworkModules = {
     CONFIG          : '_config_',
     REGISTRY        : '_registry_',
+    EBUS            : '_ebus_',
+    EVTLOGGER       : '_evtlogger_',
     ICP             : '_icp_',
     TIMER           : '_timer_',
     DATASOURCE      : '_datasource_',
@@ -68,7 +70,7 @@ const eModuleState = {
     STOP_PENDING : 'pending'
 };
 exports.eModuleState = eModuleState;
-exports.isValidModuleState = function (s) {
+exports.isValidModuleStatus = function (s) {
     return Object.values(eModuleState).indexOf(s) > -1;
 };
 
@@ -76,8 +78,8 @@ const eModuleType = {
     OBJ          : 'obj',
     TASK         : 'task',
     APP          : 'app',
-    CONN         : 'conn',
-    OSEXT        : 'osext'
+    CM           : 'cm',   // connection manager
+    LIB          : 'lib'
 };
 exports.eModuleType = eModuleType;
 exports.isValidModuleType = function (s) {
@@ -286,9 +288,18 @@ const eCacheEngine = {
 };
 exports.eCacheEngine = eCacheEngine;
 
+const eEventBusEngine = {
+    RESIDENT      : 'resident',
+    RABBITMQ      : 'rabbitmq',
+    ROCKETMQ      : 'rocketmq',
+    REDIS         : 'redis'
+};
+exports.eEventBusEngine = eEventBusEngine;
+
 const eClientState = {
     Null: 'null',
     Init: 'init',
+    Conn0: 'conn0',
     Conn: 'connected',
     ConnErr: 'connerr',
     Querying: 'querying',

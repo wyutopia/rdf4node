@@ -78,6 +78,7 @@ docker run -id --name rmq-dev \
     -p 15672:15672 \
     -p 5672:5672 \
     -p 15692:15692 \
+    -e RABBITMQ_DEFAULT_VHOST=dev \
     -e RABBITMQ_DEFAULT_USER=admin \
     -e RABBITMQ_DEFAULT_PASS=Dev#2022 \
     rabbitmq

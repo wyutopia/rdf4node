@@ -1,19 +1,16 @@
 /**
  * Created by Eric on 2021/11/10
  */
-exports.theApp = require('./app');
-
 // Definitions
 exports.eRetCodes = require('./include/retcodes');
 exports.base = require('./include/base');
-exports.common = require('./include/common');
 exports.events = require('./include/events');
 exports.ac = require('./framework/ac');
 exports.components = require('./framework/components');
 exports.repository = require('./framework/repository');
 exports.cache = require('./framework/cache');
 exports.registry = require('./framework/registry');
-const config = require('./framework/config');
+const config = require('./include/config');
 exports.sysConfig = config;
 exports.allConfig = config;
 // utilities
@@ -21,7 +18,7 @@ exports.tools = require('./utils/tools');
 exports.logDir = require('./utils/logdir-maint');
 
 // base libs
-exports.XTask = require('./libs/xtask');
+exports.XTask = require('./framework/xtask');
 //exports.moduleWrapper = require('./libs/event-module');
 exports.expressWrapper = require('./libs/base/express.wrapper');
 exports.MorganWrapper = require('./libs/base/morgan.wrapper');

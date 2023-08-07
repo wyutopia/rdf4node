@@ -8,8 +8,7 @@ const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 // Project modules
 const sysdefs = require("../../include/sysdefs");
-const theApp = require("../../app");
-const {grpc: config} =  require('../../framework/config');
+const {grpc: config} =  require('../../include/config');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'grpc');
@@ -160,7 +159,7 @@ class ProtoDescriptor {
         }
         //
         (() => {
-            theApp.regModule(this);
+            global._$theApp.regModule(this);
         })();
     }
 }

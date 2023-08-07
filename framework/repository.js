@@ -12,7 +12,7 @@ const ObjectId = require('mongoose').Types.ObjectId;
 const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY;
 const eRetCodes = require('../include/retcodes');
 const { EventModule, EventObject, sysEvents } = require('../include/events');
-const { winstonWrapper: { WinstonLogger } } = require('../libs');
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 //
@@ -25,21 +25,20 @@ function _uniQuery(query, options, callback) {
             query[method](options[method]);
         }
     });
-    return query.exec((err, result) => {
-        if (err) {
-            let msg = `Query error! - ${err.message}`;
-            logger.error(msg);
-            return callback({
-                code: eRetCodes.DB_QUERY_ERR,
-                message: msg
-            })
-        }
+    return query.exec().then((result) => {
         if (options.allowEmpty || result) {
             return callback(null, result);
         }
         return callback({
             code: eRetCodes.NOT_FOUND,
             message: `${this.$name}: Specified document not exists!`
+        });
+    }).catch(err => {
+        let msg = `Query error! - ${err.message}`;
+        logger.error(msg);
+        return callback({
+            code: eRetCodes.DB_QUERY_ERR,
+            message: msg
         })
     });
 }
@@ -78,15 +77,7 @@ function _updateOne(params, callback) {
             query[method](params[method]);
         }
     });
-    query.exec((err, doc) => {
-        if (err) {
-            let msg = `Update ${this.$name} error! - ${err.message}`;
-            logger.error(msg);
-            return callback({
-                code: eRetCodes.DB_UPDATE_ERR,
-                message: msg
-            });
-        }
+    query.exec().then(doc => {
         if (!doc) {
             let msg = `Specified ${this.$name} not found! - ${tools.inspect(filter)}`;
             logger.error(msg);
@@ -98,6 +89,13 @@ function _updateOne(params, callback) {
         // Append cache
         _appendCache.call(this, doc, () => {
             return callback(null, doc);
+        });
+    }).catch(err => {
+        let msg = `Update ${this.$name} error! - ${err.message}`;
+        logger.error(msg);
+        return callback({
+            code: eRetCodes.DB_UPDATE_ERR,
+            message: msg
         });
     });
 }
@@ -246,18 +244,17 @@ class Repository extends EventObject {
                 });
             }
             //logger.debug(`Create ${this.modelName} with data: ${tools.inspect(data)}`);
-            this._model.create(data, (err, doc) => {
-                if (err) {
-                    let msg = `Create ${this.modelName} error! - ${err.message}`;
-                    logger.error(msg);
-                    return callback({
-                        code: eRetCodes.DB_INSERT_ERR,
-                        message: err.code === 11000 ? `Create failed, ${this.modelName} Already exists!` : msg
-                    });
-                }
+            this._model.create(data).then(doc => {
                 // Append cache
                 _appendCache.call(this, doc, () => {
                     return callback(null, doc);
+                });
+            }).catch(err => {
+                let msg = `Create ${this.modelName} error! - ${err.message}`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.DB_INSERT_ERR,
+                    message: err.code === 11000 ? `Create failed, ${this.modelName} Already exists!` : msg
                 });
             });
         };
@@ -284,19 +281,18 @@ class Repository extends EventObject {
                 setDefaultsOnInsert: true,
                 new: true
             };
-            return this._model.findOneAndUpdate(params.filter, params.updates, options, (err, doc) => {
-                if (err) {
-                    let msg = `Insert error! - ${err.message}`;
-                    logger.error(msg);
-                    return callback({
-                        code: eRetCodes.DB_ERROR,
-                        message: msg
-                    })
-                }
+            return this._model.findOneAndUpdate(params.filter, params.updates, options).then(doc => {
                 // Append cache
                 _appendCache.call(this, doc, () => {
                     return callback(null, doc);
                 });
+            }).catch(err => {
+                let msg = `Insert error! - ${err.message}`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.DB_ERROR,
+                    message: msg
+                })
             });
         };
         // Find one document
@@ -361,15 +357,7 @@ class Repository extends EventObject {
             logger.debug(`Query ${this.$name} with filter: ${tools.inspect(filter)}`);
             //
             let countMethod = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
-            this._model[countMethod](filter, (err, total) => {
-                if (err) {
-                    let msg = `${countMethod} for ${this.$name} error! - ${err.message}`;
-                    logger.error(msg);
-                    return callback({
-                        code: eRetCodes.DB_QUERY_ERR,
-                        message: msg
-                    });
-                }
+            this._model[countMethod](filter).then(total => {
                 let result = {
                     total: total,
                     pageSize: ps,
@@ -386,20 +374,26 @@ class Repository extends EventObject {
                         query[method](options[method]);
                     }
                 });
-                return query.exec((err, docs) => {
-                    if (err) {
-                        let msg = `Query ${this.$name} error! - ${err.message}`;
-                        logger.error(msg);
-                        return callback({
-                            code: eRetCodes.DB_QUERY_ERR,
-                            message: msg
-                        });
-                    }
+                return query.exec().then(docs => {
                     result.values = docs;
                     // Append cache
                     _appendCache.call(this, docs, () => {
                         return callback(null, result);
                     });
+                }).catch(err => {
+                    let msg = `Query ${this.$name} error! - ${err.message}`;
+                    logger.error(msg);
+                    return callback({
+                        code: eRetCodes.DB_QUERY_ERR,
+                        message: msg
+                    });
+                });
+            }).            catch(err => {
+                let msg = `${countMethod} for ${this.$name} error! - ${err.message}`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.DB_QUERY_ERR,
+                    message: msg
                 });
             });
         };
@@ -438,15 +432,14 @@ class Repository extends EventObject {
             };
             let updates = options.updates || {};
             logger.debug(`UpdateMany ${this.$name} with filter: ${tools.inspect(filter)} - updates: ${tools.inspect(updates)}`);
-            this._model.updateMany(filter, updates, (err, result) => {
-                if (err) {
-                    logger.error(`${this.$name}: updateMany error! - ${err.message}`);
-                    return callback({
-                        code: eRetCodes.DB_UPDATE_ERR,
-                        message: 'updateMany error!'
-                    });
-                }
+            this._model.updateMany(filter, updates).then(result => {
                 return callback(null, result);
+            }).catch(err => {
+                logger.error(`${this.$name}: updateMany error! - ${err.message}`);
+                return callback({
+                    code: eRetCodes.DB_UPDATE_ERR,
+                    message: 'updateMany error!'
+                });
             });
         };
         this.aggregate = (pipeline, callback) => {
@@ -462,15 +455,7 @@ class Repository extends EventObject {
             }
             //
             logger.debug(`Aggregate ${this.$name} with pipeline: ${tools.inspect(pipeline)}`);
-            return this._model.aggregate(pipeline).allowDiskUse(true).exec((err, results) => {
-                if (err) {
-                    let msg = `Aggregate ${this.$name} error! - ${err.message}`;
-                    logger.error(msg);
-                    return callback({
-                        code: eRetCodes.DB_AGGREGATE_ERR,
-                        message: msg
-                    });
-                }
+            return this._model.aggregate(pipeline).allowDiskUse(true).exec().then(results => {
                 if (!results || results.length === 0) {
                     let msg = 'Empty data set.';
                     logger.error(`Aggregate ${this.$name} with ${tools.inspect(pipeline)} results: ${msg}`);
@@ -481,6 +466,13 @@ class Repository extends EventObject {
                 }
                 logger.debug(`Aggregate ${this.$name} results: ${tools.inspect(results)}`);
                 return callback(null, results);
+            }).catch(err => {
+                let msg = `Aggregate ${this.$name} error! - ${err.message}`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.DB_AGGREGATE_ERR,
+                    message: msg
+                });
             });
         };
         this.count = (options, callback) => {
@@ -497,15 +489,14 @@ class Repository extends EventObject {
             let filter = options.filter || {};
             let methodName = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
             logger.debug(`Count ${this.$name} by ${methodName} with filter: ${tools.inspect(filter)}`);
-            this._model[methodName](filter, (err, count) => {
-                if (err) {
-                    logger.error(`${this.$name}: count by ${tools.inspect(filter)} error! - ${err.message}`);
-                    return callback({
-                        code: eRetCodes.DB_QUERY_ERR,
-                        message: 'Count error!'
-                    });
-                }
+            this._model[methodName](filter).then(count => {
                 return callback(null, count);
+            }).catch(err => {
+                logger.error(`${this.$name}: count by ${tools.inspect(filter)} error! - ${err.message}`);
+                return callback({
+                    code: eRetCodes.DB_QUERY_ERR,
+                    message: 'Count error!'
+                });
             });
         };
         this.remove = (options, callback) => {
@@ -525,16 +516,15 @@ class Repository extends EventObject {
             };
             let methodName = options.multi === true ? 'deleteMany' : 'deleteOne';
             logger.debug(`Remove ${this.$name} by ${methodName} with filter: ${tools.inspect(filter)}`);
-            this._model[methodName](filter, (err, result) => {
-                if (err) {
-                    let msg = `Delete with options: ${tools.inspect(options)} error! - ${err.code}#${err.message}`;
-                    logger.error(msg);
-                    return callback({
-                        code: eRetCodes.DB_DELETE_ERR,
-                        message: msg
-                    });
-                }
+            this._model[methodName](filter).then(result => {
                 return callback(null, result);
+            }).catch(err => {
+                let msg = `Delete with options: ${tools.inspect(options)} error! - ${err.code}#${err.message}`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.DB_DELETE_ERR,
+                    message: msg
+                });
             });
         };
         //

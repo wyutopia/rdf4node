@@ -6,11 +6,11 @@ const {Types: {ObjectId}} = require('mongoose');
 //
 const eRetCodes = require('../include/retcodes');
 const tools = require('../utils/tools');
-const {CommonModule} = require('../include/common');
+const {CommonModule} = require('../include/base');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE);
 //
-const sysConf = require('./config');
+const sysConf = require('../include/config');
 const config = sysConf.security || {};
 const ENCRYPT_KEY = config.encryptKey || 'abcd1234';
 const EXPIRES_IN = config.expiresIn || '72h';

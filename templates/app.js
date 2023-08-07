@@ -1,11 +1,6 @@
 /**
  * Create by Eric on 2022/05/11
  */
-try {
-    require('@icedeer/rdf4node/framework/bootstrap');
-} catch (ex) {
-    console.log('Bootstrap error! - ', ex.message);
-}
 let createError = require('http-errors');
 let path = require('path');
 let cookieParser = require('cookie-parser');

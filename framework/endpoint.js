@@ -6,3 +6,4 @@
 
 
 // Declaring module exports
+module.exports = exports = {};
