@@ -47,60 +47,73 @@
         "pwd": "Dev123456",
         "db": "test",
         "authSource": "test"
-      }
+      },
+      "enabled": false
     }
   },
   "caches": {
-    "clientShared": false,
-    "databaseShared": false,
+    "shareClient": false,
+    "shareDatabase": false,
     "redis": {
-      "host": "127.0.0.1",
-      "port": 6379,
-      "password": "123456"
-  },
-  "amq": {
-    "vhost": "rdf",
-    "connection": {
-      "slashes": true,
-      "protocol": "amqp",
-      "hostname": "127.0.0.1",
-      "user": "admin",
-      "password": "Dev#2021",
-      "port": 5672,
-      "options": {
-        "heartbeat": 4
+      "default": {
+        "host": "127.0.0.1",
+        "port": 6379,
+        "database": 1,
+        "password": "Dev#2023"
       }
     }
   },
-  "auth": {
-    "ip": false,
-    "token": true,
-    "secret": "secret123456"
-  },
-  "tedious": {
-    "server": "127.0.0.1",
-    "options": {
-      "tdsVersion": "7_4",
-      "trustServerCertificate": true,
-      "encrypt": false,
-      "appName": "rdf4node",
-      "connectTimeout": 10000,
-      "requestTimeout": 8000,
-      "database": "db_name"
-    },
-    "authentication": {
-      "type": "default",
-      "options": {
-        "username": "sa",
-        "password": "Dev#2022"
+  "eventBus": {
+    "engine": "resident",
+    "lo": true,
+    "disableEvents": [],
+    "persistent": true,
+    "rabbitmq": {
+      "vhost": "rdf4node",
+      "connection": {
+        "slashes": true,
+        "protocol": "amqp",
+        "hostname": "127.0.0.1",
+        "user": "admin",
+        "password": "Dev#2023",
+        "port": 5672,
+        "options": {
+          "heartbeat": 4
+        }
+      },
+      "default": {
+        "exchanges": {},
+        "queues": [],
+        "publications": {},
+        "bindings": {},
+        "subscriptions": {}
+      },
+      "_tedious": {
+        "server": "127.0.0.1",
+        "options": {
+          "tdsVersion": "7_4",
+          "trustServerCertificate": true,
+          "encrypt": false,
+          "appName": "rdf4node",
+          "connectTimeout": 10000,
+          "requestTimeout": 8000,
+          "database": "db_name"
+        },
+        "authentication": {
+          "type": "default",
+          "options": {
+            "username": "sa",
+            "password": "Dev#2023"
+          }
+        }
+      },
+      "_mysql": {
+        "userWrapper": true,
+        "poolTtl": 60000,
+        "connLimit": 10,
+        "connReuse": false,
+        "connTtl": 15000
       }
     }
-  },
-  "mysql": {
-    "userWrapper": true,
-    "poolTtl": 60000,
-    "connLimit": 10,
-    "connReuse": false,
-    "connTtl": 15000
   }
 }
