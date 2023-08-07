@@ -43,7 +43,7 @@ function _initFramework(callback) {
 const _excludeModelDirs = ['.DS_Store', '_templates'];
 const _loadedModels = [];
 function _readModelDirSync(modelDir) {
-    logger.debug(`====== Scan directory: ${modelDir}`);
+    //logger.debug(`====== Scan directory: ${modelDir}`);
     let entries = fs.readdirSync(modelDir, {
         withFileTypes: true
     });
@@ -55,7 +55,7 @@ function _readModelDirSync(modelDir) {
             }
             return _readModelDirSync(fullPath);
         }
-        logger.debug(`====== Load model: ${fullPath}`);
+        //logger.debug(`====== Load model: ${fullPath}`);
         try {
             let modelSpec = require(fullPath);
             let modelName = modelSpec.modelName;
