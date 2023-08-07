@@ -141,33 +141,34 @@ class TheApp extends EventEmitter {
                 callback = options;
                 options = {};
             }
-            if (process.env.NODE_ENV !== 'production' && !options.alwaysSend) {
-                logger.debug(`Ignore fire alarm on development env.`);
-                return callback();
-            }
-            if (!apmConf) {
-                logger.warn(`APM server not configed!`);
-                return callback();
-            }
-            let req = {
-                url: `${apmConf.baseUrl}/v1/alarm/raise`,
-                method: 'POST',
-                json: true,
-                body: {
-                    service: args.service || this.getServiceAlias(),
-                    instance: this._id,
-                    eventId: args.eventId,
-                    content: args.content
-                }
-            };
-            logger.debug(`Alarm options: ${tools.inspect(req)}`);
-            req.bodyParser = tools.defaultBodyParser;
-            tools.invokeHttpRequest(req, (err, body) => {
-                if (err) {
-                    return callback(err);
-                }
-                return callback(null, body);
-            });
+            return callback();
+            // if (process.env.NODE_ENV !== 'production' && !options.alwaysSend) {
+            //     logger.debug(`Ignore fire alarm on development env.`);
+            //     return callback();
+            // }
+            // if (!apmConf) {
+            //     logger.warn(`APM server not configed!`);
+            //     return callback();
+            // }
+            // let req = {
+            //     url: `${apmConf.baseUrl}/v1/alarm/raise`,
+            //     method: 'POST',
+            //     json: true,
+            //     body: {
+            //         service: args.service || this.getServiceAlias(),
+            //         instance: this._id,
+            //         eventId: args.eventId,
+            //         content: args.content
+            //     }
+            // };
+            // logger.debug(`Alarm options: ${tools.inspect(req)}`);
+            // req.bodyParser = tools.defaultBodyParser;
+            // tools.invokeHttpRequest(req, (err, body) => {
+            //     if (err) {
+            //         return callback(err);
+            //     }
+            //     return callback(null, body);
+            // });
         }
         /**
          *
