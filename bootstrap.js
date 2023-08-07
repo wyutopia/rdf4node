@@ -41,20 +41,23 @@ function _initFramework(callback) {
 }
 
 const _excludeModelDirs = ['.DS_Store', '_templates'];
-function _readModelDirSync(modelEntries, modelDir) {
+const _loadedModels = [];
+function _readModelDirSync(modelDir) {
+    logger.debug(`====== Scan directory: ${modelDir}`);
     let entries = fs.readdirSync(modelDir, {
         withFileTypes: true
     });
     entries.forEach(dirent => {
-        let filePath = path.join(modelDir, dirent.name);
+        let fullPath = path.join(modelDir, dirent.name);
         if (dirent.isDirectory()) {
             if (_excludeModelDirs.indexOf(dirent.name) !== -1) { // Ignore excluded folers
                 return null;
             }
-            return _readModelDirSync(modelEntries, filePath);
+            return _readModelDirSync(fullPath);
         }
+        logger.debug(`====== Load model: ${fullPath}`);
         try {
-            let modelSpec = require(filePath);
+            let modelSpec = require(fullPath);
             let modelName = modelSpec.modelName;
             if (modelName) {
                 repoFactory.registerSchema(modelName, {
@@ -64,21 +67,20 @@ function _readModelDirSync(modelEntries, modelDir) {
                     allowCache: modelSpec.allowCache !== undefined? modelSpec.allowCache : false,
                     cacheSpec: modelSpec.cacheSpec || {}
                 });
-                modelEntries.push(modelName);
+                _loadedModels.push(modelName);
             }
         } catch (ex) {
-            logger.error(`Load database schema from: ${dirent.name} error! - ${ex.message}`);
+            logger.error(`====== Load database schema from: ${dirent.name} error! - ${ex.message}`);
         }
     });
     return null;
 }
 
 function _loadDatabaseSchemas(callback) {
-    let modelDir = path.join(appRoot.path, bsConf.modelDir);
+    let modelDir = path.join(appRoot.path, bsConf.modelDir || 'models');
     logger.info(`++++++ Step 2: Load all database schemas from ${modelDir} ++++++`);
-    let allModels = [];
-    _readModelDirSync(allModels, modelDir);
-    logger.debug(`>>> Total ${allModels.length} database schemas registered. - ${tools.inspect(allModels)}`);
+    _readModelDirSync(modelDir);
+    logger.debug(`>>> Total ${_loadedModels.length} database schemas registered. - ${tools.inspect(_loadedModels)}`);
     return callback();
 }
 
