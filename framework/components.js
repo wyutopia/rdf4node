@@ -286,7 +286,7 @@ function _findUpdatedKeys (doc, updates, options) {
                 if (doc[key] !== updates[key]) {
                     updatedKeys.push(key);
                 }
-            } else if (spec.type === 'ObjectID') {
+            } else if (spec.type === 'ObjectId') {
                 let oidString = _getObjectIdString(doc[key]);
                 if (oidString && oidString !== updates[key]) {
                     updatedKeys.push(key);
@@ -455,7 +455,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({}, this._searchVal, {
                     id: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     }
                 });
@@ -492,7 +492,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({}, this._searchVal, {
                     project: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     },
                     brief: {}
@@ -535,7 +535,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({}, this._searchVal, {
                     user: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     },
                     });
@@ -573,7 +573,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({}, this._searchVal, {
                     group: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     },
                     brief: {}
@@ -691,7 +691,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({
                     id: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     }
                 }, this._updateVal);
@@ -733,7 +733,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({
                     id: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     }
                 }, this._delVal);
@@ -795,7 +795,7 @@ class EntityController extends ControllerBase {
         this.patchOne = {
             val: {
                 id: {
-                    type: 'ObjectID',
+                    type: 'ObjectId',
                     requird: true
                 },
                 jsonPatch: {

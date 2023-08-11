@@ -49,14 +49,14 @@ function _validateString (field, validator, argv) {
     if (validator.regexp && !validator.regexp.test(argv)) {
         errMsg = `Invalid ${field} value!`;
     }
-    if (!errMsg && validator.minLen !== undefined) {
-        if (argv.length < validator.minLen) {
-            errMsg = `Length of ${field} should be great than ${validator.minLen} !`;
+    if (!errMsg && validator.minLeng !== undefined) {
+        if (argv.length < validator.minLeng) {
+            errMsg = `Length of ${field} should be great than ${validator.minLeng} !`;
         }
     }
-    if (!errMsg && validator.maxLen !== undefined) {
-        if (argv.length > validator.maxLen) {
-            errMsg = `Length of ${field} should be less than ${validator.maxLen} !`;
+    if (!errMsg && validator.maxLeng !== undefined) {
+        if (argv.length > validator.maxLeng) {
+            errMsg = `Length of ${field} should be less than ${validator.maxLeng} !`;
         }
     }
     return errMsg;
@@ -90,7 +90,7 @@ function _validateEmbeddedObject(field, validator, args) {
             }
             if (!errMsg) {
                 switch(val.type) {
-                    case 'ObjectID':
+                    case 'ObjectId':
                         if (!ObjectId.isValid(argv) && val.allowEmpty !== true) {
                             errMsg = `Invalid ObjectId value: ${field}.${i}.${valKey}!`;
                         }
@@ -126,7 +126,7 @@ function _validateEmbeddedObject(field, validator, args) {
     return errMsg;
 }
 
-const typeExtractRe = new RegExp("String|Number|ObjectID|EmbeddedObject");
+const typeExtractRe = new RegExp("String|Number|ObjectId|EmbeddedObject");
 function _validateTypedArray(field, validator, args) {
     let errMsg = null;
     if (!Array.isArray(args)) {
@@ -147,7 +147,7 @@ function _validateTypedArray(field, validator, args) {
                     errMsg = `type of #${i} in ${field} should be ${t}`;
                 }
                 break;
-            case 'ObjectID':
+            case 'ObjectId':
                 if(!ObjectId.isValid(argv)) {
                     errMsg = `type of #${i} in ${field} should be ${t}`;
                 }
@@ -177,7 +177,7 @@ function _validateTypedList (field, validator, args) {
     for (let i=0; i<strArr.length; i++) {
         let item = strArr[i];
         switch(t) {
-            case 'ObjectID':
+            case 'ObjectId':
                 if(!ObjectId.isValid(item)) {
                     errMsg = `type of #${i} in ${field} should be ${t}`;
                 }              
@@ -228,8 +228,8 @@ function _validateDate (field, validator, argv, options = {}) {
     return errMsg;
 }
 
-const typedArrayRe = new RegExp("^Array<(String|Number|ObjectID|EmbeddedObject)>$");
-//const typedListRe = new RegExp("^List<(String|Number|ObjectID)>$");
+const typedArrayRe = new RegExp("^Array<(String|Number|ObjectId|EmbeddedObject)>$");
+//const typedListRe = new RegExp("^List<(String|Number|ObjectId)>$");
 function _validateParameter(field, validator, argv) {
     //logger.debug(`Perform validation: ${field} - ${tools.inspect(validator)} - ${tools.inspect(argv)}`);
     let errMsg = null;
@@ -252,7 +252,7 @@ function _validateParameter(field, validator, argv) {
         return errMsg;
     }
     switch(validator.type) {
-        case 'ObjectID':
+        case 'ObjectId':
             if (!ObjectId.isValid(argv) && validator.allowEmpty !== true) {
                 errMsg = `Invalid ObjectId value: ${field}!`;
             }
