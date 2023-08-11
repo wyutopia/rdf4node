@@ -7,8 +7,8 @@ const tools = require("../../utils/tools");
 //mongoose.Promise = require('bluebird');
 mongoose.set('strictQuery', true);
 
-const Schema = mongoose.Schema;
-Schema.prototype.DDL = function (options) {
+// Add new SchemaDDL class into mongoose lib
+mongoose.SchemaDDL = function (options) {
     this.spec = options;
     this.extractValidators = (paths) => {
         let doc = {};
@@ -47,6 +47,7 @@ function _extractValidator2(doc) {
     }
     return validator;
 }
+
 function _extractValidatorsFromDoc(doc) {
     let validators = {};
     Object.keys(doc).forEach(key => {
@@ -57,6 +58,7 @@ function _extractValidatorsFromDoc(doc) {
     return validators;
 }
 
+const Schema = mongoose.Schema;
 // Followings are old extraction methods
 Schema.prototype.extractValidators = function (keys, options = {isSearch: false}) {
     let paths = {};
