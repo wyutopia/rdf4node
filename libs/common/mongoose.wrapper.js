@@ -7,8 +7,8 @@ const tools = require("../../utils/tools");
 //mongoose.Promise = require('bluebird');
 mongoose.set('strictQuery', true);
 
-// Add new SchemaDDL class into mongoose lib
-mongoose.SchemaDDL = function (options) {
+// Add new SchemaDL class into mongoose lib
+mongoose.SchemaDL = function (options) {
     this.spec = options;
     this.extractValidators = (paths) => {
         let doc = {};
