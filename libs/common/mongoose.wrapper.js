@@ -7,7 +7,57 @@ const tools = require("../../utils/tools");
 //mongoose.Promise = require('bluebird');
 mongoose.set('strictQuery', true);
 
-let Schema = mongoose.Schema;
+const Schema = mongoose.Schema;
+Schema.prototype.DDL = function (options) {
+    this.spec = options;
+    this.extractValidators = (paths) => {
+        let doc = {};
+        paths.forEach(key => {
+            doc[key] = this.spec[key];
+        });
+        return _extractValidatorsFromDoc(doc);
+    };
+}
+
+// Following are methos for extracting validators from schema ddl
+const _constValProps = ['min', 'max', 'minLength', 'maxLength', 'enum', 'regexp'];
+function _parseValProps(doc, val) {
+    _constValProps.forEach(key => {
+        if (doc[key]) {
+            val[key] = doc[key];
+        }
+    });
+}
+function _extractValidator2(doc) {
+    let validator = {};
+    if (doc.type) {
+        validator.type = doc.type.name;
+        _parseValProps(doc, validator);
+    } else if (tools.isTypeOfArray(doc)) {
+        if (doc[0].type) {
+            validator.type = `Array<${doc[0].type.name}>`;
+            _parseValProps(doc[0], validator);
+        } else {
+            validator.type = 'Array<EmbeddedObject>';
+            validator.$embeddedValidators = _extractValidatorsFromDoc(doc[0]);
+        }
+    } else {
+        validator.type = 'EmbeddedObject';
+        validator.$embeddedValidators = _extractValidatorsFromDoc(doc);
+    }
+    return validator;
+}
+function _extractValidatorsFromDoc(doc) {
+    let validators = {};
+    Object.keys(doc).forEach(key => {
+        if (key !== '_id') {
+            validators[key] = _extractValidator2(doc[key]);
+        }
+    });
+    return validators;
+}
+
+// Followings are old extraction methods
 Schema.prototype.extractValidators = function (keys, options = {isSearch: false}) {
     let paths = {};
     keys.forEach(key => {
