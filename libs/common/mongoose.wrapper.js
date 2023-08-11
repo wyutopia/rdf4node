@@ -13,7 +13,9 @@ mongoose.SchemaDL = function (options) {
     this.extractValidators = (paths) => {
         let doc = {};
         paths.forEach(key => {
-            doc[key] = this.spec[key];
+            if (this.spec[key] !== undefined) {
+                doc[key] = this.spec[key];
+            }
         });
         return _extractValidatorsFromDoc(doc);
     };
