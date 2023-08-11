@@ -32,6 +32,11 @@ function _parseValProps(doc, val) {
 }
 function _extractValidator2(doc) {
     let validator = {};
+    if (Object.keys(doc).length === 0) {
+        return {
+            type: 'object'
+        }
+    }
     if (doc.type) {
         validator.type = doc.type.name;
         _parseValProps(doc, validator);
