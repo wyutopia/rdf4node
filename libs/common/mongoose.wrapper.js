@@ -22,21 +22,17 @@ mongoose.SchemaDL = function (options) {
 }
 
 // Following are methos for extracting validators from schema ddl
-const _constValProps = ['min', 'max', 'minLength', 'maxLength', 'enum', 'regexp'];
+const _constValProps = ['min', 'max', 'minLength', 'maxLength', 'enum', 'match'];
 function _parseValProps(doc, val) {
     _constValProps.forEach(key => {
         if (doc[key]) {
-            val[key] = doc[key];
+            let valKey = key === 'match'? 'regexp' : key;
+            val[valKey] = doc[key];
         }
     });
 }
-function _extractValidator2(doc) {
+function _extractValidator(doc) {
     let validator = {};
-    if (Object.keys(doc).length === 0) {
-        return {
-            type: 'object'
-        }
-    }
     if (doc.type) {
         validator.type = doc.type.name;
         _parseValProps(doc, validator);
@@ -59,7 +55,7 @@ function _extractValidatorsFromDoc(doc) {
     let validators = {};
     Object.keys(doc).forEach(key => {
         if (key !== '_id') {
-            validators[key] = _extractValidator2(doc[key]);
+            validators[key] = _extractValidator(doc[key]);
         }
     });
     return validators;
@@ -82,13 +78,13 @@ function _extractValidatorsFromPaths(paths, options) {
     let validators = {};
     Object.keys(paths).forEach(key => {
         if (key !== '_id') {
-            validators[key] = _extractValidator(paths[key], options);
+            validators[key] = _extractValidator3(paths[key], options);
         }
     });
     return validators;
 }
 
-function _extractValidator (path, options) {
+function _extractValidator3 (path, options) {
     let pathType = path.instance;
     let pathValidators = path.validators;
     if (pathType === 'Array') {
