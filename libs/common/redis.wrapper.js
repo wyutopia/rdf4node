@@ -93,7 +93,6 @@ class RedisClient extends EventObject {
     constructor(props) {
         super(props);
         //
-        this.$name = props.$name || this.id;
         this.$parent = props.parent;
         this.config = _assembleRealConfig.call(this, props.config); // Refer to _typeClientConfig
         this.maxRetryTimes = props.config.maxRetryTimes || 100;
@@ -180,7 +179,7 @@ class RedisClient extends EventObject {
             this._client.on('end', () => {
                 logger.info(`${this.$name}[${this.state}]: Connection closed!`);
                 this.state = eClientState.Pending;
-                this.$parent.emit('client-end', this.id);
+                this.$parent.emit('client-end', this.$id);
                 this.state = eClientState.Null;
             });
             // Initializing connection
@@ -239,7 +238,7 @@ class RedisWrapper extends EventModule {
             let clientId = _genClientId.call(this, config);
             if (this._clients[clientId] === undefined) {
                 this._clients[clientId] = new RedisClient({
-                    id: clientId,
+                    $id: clientId,
                     $name: name,
                     config: config,
                     //

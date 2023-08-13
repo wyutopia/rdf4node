@@ -63,8 +63,8 @@ class ProtoDescriptor {
         logger.info(`Create new protobuf: ${tools.inspect(options)}`);
         let pkgDef = protoLoader.loadSync(options.file, LOAD_OPTIONS);
         // Declaring member variables
-        this.id = options.key;
-        this.$name = `${MODULE_NAME_PREFIX}_${this.id}`;
+        this.$id = options.key;
+        this.$name = `${MODULE_NAME_PREFIX}_${this.$id}`;
         this.mandatory = false;
         //
         this.pd = grpc.loadPackageDefinition(pkgDef);
@@ -93,12 +93,12 @@ class ProtoDescriptor {
             });
         }
         this.destroyServer = (port) => {
-            logger.info(this.id, `Destroy server with listening port: ${port}`);
+            logger.info(`${this.$name}: Destroy server with listening port: ${port}`);
             let s = this.servers[options.port];
             if (s !== undefined) {
                 s.close();
             } else {
-                logger.error(this.id, `Server not exists! port=${port}`);
+                logger.error(`${this.$name}: Server not exists! port=${port}`);
             }
         }
         /**
@@ -171,13 +171,13 @@ function _onClientTtlTimeout(target) {
             client.service.close();
             client.tm = null;
             delete this.clients[target];
-            logger.debug(`${this.id}: ${target} client closed due to ttl!`);
+            logger.debug(`${this.$name}: ${target} client closed due to ttl!`);
         } else { // Restart ttl timer
             client.tm = setTimeout(_onClientTtlTimeout.bind(this, target), client.ttl);
-            logger.info(`${this.id}: ${target} client timer reset. - ${client.refCount} - ${client.lastActiveTime}`);
+            logger.info(`${this.$name}: ${target} client timer reset. - ${client.refCount} - ${client.lastActiveTime}`);
         }
     } else {
-        logger.error(`${this.id}: ${target} client not exists!`);
+        logger.error(`${this.$name}: ${target} client not exists!`);
     }
 }
 

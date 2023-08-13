@@ -5,8 +5,8 @@ const tools = require('../utils/tools');
 const sysdefs = require('./sysdefs');
 
 function _initObject(props) {
-    this.id = props.id || tools.uuidv4();
-    this.$name = props.$name || `rdf4node_${this.id}`;
+    this.$id = props.$id || tools.uuidv4();
+    this.$name = props.$name || `rdf4node_${this.$id}`;
     this.$type = props.$type || sysdefs.eModuleType.OBJ;
 }
 
