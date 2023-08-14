@@ -289,12 +289,18 @@ const eCacheEngine = {
 exports.eCacheEngine = eCacheEngine;
 
 const eEventBusEngine = {
-    RESIDENT      : 'resident',
-    RABBITMQ      : 'rabbitmq',
-    ROCKETMQ      : 'rocketmq',
-    REDIS         : 'redis'
+    Resident      : 'resident',
+    RabbitMQ      : 'rabbitmq',
+    RocketMQ      : 'rocketmq',
+    Redis         : 'redis'
 };
 exports.eEventBusEngine = eEventBusEngine;
+
+const eOSSEngine = {
+    Resident      : 'resident',
+    AliOSS        : 'alioss'
+};
+exports.eOSSEngine = eOSSEngine;
 
 const eClientState = {
     Null: 'null',

@@ -197,7 +197,7 @@ class EventBus extends EventEmitter {
                     this._subscribers[code].push(moduleName);
                 }
             });
-            if (this._engine === sysdefs.eEventBusEngine.RESIDENT) {
+            if (this._engine === sysdefs.eEventBusEngine.Resident) {
                 return callback();
             }
             let engineConfig = config[this._engine];
