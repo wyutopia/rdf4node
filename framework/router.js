@@ -14,20 +14,19 @@ const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
 const {accessCtl} = require('./ac');
 const tools = require('../utils/tools');
-const config = require('../include/config');
-const securityConf = config.security || {};
+const {app: appConf, security: secConf} = require('../include/config');
 /**
  * Middleware to Support CORS
  */
-const _commonHeaders = [
+const _ALLOW_HEADERS_BASE = [
     'Content-Type', 'Content-Length', 'Authorization', 'Accept', 'X-Requested-With', 'ActiveGroup', 'ActiveTenant', 'AuthToken'
 ];
-const allowHeaders = securityConf.allowHeaders? _commonHeaders.concat(securityConf.allowHeaders) : _commonHeaders;
+const _allowHeaders = secConf.allowHeaders? _ALLOW_HEADERS_BASE.concat(secConf.allowHeaders) : _ALLOW_HEADERS_BASE;
 
 router.all('*', (req, res, next) => {
-    res.header('Access-Control-Allow-Origin', securityConf.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
-    res.header('Access-Control-Allow-Headers', allowHeaders.join(', '));
-    res.header('Access-Control-Allow-Methods', securityConf.allowMethods || 'POST, GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Origin', secConf.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
+    res.setHeader('Access-Control-Allow-Headers', _allowHeaders.join(', '));
+    res.setHeader('Access-Control-Allow-Methods', secConf.allowMethods || 'POST, GET, OPTIONS');
     if (req.method === 'OPTIONS') {
         return res.sendStatus(200);
     }
@@ -37,7 +36,7 @@ router.all('*', (req, res, next) => {
 /* GET home page. */
 router.get('/', (req, res, next) => {
     //TODO: Replace title with your own project name
-    res.render('index', {title: config.app.alias || 'the rappid-dev-framework!'});
+    res.render('index', {title: appConf.alias || 'the rappid-dev-framework!'});
 });
 
 if (process.env.NODE_ENV !== 'production') {
@@ -47,16 +46,16 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 let gRoutes = [];
-const READDIR_OPTIONS = {
+const _READDIR_OPTIONS = {
     withFileTypes: true
 };
 
-const EXCLUDE_FILES = [
+const _EXCLUDE_FILES = [
     '.DS_Store',
     'index.js'
 ];
 function isExclude(filename) {
-    return EXCLUDE_FILES.indexOf(filename) !== -1;
+    return _EXCLUDE_FILES.indexOf(filename) !== -1;
 }
 
 const reDelKey = new RegExp(/^--/);
@@ -116,7 +115,7 @@ function _loadRoutes(urlPathArray, filename) {
 function _readDir(urlPathArray, dir) {
     let curDir = path.join(routeDir, urlPathArray.join('/'), dir);
     //logger.debug(`Processing current directory: ${curDir}`);
-    let entries = fs.readdirSync(curDir, READDIR_OPTIONS);
+    let entries = fs.readdirSync(curDir, _READDIR_OPTIONS);
     entries.forEach( dirent => {
         //logger.debug(`${curDir} - ${dirent.name}`);
         if (isExclude(dirent.name)) {
