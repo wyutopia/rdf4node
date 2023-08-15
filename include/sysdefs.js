@@ -149,6 +149,34 @@ const eInterval = {
 };
 exports.eInterval = eInterval;
 
+const eSize = {
+    _1K     : 1024,
+    _2K     : 2 * _1K,
+    _3K     : 3 * _1K,
+    _5K     : 5 * _1K,
+    _8K     : 8 * _1K,
+    _10K    : 10 * _1K,
+    _20K    : 20 * _1K,
+    _50K    : 50 * _1K,
+    _80K    : 80 * _1K,
+    _100K   : 100 * _1K,
+    _1M     : 1024 * _1K,
+    _2M     : 1 * _1M,
+    _3M     : 3 * _1M,
+    _5M     : 5 * _1M,
+    _8M     : 8 * _1M,
+    _10M    : 10 * _1M,
+    _20M    : 20 * _1M,
+    _50M    : 50 * _1M,
+    _100M   : 100 * _1M,
+    _200M   : 200 * _1M,
+    _500M   : 500 * _1M,
+    _800M   : 800 * _1M,
+    _1G     : 1024 * _1M,
+    _2G     : 2 * _1G,
+};
+exports.eSize = eSize;
+
 const eAlarmSeverity = {
     CRITICAL      : 5,        // RED       : vibrate + sound
     MAJOR         : 4,        // ORANGE    : sound
@@ -199,14 +227,13 @@ const eAlarmCode = {
 };
 exports.eAlarmCode = eAlarmCode;
 
-let eAlarmConfig = {
+const eAlarmConfig = {
     100: {
         alias: '无服务',
         severity: eAlarmSeverity.CRITICAL,
         suggest: '请尽快排查!'
     }
 };
-Object.freeze(eAlarmConfig);
 exports.eAlarmConfig = eAlarmConfig;
 
 const eRedisResult = {
