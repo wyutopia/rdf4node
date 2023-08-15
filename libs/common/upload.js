@@ -45,9 +45,11 @@ const _ALLOW_CONTENT_TYPE = [
     "audio/aac", "audio/mpeg", "audio/mp4",
     "video/H263", "video/H264", "video/H265", "video/mp4"
 ];
-function _genPolicy() {
+function _genSignature(options) {
+    let tenMinLater = moment().add(10, 'm');
+    // Generating policy
     const policy = {
-        expiration: moment().add(10, 'm').toISOString(),
+        expiration: tenMinLater.toISOString(),
         conditions: [
             {bucket: this._bucket},
             ["content-length-range", 1, sysdefs.eSize._50M],
@@ -57,9 +59,15 @@ function _genPolicy() {
     }
     const base64Policy = Buffer.from(JSON.stringify(policy), 'utf8').toString('base64');
     const signature = crypto.createHmac('sha1', this._akSecret).update(base64Policy).digest('base64');
+    // Pack signature
+    let vDir = path.join(options.catalog, options.subPath || '');
     return {
+        accessid: this._akId,
+        host: options.host || this._host || "http://oss.aliyuncs.com",
+        expire: options.expiresAt || Math.floor(tenMinLater.valueOf() / 1000),
+        dir: `${vDir}/`,
         policy: base64Policy,
-        signature: signature
+        signature: signature,
     }
 }
 
@@ -79,16 +87,11 @@ class UploadHelper extends CommonObject {
             return this._uploads[key];
         };
         this.getSignature = (options) => {
-            if (options === undefined) {
-                options = {};
+            if (this._engine === sysdefs.eOSSEngine.AliOSS) {
+                return _genSignature.call(this, options || {});
             }
-            let vDir = path.join(options.catalog, options.subPath);
-            return Object.assign({
-                accessid: this._akId,
-                host: options.host || this._host || "http://oss.aliyuncs.com",
-                expire: options.expiresAt || (moment().add(10, 'm').valueOf() / 1000).toFixed(0),
-                dir: `${vDir}/`
-            }, _genPolicy.call(this));
+            loggers.error(`${this.$name}: The OSSEngine shoud be alioss!`);
+            return {};
         };
     };
 };
