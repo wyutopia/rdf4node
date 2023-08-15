@@ -93,6 +93,9 @@ class UploadHelper extends CommonObject {
             loggers.error(`${this.$name}: The OSSEngine shoud be alioss!`);
             return {};
         };
+        this.getOSSClient = () => {
+            return this._alioss;
+        };
     };
 };
 
