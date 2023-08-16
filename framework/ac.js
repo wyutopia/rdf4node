@@ -126,14 +126,14 @@ function _validateEmbeddedObject(field, validator, args) {
     return errMsg;
 }
 
-const typeExtractRe = new RegExp("String|Number|ObjectId|EmbeddedObject");
+const _typeExtractRe = new RegExp("String|Number|ObjectId|EmbeddedObject");
 function _validateTypedArray(field, validator, args) {
     let errMsg = null;
     if (!Array.isArray(args)) {
         errMsg = `${field} should be array!`;
         return errMsg;
     }
-    let result = typeExtractRe.exec(validator.type);
+    let result = _typeExtractRe.exec(validator.type);
     if (!result) {
         errMsg = `Unrecognized parameter type: ${field}`;
         return errMsg;
@@ -166,38 +166,6 @@ function _validateTypedArray(field, validator, args) {
         }
     }
     return errMsg
-}
-
-function _validateTypedList (field, validator, args) {
-    let errMsg = null;
-    let params = [];
-    let rawString = typeof args === 'string'? args : args.toString();
-    let strArr = rawString.split(',');
-    let t = typeExtractRe.exec(validator.type)[0];
-    for (let i=0; i<strArr.length; i++) {
-        let item = strArr[i];
-        switch(t) {
-            case 'ObjectId':
-                if(!ObjectId.isValid(item)) {
-                    errMsg = `type of #${i} in ${field} should be ${t}`;
-                }              
-                break;
-            case 'Number':
-                if (Number.isNaN(item)) {
-                    errMsg = `type of #${i} in ${field} should be ${t}`;
-                }
-                break;
-        }
-        if (!errMsg) {
-            params.push(item);
-        } else {
-            break;
-        }
-    }
-    if (!errMsg) {
-        args = params;
-    }
-    return errMsg;
 }
 
 function _validateNumber (field, validator, argv, options = {}) {
@@ -244,9 +212,6 @@ function _validateParameter(field, validator, argv) {
     if (_typedArrayRe.test(validator.type)) {
         errMsg = _validateTypedArray(field, validator, argv);
     }
-    // if (typedListRe.test(validator.type)) {
-    //     errMsg = _validateTypedList(field, validator, argv);
-    // }
     if (errMsg !== null) {
         return errMsg;
     }
@@ -317,7 +282,7 @@ function _parseParameters (params, validator, callback) {
     for (let i = 0; i < fields.length; i++) {
         let field = fields[i];
         let val = validator[field];
-        let argv = (val.type === 'Number' && typeof params[field] === 'String')? parseInt(params[field]) : params[field];
+        let argv = (params[field] !== undefined && val.type === 'Number')? parseInt(params[field]) : params[field];
 
         if (argv === undefined) {
             if (val.required === true) {
