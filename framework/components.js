@@ -842,7 +842,7 @@ class EntityController extends ControllerBase {
                                 data: doc.toObject()
                             }, () => {
                                 this._afterDeleteOne(req, doc, () => {
-                                    return res.sendSuccess(result);
+                                    return res.sendSuccess(doc);
                                 })
                             });
                         });

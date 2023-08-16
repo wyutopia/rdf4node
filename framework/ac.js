@@ -228,8 +228,7 @@ function _validateDate (field, validator, argv, options = {}) {
     return errMsg;
 }
 
-const typedArrayRe = new RegExp("^Array<(String|Number|ObjectId|EmbeddedObject)>$");
-//const typedListRe = new RegExp("^List<(String|Number|ObjectId)>$");
+const _typedArrayRe = new RegExp("^Array<(String|Number|ObjectId|EmbeddedObject)>$");
 function _validateParameter(field, validator, argv) {
     //logger.debug(`Perform validation: ${field} - ${tools.inspect(validator)} - ${tools.inspect(argv)}`);
     let errMsg = null;
@@ -242,7 +241,7 @@ function _validateParameter(field, validator, argv) {
     if (errMsg !== null) {
         return errMsg;
     }
-    if (typedArrayRe.test(validator.type)) {
+    if (_typedArrayRe.test(validator.type)) {
         errMsg = _validateTypedArray(field, validator, argv);
     }
     // if (typedListRe.test(validator.type)) {
@@ -318,7 +317,7 @@ function _parseParameters (params, validator, callback) {
     for (let i = 0; i < fields.length; i++) {
         let field = fields[i];
         let val = validator[field];
-        let argv = params[field];
+        let argv = (val.type === 'Number' && typeof params[field] === 'String')? parseInt(params[field]) : params[field];
 
         if (argv === undefined) {
             if (val.required === true) {
