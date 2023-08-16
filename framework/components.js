@@ -14,6 +14,7 @@ const tools = require('../utils/tools');
 //
 const {repoFactory, paginationVal, _DS_DEFAULT_} = require('./repository');
 const {_DEFAULT_PUBKEY_, _DEFAULT_CHANNEL_} = require('./ebus');
+const { resolveSoa } = require('dns');
 
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
@@ -786,6 +787,63 @@ class EntityController extends ControllerBase {
                                         return res.sendSuccess(result);
                                     })
                                 });
+                            });
+                        });
+                    });
+                });
+            }
+        };
+        this.fakeDeleteOne = {
+            val: {
+                tenant: {
+                    type: 'ObjectId',
+                    required: true
+                },
+                id: {
+                    type: 'ObjectId',
+                    required: true
+                },
+                comment: {
+                    type: 'String'
+                }
+            },
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
+                    if (err) {
+                        return res.sendRsp(err.code, err.message);
+                    }
+                    let dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    this._allowDelete(req.$args.id, dsName, (err) => {
+                        if (err) {
+                            return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
+                        }
+                        //
+                        repo.updateOne({
+                            filter: {
+                                _id: req.$args.id,
+                                status: sysdefs.eStatus.ACTIVE
+                            },
+                            updates: {
+                                $set: {
+                                    updateAt: new Date(),
+                                    status: sysdefs.eStatus.DELETED,
+                                    comment: req.$args.comment
+                                }
+                            }
+                        }, (err, doc) => {
+                            if (err) {
+                                return res.sendRsp(err.code, 'Fake delete error!');
+                            }
+                            if (!doc) {
+                                return res.sendRsp(eRetCodes.DB_DELETE_ERR, `${req.$args.id} already deleted!`);
+                            }
+                            _publishEvents.call(this, {
+                                method: 'deleteOne',
+                                data: doc.toObject()
+                            }, () => {
+                                this._afterDeleteOne(req, doc, () => {
+                                    return res.sendSuccess(result);
+                                })
                             });
                         });
                     });
