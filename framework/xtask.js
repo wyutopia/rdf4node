@@ -33,7 +33,7 @@ class XTaskManager extends EventModule {
             moduleName: _MODULE_NAME,
             metrics: [{
                 name: eMetricNames.activeTasks,
-                type: sysdefs.eMetricType.GAUGE
+                type: sysdefs.eMetricType.Gauge
             }]
         });
         //

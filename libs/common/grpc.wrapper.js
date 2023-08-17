@@ -28,14 +28,14 @@ const metricsCollector = mntService.regMetrics({
     metrics: [{
         name: eMetricCounters.pd,
         help: 'Number of ProtocolDescriptors',
-        type: sysdefs.eMetricType.GAUGE,
+        type: sysdefs.eMetricType.Gauge,
         fnCollectAsync: async () => {
             return Object.keys(gDescriptors).length;
         }
     }, {
         name: eMetricCounters.clientActive,
         help: 'Number of active gRpc clients',
-        type: sysdefs.eMetricType.GAUGE,
+        type: sysdefs.eMetricType.Gauge,
         fnCollectAsync: async () => {
             let count = 0;
             Object.keys(gDescriptors).forEach( key => {
@@ -45,7 +45,7 @@ const metricsCollector = mntService.regMetrics({
         }
     }, {
         name: eMetricCounters.clientTotal,
-        type: sysdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.Counter
     }]
 });
 

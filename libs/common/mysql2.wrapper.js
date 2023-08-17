@@ -34,25 +34,25 @@ const metricsCollector = mntService.regMetrics({
     moduleName: MODULE_NAME,
     metrics: [{
         name: eMetricsName.poolActive,
-        type: sysdefs.eMetricType.GAUGE
+        type: sysdefs.eMetricType.Gauge
     }, {
         name: eMetricsName.connTotal,
-        type: sysdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.Counter
     }, {
         name: eMetricsName.connRefused,
-        type: sysdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.Counter
     }, {
         name: eMetricsName.connActive,
-        type: sysdefs.eMetricType.GAUGE
+        type: sysdefs.eMetricType.Gauge
     }, {
         name: eMetricsName.queryAttempt,
-        type: sysdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.Counter
     }, {
         name: eMetricsName.querySuccess,
-        type: sysdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.Counter
     }, {
         name: eMetricsName.queryFailure,
-        type: sysdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.Counter
     }]
 });
  

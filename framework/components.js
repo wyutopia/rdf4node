@@ -72,6 +72,7 @@ function _publishEvents(options, callback) {
         callback = options;
         options = {};
     }
+    let mode = options.mode || 0;
     let method = options.method;
     if (method === undefined) {
         return callback();
@@ -636,7 +637,8 @@ class EntityController extends ControllerBase {
                                 let obj = doc.toObject();
                                 _publishEvents.call(this, {
                                     method: 'addOne',
-                                    data: obj
+                                    data: obj,
+                                    mode: req.$args.mode || 0
                                 }, () => {
                                     this._afterAdd(req, doc, (err, result) => {
                                         if (err) {

@@ -276,8 +276,8 @@ const eEncoding = {
 exports.eEncoding = eEncoding;
 
 const eMetricType = {
-    COUNTER  : 'counter',
-    GAUGE    : 'gauge'
+    Counter  : 'counter',
+    Gauge    : 'gauge'
 };
 exports.eMetricType = eMetricType;
 

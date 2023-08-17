@@ -18,11 +18,11 @@
      moduleName: 'http',
      metrics: [{
          name: eHttpMetrics.REQ_TOTAL,
-         type: sysdefs.eMetricType.COUNTER,
+         type: sysdefs.eMetricType.Counter,
          labelNames: ['url']
      }, {
          name: eHttpMetrics.REQ_CODE_TOTAL,
-         type: sysdefs.eMetricType.COUNTER,
+         type: sysdefs.eMetricType.Counter,
          labelNames: ['url', 'status_code']
      }]
  });

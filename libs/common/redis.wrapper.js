@@ -27,7 +27,7 @@ const metricCollector = mntService.regMetrics({
     moduleName: _MODULE_NAME,
     metrics: [{
         name: eMetricNames.activeConnection,
-        type: sysdefs.eMetricType.GAUGE
+        type: sysdefs.eMetricType.Gauge
     }]
 })
 

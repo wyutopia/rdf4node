@@ -55,9 +55,9 @@ exports.regMetrics = function (options) {
         let name = `${prefix}_${metric.name}`
         let help = metric.help || `${name}_help`;
         let labelNames = metric.labelNames || [];
-        if (metric.type === sysdefs.eMetricType.COUNTER) {
+        if (metric.type === sysdefs.eMetricType.Counter) {
             collectors[metric.name] = _regCounter(name, help, labelNames);
-        } else if (metric.type === sysdefs.eMetricType.GAUGE) {
+        } else if (metric.type === sysdefs.eMetricType.Gauge) {
             if (metric.fnCollectAsync) {
                 _regGaugeAsync(name, help, labelNames, metric.fnCollectAsync);
             } else {
