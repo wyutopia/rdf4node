@@ -6,50 +6,52 @@ const path = require('path');
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const upload = multer({dest: 'uploads/'});
+const upload = multer({ dest: 'uploads/' });
 const appRoot = require('app-root-path');
 const routeDir = path.join(appRoot.path, 'routes');
 // Framework
-const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
-const {accessCtl} = require('./ac');
+const { accessCtl } = require('./ac');
 const tools = require('../utils/tools');
-const {app: appConf, security: secConf} = require('../include/config');
+const { app: appConf, security: secConf } = require('../include/config');
+
 /**
  * Middleware to Support CORS
  */
 const _ALLOW_HEADERS_BASE = [
     'Content-Type', 'Content-Length', 'Authorization', 'Accept', 'X-Requested-With', 'ActiveGroup', 'ActiveTenant', 'AuthToken'
 ];
-const _allowHeaders = secConf.allowHeaders? _ALLOW_HEADERS_BASE.concat(secConf.allowHeaders) : _ALLOW_HEADERS_BASE;
-
-router.all('*', (req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', secConf.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
-    res.setHeader('Access-Control-Allow-Headers', _allowHeaders.join(', '));
-    res.setHeader('Access-Control-Allow-Methods', secConf.allowMethods || 'POST, GET, OPTIONS');
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-});
-
-/* GET home page. */
-router.get('/', (req, res, next) => {
-    //TODO: Replace title with your own project name
-    res.render('index', {title: appConf.alias || 'the rappid-dev-framework!'});
-});
-
-if (process.env.NODE_ENV !== 'production') {
-    router.get('/api', (req, res) => {
-        return res.render('api', {routes: gRoutes});
+const _allowHeaders = secConf.allowHeaders ? _ALLOW_HEADERS_BASE.concat(secConf.allowHeaders) : _ALLOW_HEADERS_BASE;
+function _setCORS(router) {
+    router.all('*', (req, res, next) => {
+        res.setHeader('Access-Control-Allow-Origin', secConf.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
+        res.setHeader('Access-Control-Allow-Headers', _allowHeaders.join(', '));
+        res.setHeader('Access-Control-Allow-Methods', secConf.allowMethods || 'POST, GET, OPTIONS');
+        if (req.method === 'OPTIONS') {
+            return res.sendStatus(200);
+        }
+        next();
     });
 }
 
-let gRoutes = [];
+function _addBaseUrls(router) {
+    /* GET home page. */
+    router.get('/', (req, res, next) => {
+        //TODO: Replace title with your own project name
+        res.render('index', { title: appConf.alias || 'the rappid-dev-framework!' });
+    });
+    /* GET apis page on non-production env. */
+    if (process.env.NODE_ENV !== 'production') {
+        router.get('/api', (req, res) => {
+            return res.render('api', { routes: gRoutes });
+        });
+    }
+}
+
 const _READDIR_OPTIONS = {
     withFileTypes: true
 };
-
 const _EXCLUDE_FILES = [
     '.DS_Store',
     'index.js'
@@ -58,15 +60,15 @@ function isExclude(filename) {
     return _EXCLUDE_FILES.indexOf(filename) !== -1;
 }
 
-const reDelKey = new RegExp(/^--/);
-const reNotRequired = new RegExp(/^-/);
-function _modifyValidators (r, modSpec) {
+const _reDelKey = new RegExp(/^--/);
+const _reNotRequired = new RegExp(/^-/);
+function _modifyValidators(r, modSpec) {
     if (modSpec !== undefined) {
         modSpec.forEach(key => {
-            if (reDelKey.test(key)) {
+            if (_reDelKey.test(key)) {
                 let realKey = key.replace('--', '');
                 delete r.validator[realKey]
-            } else if (reNotRequired.test(key)) {
+            } else if (_reNotRequired.test(key)) {
                 let realKey = key.replace('-', '');
                 delete r.validator[realKey].required;
             } else if (r.validator[key] !== undefined) {
@@ -76,12 +78,17 @@ function _modifyValidators (r, modSpec) {
     }
 }
 
+function _loadRoutes (router) {
+    const routeSpecs = [];
+    // Load all routeSpecs from file
+}
+
 function _loadRoutes(urlPathArray, filename) {
     let urlPath = urlPathArray.join('/');
     let fullPathName = path.join(routeDir, urlPath, filename);
     try {
         let routes = require(fullPathName);
-        routes.forEach( route => {
+        routes.forEach(route => {
             if (route.handler.fn !== undefined) {
                 let subPath = filename.split('.')[0].replace('-', '/');
                 let r = {
@@ -89,7 +96,7 @@ function _loadRoutes(urlPathArray, filename) {
                     authType: route.authType || 'jwt',
                     method: route.method.toUpperCase(),
                     validator: route.handler.val || {},
-                    multerFunc: route.multerFunc, 
+                    multerFunc: route.multerFunc,
                     handler: route.handler.fn,
                     isNew: route.isNew
                 };
@@ -116,7 +123,7 @@ function _readDir(urlPathArray, dir) {
     let curDir = path.join(routeDir, urlPathArray.join('/'), dir);
     //logger.debug(`Processing current directory: ${curDir}`);
     let entries = fs.readdirSync(curDir, _READDIR_OPTIONS);
-    entries.forEach( dirent => {
+    entries.forEach(dirent => {
         //logger.debug(`${curDir} - ${dirent.name}`);
         if (isExclude(dirent.name)) {
             return null;
