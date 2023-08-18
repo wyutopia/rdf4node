@@ -78,8 +78,14 @@ function _modifyValidators(r, modSpec) {
     }
 }
 
-function _loadRoutes (router) {
-    const routeSpecs = [];
+function _loadRouteSpecs(specs) {
+
+}
+
+function _addRoutes (router) {
+    let routeSpecs = [];
+    _readRouteDirSync(routeSpecs, rootDir);
+    _setRoutes(routeSpecs);
     // Load all routeSpecs from file
 }
 
