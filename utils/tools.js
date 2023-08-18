@@ -198,7 +198,6 @@ exports.invokeHttpRequest = function (options, callback) {
     } else {
         bodyParser = null;
     }
-
     //logger.debug(`Invoke options: ${_inspect(options)}`);
     _getFlowToken(options, (err, token) => {
         if (err) {
@@ -211,6 +210,9 @@ exports.invokeHttpRequest = function (options, callback) {
                     code: eRetCodes.INTERNAL_SERVER_ERR,
                     message: `Http invoke error! - ${err.code}#${err.message}`
                 });
+            }
+            if (options.rawResponse === true) {
+                return callback(null, rsp);
             }
             if ([eRetCodes.SUCCESS, eRetCodes.CREATED].indexOf(rsp.statusCode) === -1) {
                 let msg = rsp.body || rsp.statusMessage || 'Server error!';
