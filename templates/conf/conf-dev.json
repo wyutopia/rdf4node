@@ -1,76 +1,80 @@
 {
-    "app": {
-      "name": "rdf4node",
-      "alias": "rdf4node",
-      "registry": "rdf4node",
-      "tags": [
-        "Rapid",
-        "Development",
-        "Framework",
-        "Linux",
-        "Alpine",
-        "node",
-        "amd64"
-      ],
-      "port": 3000
-    },
-    "security": {
-      "allowOrigin": "*",
-      "enableRateLimit": false,
-      "enableAuthorization": false
-    },
-    "httpMonitor": true,
-    "dataSources": {
+  "app": {
+    "name": "rdf4node",
+    "alias": "rdf4node",
+    "registry": "rdf4node",
+    "tags": [
+      "Rapid",
+      "Development",
+      "Framework",
+      "Linux",
+      "Alpine",
+      "node",
+      "amd64"
+    ],
+    "port": 3000
+  },
+  "security": {
+    "allowOrigin": "*",
+    "enableRateLimit": false,
+    "enableAuthorization": false
+  },
+  "httpMonitor": true,
+  "dataSources": {
+    "default": {
+      "type": "mongo",
+      "config": {
+        "ip": "127.0.0.1",
+        "port": 27017,
+        "user": "dbo",
+        "pwd": "Dev123456",
+        "db": "test",
+        "authSource": "test"
+      },
+      "enabled": true
+    }
+  },
+  "caches": {
+    "shareClient": false,
+    "shareDatabase": false,
+    "redis": {
       "default": {
-        "type": "mongo",
-        "config": {
-          "ip": "127.0.0.1",
-          "port": 27017,
-          "user": "dbo",
-          "pwd": "Dev123456",
-          "db": "test",
-          "authSource": "test"
-        },
-        "enabled": true
-      }
-    },
-    "caches": {
-      "shareClient": false,
-      "shareDatabase": false,
-      "redis": {
-        "default": {
-          "host": "127.0.0.1",
-          "port": 6379,
-          "database": 1,
-          "password": "Dev#2023"
-        }
-      }
-    },
-    "eventBus": {
-      "engine": "resident",
-      "lo": true,
-      "disabledEvents": [],
-      "persistent": true,
-      "rabbitmq": {
-        "vhost": "rdf4node",
-        "connection": {
-          "slashes": true,
-          "protocol": "ampq",
-          "hostname": "127.0.0.1",
-          "user": "admin",
-          "password": "Dev#2023",
-          "port": 5672,
-          "options": {
-            "heartbeat": 4
-          }
-        },
-        "default": {
-          "exchanges": {},
-          "queues": [],
-          "publications": {},
-          "bindings": {},
-          "subscriptions": {}
-        }
+        "host": "127.0.0.1",
+        "port": 6379,
+        "database": 1,
+        "password": "Dev#2023"
       }
     }
+  },
+  "eventBus": {
+    "engine": "resident",
+    "lo": true,
+    "disabledEvents": [],
+    "persistent": true,
+    "rabbitmq": {
+      "vhost": "rdf4node",
+      "connection": {
+        "slashes": true,
+        "protocol": "ampq",
+        "hostname": "127.0.0.1",
+        "user": "admin",
+        "password": "Dev#2023",
+        "port": 5672,
+        "options": {
+          "heartbeat": 4
+        }
+      },
+      "default": {
+        "exchanges": {},
+        "queues": [],
+        "publications": {},
+        "bindings": {},
+        "subscriptions": {}
+      }
+    }
+  },
+  "upload": {
+    "engine": "resident",
+    "hostPath": "uploads/"
   }
+}

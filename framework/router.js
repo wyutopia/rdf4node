@@ -3,12 +3,8 @@
  */
 const fs = require('fs');
 const path = require('path');
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
 const appRoot = require('app-root-path');
-const routeDir = path.join(appRoot.path, 'routes');
+const _rootDir = path.join(appRoot.path, 'routes');
 // Framework
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
@@ -35,7 +31,7 @@ function _setCORS(router) {
     });
 }
 
-function _addBaseUrls(router) {
+function _addBaseRoutes(router) {
     /* GET home page. */
     router.get('/', (req, res, next) => {
         //TODO: Replace title with your own project name
@@ -78,27 +74,15 @@ function _modifyValidators(r, modSpec) {
     }
 }
 
-function _loadRouteSpecs(specs) {
-
-}
-
-function _addRoutes (router) {
-    let routeSpecs = [];
-    _readRouteDirSync(routeSpecs, rootDir);
-    _setRoutes(routeSpecs);
-    // Load all routeSpecs from file
-}
-
-function _loadRoutes(urlPathArray, filename) {
-    let urlPath = urlPathArray.join('/');
-    let fullPathName = path.join(routeDir, urlPath, filename);
+function _readRouteFileSync(specs, routePath, filename) {
+    let filePath = path.join(_rootDir, routePath, filename);
     try {
-        let routes = require(fullPathName);
+        let routes = require(filePath);
         routes.forEach(route => {
             if (route.handler.fn !== undefined) {
                 let subPath = filename.split('.')[0].replace('-', '/');
                 let r = {
-                    path: path.join(urlPath, subPath, route.path),
+                    path: path.join('/', routePath, subPath, route.path),
                     authType: route.authType || 'jwt',
                     method: route.method.toUpperCase(),
                     validator: route.handler.val || {},
@@ -107,7 +91,7 @@ function _loadRoutes(urlPathArray, filename) {
                     isNew: route.isNew
                 };
                 if (route.oldPath) {
-                    r.oldPath = path.join(urlPath, subPath, route.path);
+                    r.oldPath = path.join('/', routePath, subPath, route.oldPath);
                 }
                 if (route.modValidators !== undefined) {
                     _modifyValidators(r, route.modValidators);
@@ -115,42 +99,36 @@ function _loadRoutes(urlPathArray, filename) {
                 if (route.multer !== undefined) {
                     r.multer = route.multer;
                 }
-                gRoutes.push(r);
+                specs.push(r);
             } else {
-                logger.error(`Invalid controller method! - ${filename} - ${route.path} - ${toh}`);
+                logger.error(`Handler function is missing! - ${filename} - ${route.path}`);
             }
         });
     } catch (ex) {
-        logger.error(`Load routes from file: ${fullPathName} error! - ${ex.message} - ${ex.stack}`);
+        logger.error(`Load routes from file: ${filePath} error! - ${ex.message} - ${ex.stack}`);
     }
 }
 
-function _readDir(urlPathArray, dir) {
-    let curDir = path.join(routeDir, urlPathArray.join('/'), dir);
-    //logger.debug(`Processing current directory: ${curDir}`);
-    let entries = fs.readdirSync(curDir, _READDIR_OPTIONS);
+function _readRouteDirSync(specs, routePath) {
+    let routeDir = path.join(_rootDir, routePath);
+    logger.debug(`Processing current directory: ${routeDir}`);
+
+    let entries = fs.readdirSync(routeDir, _READDIR_OPTIONS);
     entries.forEach(dirent => {
-        //logger.debug(`${curDir} - ${dirent.name}`);
         if (isExclude(dirent.name)) {
             return null;
         }
-        let nextPaths = urlPathArray.slice();
-        nextPaths.push(dir);
-        //logger.debug(`Processing sub directory: ${tools.inspect(nextPaths)}`);
         if (dirent.isDirectory()) {
-            _readDir(nextPaths, dirent.name);
+            _readRouteDirSync(specs, path.join(routePath, dirent.name));
         } else {
-            _loadRoutes(nextPaths, dirent.name);
+            _readRouteFileSync(specs, routePath, dirent.name);
         }
     });
 }
 
-// Load and set routes
-(() => {
+function _setRoutes(router, routeSpecs) {
     try {
-        _readDir([''], '');
-        //
-        gRoutes.forEach(route => {
+        routeSpecs.forEach(route => {
             let method = (route.method || 'USE').toLowerCase();
             let argv = [route.path];
             // Add multer middleware if exists
@@ -180,7 +158,21 @@ function _readDir(urlPathArray, dir) {
     } catch (err) {
         logger.error(`Read route directory error! - ${err.message} - ${err.stack}`);
     }
-})();
+}
+
+function _addAppRoutes (router) {
+    let routeSpecs = [];
+    _readRouteDirSync(routeSpecs, '');
+    _setRoutes(router, routeSpecs);
+}
+
+function initRouter(router) {
+    _setCORS(router);
+    _addBaseRoutes(router);
+    _addAppRoutes(router);
+}
 
 // Declaring module exports
-module.exports = exports = router;
+module.exports = exports = {
+    initRouter
+};
