@@ -31,18 +31,12 @@ function _setCORS(router) {
     });
 }
 
-function _addBaseRoutes(router) {
+function _addHomepage(router) {
     /* GET home page. */
     router.get('/', (req, res, next) => {
         //TODO: Replace title with your own project name
         res.render('index', { title: appConf.alias || 'the rappid-dev-framework!' });
     });
-    /* GET apis page on non-production env. */
-    if (process.env.NODE_ENV !== 'production') {
-        router.get('/api', (req, res) => {
-            return res.render('api', { routes: gRoutes });
-        });
-    }
 }
 
 const _READDIR_OPTIONS = {
@@ -160,15 +154,22 @@ function _setRoutes(router, routeSpecs) {
     }
 }
 
-function _addAppRoutes (router) {
+function _addAppRoutes(router) {
     let routeSpecs = [];
     _readRouteDirSync(routeSpecs, '');
     _setRoutes(router, routeSpecs);
+    //
+    /* GET apis page on non-production env. */
+    if (process.env.NODE_ENV !== 'production') {
+        router.get('/api', (req, res) => {
+            return res.render('api', { routes: routeSpecs });
+        });
+    }
 }
 
 function initRouter(router) {
     _setCORS(router);
-    _addBaseRoutes(router);
+    _addHomepage(router);
     _addAppRoutes(router);
 }
 
