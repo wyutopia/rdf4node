@@ -50,52 +50,68 @@ function isExclude(filename) {
     return _EXCLUDE_FILES.indexOf(filename) !== -1;
 }
 
+
+const _scopeToParameterKey = {
+    'tnt'    : 'tenant',
+    'grp'    : 'group',
+    'prj'    : 'project'
+};
 const _reDelKey = new RegExp(/^--/);
 const _reNotRequired = new RegExp(/^-/);
-function _modifyValidators(r, modSpec) {
-    if (modSpec !== undefined) {
-        modSpec.forEach(key => {
-            if (_reDelKey.test(key)) {
-                let realKey = key.replace('--', '');
-                delete r.validator[realKey]
-            } else if (_reNotRequired.test(key)) {
-                let realKey = key.replace('-', '');
-                delete r.validator[realKey].required;
-            } else if (r.validator[key] !== undefined) {
-                r.validator[key].required = true;
-            }
-        });
+function _calibrateValidator(validator, scope, modifications) {
+    // Set MandatoryKey according to scope
+    let mandatoryKey = _scopeToParameterKey[scope];
+    if (mandatoryKey !== undefined) {
+        validator[mandatoryKey] = {
+            type: 'ObjectId',
+            required: true
+        }
     }
+    // Perform modifications if provided
+    if (modifications === undefined) {
+        return null;
+    }
+    modifications.forEach(key => {
+        if (_reDelKey.test(key)) {
+            let realKey = key.replace('--', '');
+            delete validator[realKey]
+        } else if (_reNotRequired.test(key)) {
+            let realKey = key.replace('-', '');
+            delete validator[realKey].required;
+        } else if (validator[key] !== undefined) {
+            validator[key].required = true;
+        }
+    });
 }
 
 function _readRouteFileSync(specs, routePath, filename) {
     let filePath = path.join(_rootDir, routePath, filename);
     try {
-        let routes = require(filePath);
+        const routeObj = require(filePath);
+        //
+        const scope = routeObj.scope || 'usr';
+        const routes = routeObj.routes || [];
         routes.forEach(route => {
             if (route.handler.fn !== undefined) {
                 let subPath = filename.split('.')[0].replace('-', '/');
                 let r = {
                     path: path.join('/', routePath, subPath, route.path),
                     authType: route.authType || 'jwt',
+                    scope: scope,
                     method: route.method.toUpperCase(),
                     validator: route.handler.val || {},
                     multerFunc: route.multerFunc,
                     handler: route.handler.fn,
-                    isNew: route.isNew
+                    isNew: route.isNew,
+                    commit: route.commit
                 };
                 if (route.oldPath) {
                     r.oldPath = path.join('/', routePath, subPath, route.oldPath);
                 }
-                if (route.modValidators !== undefined) {
-                    _modifyValidators(r, route.modValidators);
-                }
-                if (route.multer !== undefined) {
-                    r.multer = route.multer;
-                }
+                _calibrateValidator(r.validator, scope, route.modValidators);
                 specs.push(r);
             } else {
-                logger.error(`Handler function is missing! - ${filename} - ${route.path}`);
+                logger.error(`Route handling function is missing! - ${filename} - ${route.path}`);
             }
         });
     } catch (ex) {
@@ -130,7 +146,7 @@ function _setRoutes(router, routeSpecs) {
                 argv.push(route.multerFunc);
             }
             // Add accessCtl middleware
-            argv.push(accessCtl.bind(null, route.authType, route.validator));
+            argv.push(accessCtl.bind(null, route.authType, route.validator, route.scope));
             // Add sequence middlewares or handler
             if (typeof route.handler === 'function') {
                 argv.push(route.handler);
@@ -144,7 +160,7 @@ function _setRoutes(router, routeSpecs) {
             // Perform setting route
             try {
                 router[method].apply(router, argv);
-                logger.info(`Route: ${route.method} - ${route.path} - ${route.authType} set.`);
+                logger.info(`Route: ${route.method} - ${route.path} - ${route.authType} - ${route.scope} set.`);
             } catch (ex) {
                 logger.error(`Set [${method}] ${route.path} error! - ${ex.message} - ${ex.stack}`);
             }

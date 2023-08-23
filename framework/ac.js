@@ -380,35 +380,42 @@ function _authenticate(authType, req, callback) {
     return callback();
 }
 
-function _authorize(req, callback) {
+function _authorize(req, scope, callback) {
     if (config.enableAuthorization !== true) {
         // Ignore AUTHORIZATION
         return callback();
     }
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
+    if (typeof scope === 'function') {
+        callback = scope;
+        scope = null;
     }
     // Do real authorization
-    return _acHelper._realAuthorize(req, callback);
+    return _acHelper._realAuthorize(req, {scope: scope}, callback);
 }
 
-function _accessCtl (authType, validator, req, res, next) {
-    _authenticate(authType, req, err => {
+/**
+ * 
+ * @param {authType, validator, scope} options 
+ * @param {*} req 
+ * @param {*} res 
+ * @param {*} next 
+ */
+function _accessCtl (options, req, res, next) {
+    _authenticate(options.authType, req, err => {
         if (err) {
             return res.sendStatus(err.code);
         }
         let params = Object.assign({}, req.params, req.query, req.body);
         logger.debug(`Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
-        _parseParameters(params, validator, (err, args) => {
+        _parseParameters(params, options.validator, (err, args) => {
             if (err) {
                 return res.sendRsp(err.code, err.message);
             }
-            req.$args = args;
+            req.$args = args;  // Append parsed parameters as $args
             if (authType === 'none') {
                 return next();
             }
-            _authorize(req, err => {
+            _authorize(req, options.scope, err => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }
