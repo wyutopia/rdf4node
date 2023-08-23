@@ -52,13 +52,27 @@ function isExclude(filename) {
 
 
 const _scopeToParameterKey = {
-    'tnt'    : 'tenant',
-    'grp'    : 'group',
-    'prj'    : 'project'
+    'tnt': 'tenant',
+    'grp': 'group',
+    'prj': 'project'
 };
 const _reDelKey = new RegExp(/^--/);
 const _reNotRequired = new RegExp(/^-/);
 function _calibrateValidator(validator, scope, modifications) {
+    // Perform modifications if provided
+    if (modifications !== undefined) {
+        modifications.forEach(key => {
+            if (_reDelKey.test(key)) {
+                let realKey = key.replace('--', '');
+                delete validator[realKey]
+            } else if (_reNotRequired.test(key)) {
+                let realKey = key.replace('-', '');
+                delete validator[realKey].required;
+            } else if (validator[key] !== undefined) {
+                validator[key].required = true;
+            }
+        });
+    }
     // Set MandatoryKey according to scope
     let mandatoryKey = _scopeToParameterKey[scope];
     if (mandatoryKey !== undefined) {
@@ -67,21 +81,6 @@ function _calibrateValidator(validator, scope, modifications) {
             required: true
         }
     }
-    // Perform modifications if provided
-    if (modifications === undefined) {
-        return null;
-    }
-    modifications.forEach(key => {
-        if (_reDelKey.test(key)) {
-            let realKey = key.replace('--', '');
-            delete validator[realKey]
-        } else if (_reNotRequired.test(key)) {
-            let realKey = key.replace('-', '');
-            delete validator[realKey].required;
-        } else if (validator[key] !== undefined) {
-            validator[key].required = true;
-        }
-    });
 }
 
 function _readRouteFileSync(specs, routePath, filename) {
@@ -175,7 +174,7 @@ function _addAppRoutes(router) {
     _readRouteDirSync(routeSpecs, '');
     _setRoutes(router, routeSpecs);
     //
-    /* GET apis page on non-production env. */
+    /* GET api document page on non-production env. */
     if (process.env.NODE_ENV !== 'production') {
         router.get('/api', (req, res) => {
             return res.render('api', { routes: routeSpecs });
