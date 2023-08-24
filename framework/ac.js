@@ -381,7 +381,7 @@ function _authenticate(authType, req, callback) {
 }
 
 function _authorize(req, scope, callback) {
-    if (config.enableAuthorization !== true || scope === 'pub') {
+    if (config.enableAuthorization !== true) {
         // Ignore AUTHORIZATION
         return callback();
     }
@@ -396,14 +396,14 @@ function _authorize(req, scope, callback) {
  * @param {*} res 
  * @param {*} next 
  */
-function _accessCtl (options, req, res, next) {
-    _authenticate(options.authType, req, err => {
+function _accessCtl ({authType, validator, scope}, req, res, next) {
+    _authenticate(authType, req, err => {
         if (err) {
             return res.sendStatus(err.code);
         }
         let params = Object.assign({}, req.params, req.query, req.body);
         logger.debug(`Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
-        _parseParameters(params, options.validator, (err, args) => {
+        _parseParameters(params, validator, (err, args) => {
             if (err) {
                 return res.sendRsp(err.code, err.message);
             }
@@ -411,7 +411,7 @@ function _accessCtl (options, req, res, next) {
             if (authType === 'none') {
                 return next();
             }
-            _authorize(req, options.scope, err => {
+            _authorize(req, scope, err => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }

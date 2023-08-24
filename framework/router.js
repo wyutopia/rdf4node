@@ -145,7 +145,11 @@ function _setRoutes(router, routeSpecs) {
                 argv.push(route.multerFunc);
             }
             // Add accessCtl middleware
-            argv.push(accessCtl.bind(null, route.authType, route.validator, route.scope));
+            argv.push(accessCtl.bind(null, {
+                authType: route.authType,
+                validator: route.validator,
+                scope: route.scope
+            }));
             // Add sequence middlewares or handler
             if (typeof route.handler === 'function') {
                 argv.push(route.handler);
