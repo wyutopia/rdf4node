@@ -350,7 +350,7 @@ class AccessControllerHelper extends CommonModule {
                 callback = options;
                 options = {};
             }
-            logger.info('Do nothing on authorize!');
+            logger.info('Do nothing on authorization!');
             return callback();
         };
     }
@@ -381,13 +381,9 @@ function _authenticate(authType, req, callback) {
 }
 
 function _authorize(req, scope, callback) {
-    if (config.enableAuthorization !== true) {
+    if (config.enableAuthorization !== true || scope === 'pub') {
         // Ignore AUTHORIZATION
         return callback();
-    }
-    if (typeof scope === 'function') {
-        callback = scope;
-        scope = null;
     }
     // Do real authorization
     return _acHelper._realAuthorize(req, {scope: scope}, callback);
