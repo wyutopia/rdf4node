@@ -120,7 +120,9 @@ function _$parseCacheKey (options, cacheSpec) {
     template.split(':').forEach( field => {
         keyNameArray.push(options[field] === undefined? '*' : tools.stringifyDocId(options[field]));
     });
-    return keyNameArray.join(':');
+    const cacheKey  = keyNameArray.join(':');
+    logger.debug(`cacheKey: ${cacheKey}`);
+    return cacheKey;
 }
 
 function _parseCacheValue(doc, valueKeys) {
