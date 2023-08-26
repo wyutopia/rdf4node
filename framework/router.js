@@ -3,142 +3,141 @@
  */
 const fs = require('fs');
 const path = require('path');
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const upload = multer({dest: 'uploads/'});
 const appRoot = require('app-root-path');
-const routeDir = path.join(appRoot.path, 'routes');
+const _rootDir = path.join(appRoot.path, 'routes');
 // Framework
-const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
-const {accessCtl} = require('./ac');
+const { accessCtl } = require('./ac');
 const tools = require('../utils/tools');
-const config = require('../include/config');
-const securityConf = config.security || {};
+const { app: appConf, security: secConf } = require('../include/config');
+
 /**
  * Middleware to Support CORS
  */
-const _commonHeaders = [
+const _ALLOW_HEADERS_BASE = [
     'Content-Type', 'Content-Length', 'Authorization', 'Accept', 'X-Requested-With', 'ActiveGroup', 'ActiveTenant', 'AuthToken'
 ];
-const allowHeaders = securityConf.allowHeaders? _commonHeaders.concat(securityConf.allowHeaders) : _commonHeaders;
-
-router.all('*', (req, res, next) => {
-    res.header('Access-Control-Allow-Origin', securityConf.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
-    res.header('Access-Control-Allow-Headers', allowHeaders.join(', '));
-    res.header('Access-Control-Allow-Methods', securityConf.allowMethods || 'POST, GET, OPTIONS');
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-});
-
-/* GET home page. */
-router.get('/', (req, res, next) => {
-    //TODO: Replace title with your own project name
-    res.render('index', {title: config.app.alias || 'the rappid-dev-framework!'});
-});
-
-if (process.env.NODE_ENV !== 'production') {
-    router.get('/api', (req, res) => {
-        return res.render('api', {routes: gRoutes});
+const _allowHeaders = secConf.allowHeaders ? _ALLOW_HEADERS_BASE.concat(secConf.allowHeaders) : _ALLOW_HEADERS_BASE;
+function _setCORS(router) {
+    router.all('*', (req, res, next) => {
+        res.setHeader('Access-Control-Allow-Origin', secConf.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
+        res.setHeader('Access-Control-Allow-Headers', _allowHeaders.join(', '));
+        res.setHeader('Access-Control-Allow-Methods', secConf.allowMethods || 'POST, GET, OPTIONS');
+        if (req.method === 'OPTIONS') {
+            return res.sendStatus(200);
+        }
+        next();
     });
 }
 
-let gRoutes = [];
-const READDIR_OPTIONS = {
+function _addHomepage(router) {
+    /* GET home page. */
+    router.get('/', (req, res, next) => {
+        //TODO: Replace title with your own project name
+        res.render('index', { title: appConf.alias || 'the rappid-dev-framework!' });
+    });
+}
+
+const _READDIR_OPTIONS = {
     withFileTypes: true
 };
-
-const EXCLUDE_FILES = [
+const _EXCLUDE_FILES = [
     '.DS_Store',
     'index.js'
 ];
 function isExclude(filename) {
-    return EXCLUDE_FILES.indexOf(filename) !== -1;
+    return _EXCLUDE_FILES.indexOf(filename) !== -1;
 }
 
-const reDelKey = new RegExp(/^--/);
-const reNotRequired = new RegExp(/^-/);
-function _modifyValidators (r, modSpec) {
-    if (modSpec !== undefined) {
-        modSpec.forEach(key => {
-            if (reDelKey.test(key)) {
+
+const _scopeToParameterKey = {
+    'tnt': 'tenant',
+    'grp': 'group',
+    'prj': 'project'
+};
+const _reDelKey = new RegExp(/^--/);
+const _reNotRequired = new RegExp(/^-/);
+function _calibrateValidator(validator, scope, modifications) {
+    // Perform modifications if provided
+    if (modifications !== undefined) {
+        modifications.forEach(key => {
+            if (_reDelKey.test(key)) {
                 let realKey = key.replace('--', '');
-                delete r.validator[realKey]
-            } else if (reNotRequired.test(key)) {
+                delete validator[realKey]
+            } else if (_reNotRequired.test(key)) {
                 let realKey = key.replace('-', '');
-                delete r.validator[realKey].required;
-            } else if (r.validator[key] !== undefined) {
-                r.validator[key].required = true;
+                delete validator[realKey].required;
+            } else if (validator[key] !== undefined) {
+                validator[key].required = true;
             }
         });
     }
+    // Set MandatoryKey according to scope
+    let mandatoryKey = _scopeToParameterKey[scope];
+    if (mandatoryKey !== undefined) {
+        validator[mandatoryKey] = {
+            type: 'ObjectId',
+            required: true
+        }
+    }
 }
 
-function _loadRoutes(urlPathArray, filename) {
-    let urlPath = urlPathArray.join('/');
-    let fullPathName = path.join(routeDir, urlPath, filename);
+function _readRouteFileSync(specs, routePath, filename) {
+    let filePath = path.join(_rootDir, routePath, filename);
     try {
-        let routes = require(fullPathName);
-        routes.forEach( route => {
+        const routeObj = require(filePath);
+        //
+        const scope = routeObj.scope || 'usr';
+        const routes = routeObj.routes || [];
+        routes.forEach(route => {
             if (route.handler.fn !== undefined) {
                 let subPath = filename.split('.')[0].replace('-', '/');
                 let r = {
-                    path: path.join(urlPath, subPath, route.path),
+                    path: path.join('/', routePath, subPath, route.path),
                     authType: route.authType || 'jwt',
+                    scope: scope,
                     method: route.method.toUpperCase(),
                     validator: route.handler.val || {},
-                    multerFunc: route.multerFunc, 
+                    multerFunc: route.multerFunc,
                     handler: route.handler.fn,
-                    isNew: route.isNew
+                    isNew: route.isNew,
+                    commit: route.commit
                 };
                 if (route.oldPath) {
-                    r.oldPath = path.join(urlPath, subPath, route.path);
+                    r.oldPath = path.join('/', routePath, subPath, route.oldPath);
                 }
-                if (route.modValidators !== undefined) {
-                    _modifyValidators(r, route.modValidators);
-                }
-                if (route.multer !== undefined) {
-                    r.multer = route.multer;
-                }
-                gRoutes.push(r);
+                _calibrateValidator(r.validator, scope, route.modValidators);
+                specs.push(r);
             } else {
-                logger.error(`Invalid controller method! - ${filename} - ${route.path} - ${toh}`);
+                logger.error(`Route handling function is missing! - ${filename} - ${route.path}`);
             }
         });
     } catch (ex) {
-        logger.error(`Load routes from file: ${fullPathName} error! - ${ex.message} - ${ex.stack}`);
+        logger.error(`Load routes from file: ${filePath} error! - ${ex.message} - ${ex.stack}`);
     }
 }
 
-function _readDir(urlPathArray, dir) {
-    let curDir = path.join(routeDir, urlPathArray.join('/'), dir);
-    //logger.debug(`Processing current directory: ${curDir}`);
-    let entries = fs.readdirSync(curDir, READDIR_OPTIONS);
-    entries.forEach( dirent => {
-        //logger.debug(`${curDir} - ${dirent.name}`);
+function _readRouteDirSync(specs, routePath) {
+    let routeDir = path.join(_rootDir, routePath);
+    logger.debug(`Processing current directory: ${routeDir}`);
+
+    let entries = fs.readdirSync(routeDir, _READDIR_OPTIONS);
+    entries.forEach(dirent => {
         if (isExclude(dirent.name)) {
             return null;
         }
-        let nextPaths = urlPathArray.slice();
-        nextPaths.push(dir);
-        //logger.debug(`Processing sub directory: ${tools.inspect(nextPaths)}`);
         if (dirent.isDirectory()) {
-            _readDir(nextPaths, dirent.name);
+            _readRouteDirSync(specs, path.join(routePath, dirent.name));
         } else {
-            _loadRoutes(nextPaths, dirent.name);
+            _readRouteFileSync(specs, routePath, dirent.name);
         }
     });
 }
 
-// Load and set routes
-(() => {
+function _setRoutes(router, routeSpecs) {
     try {
-        _readDir([''], '');
-        //
-        gRoutes.forEach(route => {
+        routeSpecs.forEach(route => {
             let method = (route.method || 'USE').toLowerCase();
             let argv = [route.path];
             // Add multer middleware if exists
@@ -146,7 +145,11 @@ function _readDir(urlPathArray, dir) {
                 argv.push(route.multerFunc);
             }
             // Add accessCtl middleware
-            argv.push(accessCtl.bind(null, route.authType, route.validator));
+            argv.push(accessCtl.bind(null, {
+                authType: route.authType,
+                validator: route.validator,
+                scope: route.scope
+            }));
             // Add sequence middlewares or handler
             if (typeof route.handler === 'function') {
                 argv.push(route.handler);
@@ -160,7 +163,7 @@ function _readDir(urlPathArray, dir) {
             // Perform setting route
             try {
                 router[method].apply(router, argv);
-                logger.info(`Route: ${route.method} - ${route.path} - ${route.authType} set.`);
+                logger.info(`Route: ${route.method} - ${route.path} - ${route.authType} - ${route.scope} set.`);
             } catch (ex) {
                 logger.error(`Set [${method}] ${route.path} error! - ${ex.message} - ${ex.stack}`);
             }
@@ -168,7 +171,28 @@ function _readDir(urlPathArray, dir) {
     } catch (err) {
         logger.error(`Read route directory error! - ${err.message} - ${err.stack}`);
     }
-})();
+}
+
+function _addAppRoutes(router) {
+    let routeSpecs = [];
+    _readRouteDirSync(routeSpecs, '');
+    _setRoutes(router, routeSpecs);
+    //
+    /* GET api document page on non-production env. */
+    if (process.env.NODE_ENV !== 'production') {
+        router.get('/api', (req, res) => {
+            return res.render('api', { routes: routeSpecs });
+        });
+    }
+}
+
+function initRouter(router) {
+    _setCORS(router);
+    _addHomepage(router);
+    _addAppRoutes(router);
+}
 
 // Declaring module exports
-module.exports = exports = router;
+module.exports = exports = {
+    initRouter
+};

@@ -90,7 +90,7 @@ function _initClient(options) {
         broker.on('error', (err) => {
             logger.error(`${this.$name}[${this.state}]: Broker error! - ${err.message}`);
             this.state = eClientState.Null;
-            this.$factory.emit('client-end', this.id, err);
+            this.$factory.emit('client-end', this.$id, err);
         });
         // Perform subscribe and store publication keys
         const self = this;
@@ -159,7 +159,7 @@ function _initClient(options) {
 }
 
 const _typeClientProps = {
-    id: 'string',
+    $id: 'string',
     $name: 'string',
     $parent: 'object',
     $factory: 'object',

@@ -49,14 +49,14 @@ function _validateString (field, validator, argv) {
     if (validator.regexp && !validator.regexp.test(argv)) {
         errMsg = `Invalid ${field} value!`;
     }
-    if (!errMsg && validator.minLen !== undefined) {
-        if (argv.length < validator.minLen) {
-            errMsg = `Length of ${field} should be great than ${validator.minLen} !`;
+    if (!errMsg && validator.minLeng !== undefined) {
+        if (argv.length < validator.minLeng) {
+            errMsg = `Length of ${field} should be great than ${validator.minLeng} !`;
         }
     }
-    if (!errMsg && validator.maxLen !== undefined) {
-        if (argv.length > validator.maxLen) {
-            errMsg = `Length of ${field} should be less than ${validator.maxLen} !`;
+    if (!errMsg && validator.maxLeng !== undefined) {
+        if (argv.length > validator.maxLeng) {
+            errMsg = `Length of ${field} should be less than ${validator.maxLeng} !`;
         }
     }
     return errMsg;
@@ -90,7 +90,7 @@ function _validateEmbeddedObject(field, validator, args) {
             }
             if (!errMsg) {
                 switch(val.type) {
-                    case 'ObjectID':
+                    case 'ObjectId':
                         if (!ObjectId.isValid(argv) && val.allowEmpty !== true) {
                             errMsg = `Invalid ObjectId value: ${field}.${i}.${valKey}!`;
                         }
@@ -126,14 +126,14 @@ function _validateEmbeddedObject(field, validator, args) {
     return errMsg;
 }
 
-const typeExtractRe = new RegExp("String|Number|ObjectID|EmbeddedObject");
+const _typeExtractRe = new RegExp("String|Number|ObjectId|EmbeddedObject");
 function _validateTypedArray(field, validator, args) {
     let errMsg = null;
     if (!Array.isArray(args)) {
         errMsg = `${field} should be array!`;
         return errMsg;
     }
-    let result = typeExtractRe.exec(validator.type);
+    let result = _typeExtractRe.exec(validator.type);
     if (!result) {
         errMsg = `Unrecognized parameter type: ${field}`;
         return errMsg;
@@ -147,7 +147,7 @@ function _validateTypedArray(field, validator, args) {
                     errMsg = `type of #${i} in ${field} should be ${t}`;
                 }
                 break;
-            case 'ObjectID':
+            case 'ObjectId':
                 if(!ObjectId.isValid(argv)) {
                     errMsg = `type of #${i} in ${field} should be ${t}`;
                 }
@@ -166,38 +166,6 @@ function _validateTypedArray(field, validator, args) {
         }
     }
     return errMsg
-}
-
-function _validateTypedList (field, validator, args) {
-    let errMsg = null;
-    let params = [];
-    let rawString = typeof args === 'string'? args : args.toString();
-    let strArr = rawString.split(',');
-    let t = typeExtractRe.exec(validator.type)[0];
-    for (let i=0; i<strArr.length; i++) {
-        let item = strArr[i];
-        switch(t) {
-            case 'ObjectID':
-                if(!ObjectId.isValid(item)) {
-                    errMsg = `type of #${i} in ${field} should be ${t}`;
-                }              
-                break;
-            case 'Number':
-                if (Number.isNaN(item)) {
-                    errMsg = `type of #${i} in ${field} should be ${t}`;
-                }
-                break;
-        }
-        if (!errMsg) {
-            params.push(item);
-        } else {
-            break;
-        }
-    }
-    if (!errMsg) {
-        args = params;
-    }
-    return errMsg;
 }
 
 function _validateNumber (field, validator, argv, options = {}) {
@@ -228,8 +196,7 @@ function _validateDate (field, validator, argv, options = {}) {
     return errMsg;
 }
 
-const typedArrayRe = new RegExp("^Array<(String|Number|ObjectID|EmbeddedObject)>$");
-//const typedListRe = new RegExp("^List<(String|Number|ObjectID)>$");
+const _typedArrayRe = new RegExp("^Array<(String|Number|ObjectId|EmbeddedObject)>$");
 function _validateParameter(field, validator, argv) {
     //logger.debug(`Perform validation: ${field} - ${tools.inspect(validator)} - ${tools.inspect(argv)}`);
     let errMsg = null;
@@ -242,17 +209,14 @@ function _validateParameter(field, validator, argv) {
     if (errMsg !== null) {
         return errMsg;
     }
-    if (typedArrayRe.test(validator.type)) {
+    if (_typedArrayRe.test(validator.type)) {
         errMsg = _validateTypedArray(field, validator, argv);
     }
-    // if (typedListRe.test(validator.type)) {
-    //     errMsg = _validateTypedList(field, validator, argv);
-    // }
     if (errMsg !== null) {
         return errMsg;
     }
     switch(validator.type) {
-        case 'ObjectID':
+        case 'ObjectId':
             if (!ObjectId.isValid(argv) && validator.allowEmpty !== true) {
                 errMsg = `Invalid ObjectId value: ${field}!`;
             }
@@ -318,7 +282,7 @@ function _parseParameters (params, validator, callback) {
     for (let i = 0; i < fields.length; i++) {
         let field = fields[i];
         let val = validator[field];
-        let argv = params[field];
+        let argv = (params[field] !== undefined && val.type === 'Number')? parseInt(params[field]) : params[field];
 
         if (argv === undefined) {
             if (val.required === true) {
@@ -386,7 +350,7 @@ class AccessControllerHelper extends CommonModule {
                 callback = options;
                 options = {};
             }
-            logger.info('Do nothing on authorize!');
+            logger.info('Do nothing on authorization!');
             return callback();
         };
     }
@@ -416,20 +380,23 @@ function _authenticate(authType, req, callback) {
     return callback();
 }
 
-function _authorize(req, callback) {
+function _authorize(req, scope, callback) {
     if (config.enableAuthorization !== true) {
         // Ignore AUTHORIZATION
         return callback();
     }
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
-    }
     // Do real authorization
-    return _acHelper._realAuthorize(req, callback);
+    return _acHelper._realAuthorize(req, {scope: scope}, callback);
 }
 
-function _accessCtl (authType, validator, req, res, next) {
+/**
+ * 
+ * @param {authType, validator, scope} options 
+ * @param {*} req 
+ * @param {*} res 
+ * @param {*} next 
+ */
+function _accessCtl ({authType, validator, scope}, req, res, next) {
     _authenticate(authType, req, err => {
         if (err) {
             return res.sendStatus(err.code);
@@ -440,11 +407,11 @@ function _accessCtl (authType, validator, req, res, next) {
             if (err) {
                 return res.sendRsp(err.code, err.message);
             }
-            req.$args = args;
+            req.$args = args;  // Append parsed parameters as $args
             if (authType === 'none') {
                 return next();
             }
-            _authorize(req, err => {
+            _authorize(req, scope, err => {
                 if (err) {
                     return res.sendRsp(err.code, err.message);
                 }

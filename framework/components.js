@@ -14,6 +14,7 @@ const tools = require('../utils/tools');
 //
 const {repoFactory, paginationVal, _DS_DEFAULT_} = require('./repository');
 const {_DEFAULT_PUBKEY_, _DEFAULT_CHANNEL_} = require('./ebus');
+const { resolveSoa } = require('dns');
 
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
@@ -71,6 +72,7 @@ function _publishEvents(options, callback) {
         callback = options;
         options = {};
     }
+    let mode = options.mode || 0;
     let method = options.method;
     if (method === undefined) {
         return callback();
@@ -286,7 +288,7 @@ function _findUpdatedKeys (doc, updates, options) {
                 if (doc[key] !== updates[key]) {
                     updatedKeys.push(key);
                 }
-            } else if (spec.type === 'ObjectID') {
+            } else if (spec.type === 'ObjectId') {
                 let oidString = _getObjectIdString(doc[key]);
                 if (oidString && oidString !== updates[key]) {
                     updatedKeys.push(key);
@@ -455,7 +457,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({}, this._searchVal, {
                     id: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     }
                 });
@@ -492,7 +494,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({}, this._searchVal, {
                     project: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     },
                     brief: {}
@@ -535,7 +537,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({}, this._searchVal, {
                     user: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     },
                     });
@@ -573,7 +575,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({}, this._searchVal, {
                     group: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     },
                     brief: {}
@@ -635,7 +637,8 @@ class EntityController extends ControllerBase {
                                 let obj = doc.toObject();
                                 _publishEvents.call(this, {
                                     method: 'addOne',
-                                    data: obj
+                                    data: obj,
+                                    mode: req.$args.mode || 0
                                 }, () => {
                                     this._afterAdd(req, doc, (err, result) => {
                                         if (err) {
@@ -691,7 +694,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({
                     id: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     }
                 }, this._updateVal);
@@ -733,7 +736,7 @@ class EntityController extends ControllerBase {
             val: (() => {
                 let validator = tools.deepAssign({
                     id: {
-                        type: 'ObjectID',
+                        type: 'ObjectId',
                         required: true
                     }
                 }, this._delVal);
@@ -792,10 +795,67 @@ class EntityController extends ControllerBase {
                 });
             }
         };
+        this.fakeDeleteOne = {
+            val: {
+                tenant: {
+                    type: 'ObjectId',
+                    required: true
+                },
+                id: {
+                    type: 'ObjectId',
+                    required: true
+                },
+                comment: {
+                    type: 'String'
+                }
+            },
+            fn: (req, res) => {
+                this.getRepo(req.dataSource, (err, repo) => {
+                    if (err) {
+                        return res.sendRsp(err.code, err.message);
+                    }
+                    let dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    this._allowDelete(req.$args.id, dsName, (err) => {
+                        if (err) {
+                            return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
+                        }
+                        //
+                        repo.updateOne({
+                            filter: {
+                                _id: req.$args.id,
+                                status: sysdefs.eStatus.ACTIVE
+                            },
+                            updates: {
+                                $set: {
+                                    updateAt: new Date(),
+                                    status: sysdefs.eStatus.DELETED,
+                                    comment: req.$args.comment
+                                }
+                            }
+                        }, (err, doc) => {
+                            if (err) {
+                                return res.sendRsp(err.code, 'Fake delete error!');
+                            }
+                            if (!doc) {
+                                return res.sendRsp(eRetCodes.DB_DELETE_ERR, `${req.$args.id} already deleted!`);
+                            }
+                            _publishEvents.call(this, {
+                                method: 'deleteOne',
+                                data: doc.toObject()
+                            }, () => {
+                                this._afterDeleteOne(req, doc, () => {
+                                    return res.sendSuccess(doc);
+                                })
+                            });
+                        });
+                    });
+                });
+            }
+        };
         this.patchOne = {
             val: {
                 id: {
-                    type: 'ObjectID',
+                    type: 'ObjectId',
                     requird: true
                 },
                 jsonPatch: {

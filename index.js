@@ -30,7 +30,7 @@ exports.netWrapper = require('./libs/common/net.wrapper');
 if (config.rateLimit) {
     exports.rateLimiter = require('./libs/base/ratelimit.wrapper');
 }
-exports.getUpload = require('./libs/common/upload');
+exports.uploadHelper = require('./libs/common/upload');
 
 // Expose database wrappers if configured
 config.dbTypes.forEach(dbType => {

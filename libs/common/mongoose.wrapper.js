@@ -7,7 +7,62 @@ const tools = require("../../utils/tools");
 //mongoose.Promise = require('bluebird');
 mongoose.set('strictQuery', true);
 
-let Schema = mongoose.Schema;
+// Add new SchemaDL class into mongoose lib
+mongoose.SchemaDL = function (options) {
+    this.spec = options;
+    this.extractValidators = (paths) => {
+        let doc = {};
+        paths.forEach(key => {
+            if (this.spec[key] !== undefined) {
+                doc[key] = this.spec[key];
+            }
+        });
+        return _extractValidatorsFromDoc(doc);
+    };
+}
+
+// Following are methos for extracting validators from schema ddl
+const _constValProps = ['min', 'max', 'minLength', 'maxLength', 'enum', 'match'];
+function _parseValProps(doc, val) {
+    _constValProps.forEach(key => {
+        if (doc[key]) {
+            let valKey = key === 'match'? 'regexp' : key;
+            val[valKey] = doc[key];
+        }
+    });
+}
+function _extractValidator(doc) {
+    let validator = {};
+    if (doc.type) {
+        validator.type = doc.type.name;
+        _parseValProps(doc, validator);
+    } else if (tools.isTypeOfArray(doc)) {
+        if (doc[0].type) {
+            validator.type = `Array<${doc[0].type.name}>`;
+            _parseValProps(doc[0], validator);
+        } else {
+            validator.type = 'Array<EmbeddedObject>';
+            validator.$embeddedValidators = _extractValidatorsFromDoc(doc[0]);
+        }
+    } else {
+        validator.type = 'EmbeddedObject';
+        validator.$embeddedValidators = _extractValidatorsFromDoc(doc);
+    }
+    return validator;
+}
+
+function _extractValidatorsFromDoc(doc) {
+    let validators = {};
+    Object.keys(doc).forEach(key => {
+        if (key !== '_id') {
+            validators[key] = _extractValidator(doc[key]);
+        }
+    });
+    return validators;
+}
+
+const Schema = mongoose.Schema;
+// Followings are old extraction methods
 Schema.prototype.extractValidators = function (keys, options = {isSearch: false}) {
     let paths = {};
     keys.forEach(key => {
@@ -23,13 +78,13 @@ function _extractValidatorsFromPaths(paths, options) {
     let validators = {};
     Object.keys(paths).forEach(key => {
         if (key !== '_id') {
-            validators[key] = _extractValidator(paths[key], options);
+            validators[key] = _extractValidator3(paths[key], options);
         }
     });
     return validators;
 }
 
-function _extractValidator (path, options) {
+function _extractValidator3 (path, options) {
     let pathType = path.instance;
     let pathValidators = path.validators;
     if (pathType === 'Array') {

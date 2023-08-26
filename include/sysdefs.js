@@ -149,6 +149,37 @@ const eInterval = {
 };
 exports.eInterval = eInterval;
 
+const __1K = 1024;
+const __1M = __1K * __1K;
+const __1G = __1K * __1M;
+const eSize = {
+    _1K     : 1024,
+    _2K     : 2 * __1K,
+    _3K     : 3 * __1K,
+    _5K     : 5 * __1K,
+    _8K     : 8 * __1K,
+    _10K    : 10 * __1K,
+    _20K    : 20 * __1K,
+    _50K    : 50 * __1K,
+    _80K    : 80 * __1K,
+    _100K   : 100 * __1K,
+    _1M     : 1024 * __1K,
+    _2M     : 1 * __1M,
+    _3M     : 3 * __1M,
+    _5M     : 5 * __1M,
+    _8M     : 8 * __1M,
+    _10M    : 10 * __1M,
+    _20M    : 20 * __1M,
+    _50M    : 50 * __1M,
+    _100M   : 100 * __1M,
+    _200M   : 200 * __1M,
+    _500M   : 500 * __1M,
+    _800M   : 800 * __1M,
+    _1G     : 1024 * __1M,
+    _2G     : 2 * __1G,
+};
+exports.eSize = eSize;
+
 const eAlarmSeverity = {
     CRITICAL      : 5,        // RED       : vibrate + sound
     MAJOR         : 4,        // ORANGE    : sound
@@ -199,14 +230,13 @@ const eAlarmCode = {
 };
 exports.eAlarmCode = eAlarmCode;
 
-let eAlarmConfig = {
+const eAlarmConfig = {
     100: {
         alias: '无服务',
         severity: eAlarmSeverity.CRITICAL,
         suggest: '请尽快排查!'
     }
 };
-Object.freeze(eAlarmConfig);
 exports.eAlarmConfig = eAlarmConfig;
 
 const eRedisResult = {
@@ -246,8 +276,8 @@ const eEncoding = {
 exports.eEncoding = eEncoding;
 
 const eMetricType = {
-    COUNTER  : 'counter',
-    GAUGE    : 'gauge'
+    Counter  : 'counter',
+    Gauge    : 'gauge'
 };
 exports.eMetricType = eMetricType;
 
@@ -289,12 +319,18 @@ const eCacheEngine = {
 exports.eCacheEngine = eCacheEngine;
 
 const eEventBusEngine = {
-    RESIDENT      : 'resident',
-    RABBITMQ      : 'rabbitmq',
-    ROCKETMQ      : 'rocketmq',
-    REDIS         : 'redis'
+    Resident      : 'resident',
+    RabbitMQ      : 'rabbitmq',
+    RocketMQ      : 'rocketmq',
+    Redis         : 'redis'
 };
 exports.eEventBusEngine = eEventBusEngine;
+
+const eOSSEngine = {
+    Resident      : 'resident',
+    AliOSS        : 'alioss'
+};
+exports.eOSSEngine = eOSSEngine;
 
 const eClientState = {
     Null: 'null',

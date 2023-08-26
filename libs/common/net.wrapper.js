@@ -41,13 +41,13 @@ const metricsCollector = mntService.regMetrics({
     moduleName: MODULE_NAME,
     metrics: [{
         name: eMetricsName.tcpConnectAttempt,
-        type: sysdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.Counter
     }, {
         name: eMetricsName.tcpConnectSuccess,
-        type: sysdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.Counter
     }, {
         name: eMetricsName.tcpConnectFailed,
-        type: sysdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.Counter
     }]
 });
 
