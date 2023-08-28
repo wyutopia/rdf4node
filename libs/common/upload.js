@@ -11,7 +11,7 @@ const multer = require('multer');
 //
 const sysdefs = require('../../include/sysdefs');
 const { CommonObject } = require('../../include/base');
-const { upload: conf } = require('../../include/config');
+const { upload: uploadConf } = require('../../include/config');
 const tools = require('../../utils/tools');
 //
 const _DEFAULT_DIR = process.env.UPLOAD_DIR || path.join(appRoot.path, 'public/uploads/');
@@ -20,7 +20,7 @@ console.log('>>>>>> The default upload dir: ', _DEFAULT_DIR);
 //
 function _initSelf(options) {
     // Config hostPath
-    this._hostPath = options.hostPath;
+    this._hostPath = options.hostPath || _DEFAULT_DIR;
     // Config 3rd-party oss engine
     this._engine = options.engine || sysdefs.eOSSEngine.Resident;
     if (this._engine === sysdefs.eOSSEngine.AliOSS) {
@@ -103,5 +103,5 @@ class UploadHelper extends CommonObject {
 module.exports = exports = new UploadHelper({
     $name: '_UploadHelper_',
     //
-    config: conf
+    config: uploadConf || {}
 });
