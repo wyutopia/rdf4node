@@ -14,10 +14,13 @@ function _initModule(props) {
     //
     _initObject.call(this, props);
     //
-    this.mandatory = true;
-    this.state = props.status || sysdefs.eModuleState.INIT;
+    this.$state = props.status || sysdefs.eModuleState.INIT;
+    this.$mandatory = true;
     this.isActive = () => {
-        return this.state === sysdefs.eModuleState.ACTIVE;
+        return this.$state === sysdefs.eModuleState.ACTIVE;
+    };
+    this.setState = (s) => {
+        this.$state = s;
     }
 }
 

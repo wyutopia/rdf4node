@@ -15,6 +15,7 @@ const {initObject, initModule, CommonModule, CommonObject} = require('./base');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'events');
 const tools = require('../utils/tools');
+const { _DEFAULT_CHANNEL_ } = require('../framework/ebus');
 
 const sysEvents = {
     // Module
@@ -56,9 +57,13 @@ class EventModule extends EventObject {
     constructor(props) {
         super(props);
         initModule.call(this, props);
-        // Bind ebus
-        this._ebus = global._$ebus !== undefined? global._$ebus : null;
+        // Save event properties
         this._eventHandlers = props.eventHandlers || {};
+        this._triggers = props.triggers || {};
+        // Auto wire ebus instance
+        this._engine = props.engine || sysdefs.eEventBusEngine.Resident;
+        this._channel = props.channel || _DEFAULT_CHANNEL_;
+        this._ebus = props.ebus || global._$ebus || null;
         //
         this.pubEvent = (event, options, callback) => {
             if (typeof options === 'function') {
@@ -72,10 +77,18 @@ class EventModule extends EventObject {
             if (!this._ebus) {
                 return callback({
                     code: eRetCodes.INTERNAL_SERVER_ERR,
-                    message: 'Create EventBus before using!'
+                    message: 'Initialize EventBus before using!'
                 })
             }
-            return this._ebus.publish(event, options, callback);
+            return this._ebus.publish(event, options, err => {
+                if (err) {
+                    return callback(err);
+                }
+                return this._triggerEvent(event, options, callback);
+            });
+        };
+        this._triggerEvent = (event, options, callback) => {
+            return callback();
         };
         this._msgProc = (msg, ackOrNack) => {
             if (typeof ackOrNack !== 'function') {
@@ -97,9 +110,11 @@ class EventModule extends EventObject {
         (() => {
             if (this._ebus) {
                 let options = {
-                    engine: props.engine,
                     subEvents: Object.keys(this._eventHandlers),
-                    channel: props.channel
+                    triggerEvents: props.triggerEvents,
+                    //
+                    engine: this._engine,
+                    channel: this._channel
                 };
                 this._ebus.register(this, options, tools.noop);
             }

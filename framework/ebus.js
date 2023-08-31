@@ -51,6 +51,7 @@ class EventLogger extends EventEmitter {
                 options: options
             }, callback);
         };
+        this.publish = this.pub;
         this.con = (evt, consumer, callback) => {
             let src = tools.safeGetJsonValue(evt, 'headers.source');
             logger.info(`Consume event: ${evt.code} - ${src} - ${consumer}`);
@@ -61,6 +62,7 @@ class EventLogger extends EventEmitter {
                 body: evt.body
             }, callback);
         };
+        this.consume = this.con;
     }
 }
 global._$eventLogger = new EventLogger({
@@ -69,7 +71,6 @@ global._$eventLogger = new EventLogger({
 
 
 const _typeEventBusProps = {
-    engine: sysdefs.eCacheEngine.RESIDENT,
     lo: true,
     persistent: true,
     disabledEvents: [],
@@ -114,9 +115,12 @@ function _consumeEvent(rawEvent, options, callback) {
 }
 
 const _typePubOptions = {
-    pubKey: _DEFAULT_PUBKEY_,
+    // 
+    engine: sysdefs.eEventBusEngine.Resident,
+    channel: _DEFAULT_CHANNEL_,
+    //
     dest: _DEFAULT_DEST_,
-    channel: _DEFAULT_CHANNEL_
+    pubKey: _DEFAULT_PUBKEY_,
 };
 /**
  * 
@@ -158,6 +162,7 @@ class EventBus extends EventEmitter {
         // For icp
         this._registries = {};
         this._subscribers = {};
+        this._trigger = null;
         // For external MQ
         this._clients = {};
         // Implementing methods
@@ -197,17 +202,19 @@ class EventBus extends EventEmitter {
                     this._subscribers[code].push(moduleName);
                 }
             });
-            if (this._engine === sysdefs.eEventBusEngine.Resident) {
+            // TODO: Append eventTriggers
+            let engine = options.engine || sysdefs.eEventBusEngine.Resident;
+            if (engine === sysdefs.eEventBusEngine.Resident) {
                 return callback();
             }
-            let engineConfig = config[this._engine];
+            let engineConfig = config[engine];
             // Create rabbitmq-client
             let channel = options.channel || _DEFAULT_CHANNEL;
-            if (this._clients[channel] === undefined) {
-                this._clients[channel] = rascalWrapper.createClient({
-                    id: channel,
+            let clientId = `${channel}@${engine}`;
+            if (this._clients[clientId] === undefined) {
+                this._clients[clientId] = rascalWrapper.createClient({
+                    $id: clientId,
                     $parent: this,
-                    $name: `rascal@${channel}`,
                     config: {
                         vhost: engineConfig.vhost,
                         conn: engineConfig.connection,
@@ -215,7 +222,7 @@ class EventBus extends EventEmitter {
                     }
                 });
             }
-            return callback(null, this._clients[channel]);
+            return callback(null, this._clients[clientId]);
         };
         this.on('message', (evt, callback) => {
             return _consumeEvent.call(this, evt, callback);
@@ -250,7 +257,7 @@ class EventBus extends EventEmitter {
             }
             return this._eventLogger.pub(event, options, () => {
                 //
-                if (options.dest === 'local' || this._engine === sysdefs.eCacheEngine.RESIDENT) {
+                if (options.dest === 'local' || options.channel === undefined || options.engine === sysdefs.eEventBusEngine.Resident) {
                     return _consumeEvent.call(this, event, {engine: sysdefs.eCacheEngine.RESIDENT}, callback);
                 }
                 return _extMqPub.call(this, event, options, callback);
