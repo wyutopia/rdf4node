@@ -12,16 +12,12 @@ const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.EBUS;
 const {eventBus: config} = require('../include/config');
 const { initObject, initModule } = require('../include/base');
-const { eSysEvents, EventModule } = require('../include/events');
+const { eSysEvents, EventModule, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEFAULT_DEST_ } = require('../include/events');
 const eRetCodes = require('../include/retcodes');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 //
 const rascalWrapper = require('../libs/common/rascal.wrapper');
-
-const _DEFAULT_CHANNEL_ = 'default';
-const _DEFAULT_PUBKEY_ = 'pubEvent';
-const _DEFAULT_DEST_ = 'local';
 
 // Define the eventLogger instance
 class EventLogger extends EventEmitter {
@@ -268,5 +264,5 @@ class EventBus extends EventEmitter {
 
 // Define module
 module.exports = exports = {
-    EventBus, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEFAULT_DEST_
+    EventBus
 };

@@ -15,7 +15,11 @@ const {initObject, initModule, CommonModule, CommonObject} = require('./base');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'events');
 const tools = require('../utils/tools');
-const { _DEFAULT_CHANNEL_ } = require('../framework/ebus');
+
+//
+const _DEFAULT_CHANNEL_ = 'default';
+const _DEFAULT_PUBKEY_ = 'pubEvent';
+const _DEFAULT_DEST_ = 'local';
 
 const sysEvents = {
     // Module
@@ -126,5 +130,6 @@ class EventModule extends EventObject {
 module.exports = exports = {
     EventObject: EventObject,
     EventModule: EventModule,
-    eSysEvents: sysEvents
+    eSysEvents: sysEvents,
+    _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEFAULT_DEST_
 };
