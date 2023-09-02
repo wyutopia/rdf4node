@@ -35,6 +35,18 @@ function _initFramework(callback) {
     // Step 1: Create event-bus 
     global._$ebus = new EventBus({
         $name: sysdefs.eFrameworkModules.EBUS,
+        triggers: [
+            {
+                pattern: new RegExp(/^prj\.(.)+/),
+                code: 'project.activity'
+            }, {
+                pattern: new RegExp(/^tnt\.(.)+/),
+                code: 'tenant.activity'
+            }, {
+                pattern: new RegExp(/^grp\.(.)+/),
+                code: 'group.activity'
+            }
+        ]
     });
     // Step 2: Create timer
     return callback();

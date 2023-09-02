@@ -70,7 +70,10 @@ const _typeEventBusProps = {
     lo: true,
     persistent: true,
     disabledEvents: [],
-    rabbitmq: {}
+    triggers: null,
+    rabbitmq: {},
+    rocketmq: {},
+    redis: {}
 };
 
 function _initEventBusProps(props) {
@@ -107,7 +110,36 @@ function _consumeEvent(rawEvent, options, callback) {
             }
         });
     }
-    return callback();
+    if (!options.entry) {
+        return callback();
+    }
+    return _triggerEvents.call(this, event, options, callback);
+}
+
+const _typeTrigger = {
+    pattern: 'regexp',
+    code: 'string',
+    packBody: '(event.body) => { return body;}'
+};
+
+function _triggerEvents (evt, options, callback) {
+    if (!this._triggers || this._triggers.length === 0) {
+        return callback();
+    }
+    async.eachLimit(this._triggers, 3, (trigger, next) => {
+        let result = trigger.pattern.exec(evt.code);
+        if (!result) {
+            return process.nextTick(next);
+        }
+        let event = {
+            code: trigger.code,
+            headers: evt.headers,
+            body: trigger.packBody? trigger.packBody(evt.body) : evt
+        }
+        return this.publish(event, options, next);
+    }, () => {
+        return callback();
+    });
 }
 
 const _typePubOptions = {
@@ -158,7 +190,6 @@ class EventBus extends EventEmitter {
         // For icp
         this._registries = {};
         this._subscribers = {};
-        this._trigger = null;
         // For external MQ
         this._clients = {};
         // Implementing methods
@@ -254,7 +285,12 @@ class EventBus extends EventEmitter {
             return this._eventLogger.pub(event, options, () => {
                 //
                 if (options.dest === 'local' || options.channel === undefined || options.engine === sysdefs.eEventBusEngine.Resident) {
-                    return _consumeEvent.call(this, event, {engine: sysdefs.eCacheEngine.RESIDENT}, callback);
+                    return _consumeEvent.call(this, event, {
+                        engine: sysdefs.eCacheEngine.RESIDENT,
+                        channel: options.channel,
+                        pubKey: options.pubKey,
+                        dest: options.dest
+                    }, callback);
                 }
                 return _extMqPub.call(this, event, options, callback);
             });

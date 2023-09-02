@@ -96,10 +96,7 @@ function _publishEvents(options, callback) {
             }
         });
     }
-    this.pubEvent(evt, {
-        pubKey: this._pubKey,
-        channel: this._channel
-    }, err => {
+    this.pubEvent(evt, this._eventOptions, err => {
         if (err) {
             logger.error(`Publish event: ${tools.inspect(evt)} error! - ${err.code}#${err.message}`);
         }
@@ -315,8 +312,12 @@ class EntityController extends ControllerBase {
         _initCtlSpec.call(this, props.ctlSpec || {});
         // Register event publishers
         this._domainEvents = props.domainEvents || {};
-        this._pubKey = props.pubKey;
-        this._channel = props.channel;        
+        this._eventOptions = {
+            engine: props.engine || sysdefs.eEventBusEngine.Resident,
+            channel: props.channel,
+            pubKey: props.pubKey,
+            entry: true
+        }   
         // Implementing the class methods
         this.getRepo = (dataSourceOption, callback) => {
             if (typeof dataSourceOption === 'function') {
