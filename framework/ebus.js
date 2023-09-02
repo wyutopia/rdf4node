@@ -133,6 +133,7 @@ function _triggerEvents (evt, options, callback) {
             headers: evt.headers,
             body: typeof trigger.bodyParser === 'function'? trigger.bodyParser(evt.body) : evt.body
         }
+        logger.debug(`Chained event: ${trigger.code} triggered for ${evt.code}`);
         return this.publish(event, options, next);
     }, () => {
         return callback();
