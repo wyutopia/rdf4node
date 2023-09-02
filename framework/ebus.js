@@ -110,16 +110,13 @@ function _consumeEvent(rawEvent, options, callback) {
             }
         });
     }
-    if (!options.entry) {
-        return callback();
-    }
     return _triggerEvents.call(this, event, options, callback);
 }
 
 const _typeTrigger = {
     pattern: 'regexp',
     code: 'string',
-    packBody: '(event.body) => { return body;}'
+    bodyParser: '(event.body) => { return body;}'
 };
 
 function _triggerEvents (evt, options, callback) {
@@ -134,7 +131,7 @@ function _triggerEvents (evt, options, callback) {
         let event = {
             code: trigger.code,
             headers: evt.headers,
-            body: trigger.packBody? trigger.packBody(evt.body) : evt
+            body: typeof trigger.bodyParser === 'function'? trigger.bodyParser(evt.body) : evt.body
         }
         return this.publish(event, options, next);
     }, () => {
@@ -285,12 +282,7 @@ class EventBus extends EventEmitter {
             return this._eventLogger.pub(event, options, () => {
                 //
                 if (options.dest === 'local' || options.channel === undefined || options.engine === sysdefs.eEventBusEngine.Resident) {
-                    return _consumeEvent.call(this, event, {
-                        engine: sysdefs.eCacheEngine.RESIDENT,
-                        channel: options.channel,
-                        pubKey: options.pubKey,
-                        dest: options.dest
-                    }, callback);
+                    return _consumeEvent.call(this, event, options, callback);
                 }
                 return _extMqPub.call(this, event, options, callback);
             });

@@ -312,12 +312,6 @@ class EntityController extends ControllerBase {
         _initCtlSpec.call(this, props.ctlSpec || {});
         // Register event publishers
         this._domainEvents = props.domainEvents || {};
-        this._eventOptions = {
-            engine: props.engine || sysdefs.eEventBusEngine.Resident,
-            channel: props.channel,
-            pubKey: props.pubKey,
-            entry: true
-        }   
         // Implementing the class methods
         this.getRepo = (dataSourceOption, callback) => {
             if (typeof dataSourceOption === 'function') {

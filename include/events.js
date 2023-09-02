@@ -65,17 +65,17 @@ class EventModule extends EventObject {
         this._eventHandlers = props.eventHandlers || {};
         this._triggers = props.triggers || {};
         // Auto wire ebus instance
-        this._engine = props.engine || sysdefs.eEventBusEngine.Resident;
-        this._channel = props.channel || _DEFAULT_CHANNEL_;
+        this._eventOptions = {
+            engine: props.engine || sysdefs.eEventBusEngine.Resident,
+            channel: props.channel || _DEFAULT_CHANNEL_,
+            pubKey: props.pubKey || _DEFAULT_PUBKEY_
+        }
         this._ebus = props.ebus || global._$ebus || null;
         //
         this.pubEvent = (event, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
-                options = {
-                    pubKey: this._pubKey,
-                    channel: this._channel
-                }
+                options = this._eventOptions;
             }
             //
             if (!this._ebus) {
@@ -113,13 +113,9 @@ class EventModule extends EventObject {
         // Perform initiliazing codes...
         (() => {
             if (this._ebus) {
-                let options = {
-                    subEvents: Object.keys(this._eventHandlers),
-                    triggerEvents: props.triggerEvents,
-                    //
-                    engine: this._engine,
-                    channel: this._channel
-                };
+                let options = Object.assign({
+                    subEvents: Object.keys(this._eventHandlers)
+                }, this._eventOptions);
                 this._ebus.register(this, options, tools.noop);
             }
         })();
