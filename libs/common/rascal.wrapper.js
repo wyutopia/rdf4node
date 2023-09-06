@@ -59,7 +59,7 @@ class RascalClientMangager extends EventModule {
 //const _configKeys = ['connection', 'exchanges', 'queues', 'bindings', 'publications', 'subscriptions'];
 function _assembleClientConfig(vhost, params) {
     let vhosts = {};
-    vhosts[vhost] = conf;
+    vhosts[vhost] = params;
     return {
         vhosts: vhosts
     };

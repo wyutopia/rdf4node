@@ -37,7 +37,7 @@ class EventLogger extends EventEmitter {
             if (process.env.NODE_ENV === 'production') {
                 logger.info(`Publish event: ${evt.code} - ${src}`);
             } else {
-                logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)}`);
+                logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)} - ${tools.inspect(options)}`);
             }
             return this._execPersistent({
                 publisher: src,
@@ -176,7 +176,6 @@ const _typeRegisterOptions = {
     subEvents: 'Array<String>', // Conditional on engine = 'resident'
     channel: 'string'
 };
-const _DEFAULT_CHANNEL = 'default';
 
 // Define the EventBus class
 class EventBus extends EventEmitter {
@@ -234,7 +233,7 @@ class EventBus extends EventEmitter {
             }
             let engineConf = config[engine];
             // Create rabbitmq-client
-            let channel = options.channel || _DEFAULT_CHANNEL;
+            let channel = options.channel || _DEFAULT_CHANNEL_;
             let clientId = `${channel}@${engine}`;
             if (this._clients[clientId] === undefined) {
                 this._clients[clientId] = rascalWrapper.createClient({

@@ -18,7 +18,7 @@ const tools = require('../utils/tools');
 
 //
 const _DEFAULT_CHANNEL_ = 'default';
-const _DEFAULT_PUBKEY_ = 'pubEvent';
+const _DEFAULT_PUBKEY_ = 'pubEvents';
 const _DEFAULT_DEST_ = 'local';
 
 const sysEvents = {
