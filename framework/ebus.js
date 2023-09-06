@@ -160,13 +160,16 @@ function _extMqPub(event, options, callback) {
         callback = options;
         options = _typePubOptions;
     }
-    let pubKey = options.pubKey || _typePubOptions.pubKey;
+    let engine = options.engine || sysdefs.eEventBusEngine.RabbitMQ;
     let channel = options.channel || _typePubOptions.channel;
-    let client = this._clients[channel];
+    let pubKey = options.pubKey || _typePubOptions.pubKey;
+    //
+    let clientId = `${channel}@${engine}`;
+    let client = this._clients[clientId];
     if (!client) {
         return callback({
             code: eRetCodes.MQ_PUB_ERR,
-            message: `Invalid client! - sender=${options.sender}`
+            message: `Invalid client! - id=${clientId}`
         })
     }
     return client.publish(pubKey, event, { routingKey: event.code }, callback);

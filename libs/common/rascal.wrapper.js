@@ -149,6 +149,7 @@ function _initClient({vhost, params}) {
             // Save broker and activate client
             this._broker = broker;
             this.state = eClientState.Conn;
+            logger.debug(`${self.$name}[${self.state}]: broker created.`);
         });
     });
 }
