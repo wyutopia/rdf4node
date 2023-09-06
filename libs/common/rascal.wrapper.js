@@ -56,18 +56,8 @@ class RascalClientMangager extends EventModule {
     }
 }
 
-const _configKeys = ['exchanges', 'queues', 'bindings', 'publications', 'subscriptions'];
-function _assembleClientConfig({ vhost, conn, params }) {
-    assert(conn !== undefined);
-    assert(params !== undefined);
-    let conf = {
-        connection: conn
-    };
-    _configKeys.forEach((key) => {
-        if (params[key] !== undefined) {
-            conf[key] = params[key];
-        }
-    });
+//const _configKeys = ['connection', 'exchanges', 'queues', 'bindings', 'publications', 'subscriptions'];
+function _assembleClientConfig(vhost, params) {
     let vhosts = {};
     vhosts[vhost] = conf;
     return {
@@ -75,35 +65,41 @@ function _assembleClientConfig({ vhost, conn, params }) {
     };
 }
 
-function _initClient(options) {
-    let clientConf = _assembleClientConfig(options);
+/**
+ * 
+ * @param {string} vhost 
+ * @param {connection, exchanges, queues, bindings, publications, subscriptions} params 
+ */
+function _initClient({vhost, params}) {
+    assert(vhost !== undefined);
+    assert(params !== undefined);
+    let clientConf = _assembleClientConfig(vhost, params);
     logger.debug(`${this.$name}: Create new RacalClient with ${tools.inspect(clientConf)}`);
     this.state = eClientState.Init;
-    Broker.create(clientConf, (err, broker) => {
+    //
+    const self = this;
+    Broker.create(clientConf, function (err, broker) {
         if (err) {
-            logger.error(`${this.$name}[${this.state}]: Creating broker error! - ${err.message}`);
-            this.state = eClientState.Null;
+            logger.error(`${self.$name}[${self.state}]: Creating broker error! - ${err.message}`);
+            self.state = eClientState.Null;
             return null;
         }
-        this.state = eClientState.Conn0;
-        logger.info(`${this.$name}[${this.state}]: broker created.`);
-        broker.on('error', (err) => {
-            logger.error(`${this.$name}[${this.state}]: Broker error! - ${err.message}`);
-            this.state = eClientState.Null;
-            this.$factory.emit('client-end', this.$id, err);
+        self.state = eClientState.Conn0;
+        logger.info(`${self.$name}[${self.state}]: broker created.`);
+        broker.on('error', function (err) {
+            logger.error(`${self.$name}[${self.state}]: Broker error! - ${err.message}`);
+            self.state = eClientState.Null;
+            self.$factory.emit('client-end', self.$id, err);
         });
         // Perform subscribe and store publication keys
-        const self = this;
-        const params = options.params;
         async.parallel([
             // Perform subscription
             function (callback) {
                 // Perform subscriptions
-                let subscriptions = params.subscriptions;
-                if (subscriptions === undefined) {
+                if (params.subscriptions === undefined) {
                     return process.nextTick(callback);
                 }
-                let keys = Object.keys(subscriptions);
+                let keys = Object.keys(params.subscriptions);
                 logger.info(`${self.$name}[${self.state}]: Subscription keys= ${tools.inspect(keys)}`);
                 async.each(keys, (key, next) => {
                     broker.subscribe(key, (err, sub) => {
@@ -144,9 +140,8 @@ function _initClient(options) {
             },
             // Register publications keys
             function (callback) {
-                let publications = params.publications;
-                if (publications !== undefined) {
-                    self._pubKeys = Object.keys(publications);
+                if (params.publications !== undefined) {
+                    self._pubKeys = Object.keys(params.publications);
                 }
                 return process.nextTick(callback);
             }
@@ -246,6 +241,6 @@ const rascalWrapper = new RascalClientMangager({
     $name: _MODULE_NAME,
     $type: sysdefs.eModuleType.CM,
     mandatory: true,
-    state: sysdefs.eModuleState.ACTIVE,
+    state: sysdefs.eModuleState.ACTIVE
 });
 module.exports = exports = rascalWrapper;

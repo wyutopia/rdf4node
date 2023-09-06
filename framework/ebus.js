@@ -232,7 +232,7 @@ class EventBus extends EventEmitter {
             if (engine === sysdefs.eEventBusEngine.Resident) {
                 return callback();
             }
-            let engineConfig = config[engine];
+            let engineConf = config[engine];
             // Create rabbitmq-client
             let channel = options.channel || _DEFAULT_CHANNEL;
             let clientId = `${channel}@${engine}`;
@@ -240,10 +240,10 @@ class EventBus extends EventEmitter {
                 this._clients[clientId] = rascalWrapper.createClient({
                     $id: clientId,
                     $parent: this,
+                    // the client config
                     config: {
-                        vhost: engineConfig.vhost,
-                        conn: engineConfig.connection,
-                        params: engineConfig[channel]
+                        vhost: engineConf.vhost,
+                        params: tools.deepAssign({}, engineConf.default, engineConf[channel] || {})
                     }
                 });
             }
