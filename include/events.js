@@ -84,6 +84,11 @@ class EventModule extends EventObject {
                     message: 'Initialize EventBus before using!'
                 })
             }
+            if (event.headers === undefined) {
+                event.headers = {
+                    source: this.$name
+                }
+            }
             return this._ebus.publish(event, options, err => {
                 if (err) {
                     return callback(err);
