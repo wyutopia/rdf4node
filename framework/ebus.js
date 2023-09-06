@@ -134,7 +134,7 @@ function _triggerEvents (evt, options, callback) {
             body: typeof trigger.bodyParser === 'function'? trigger.bodyParser(evt.body) : evt.body
         }
         logger.debug(`Chained event: ${trigger.code} triggered for ${evt.code}`);
-        return this.publish(event, options, next);
+        return this.publish(event, evt.headers.triggerOptions || options, next);
     }, () => {
         return callback();
     });
@@ -172,6 +172,7 @@ function _extMqPub(event, options, callback) {
             message: `Invalid client! - id=${clientId}`
         })
     }
+    event.headers.triggerOptions = {engine, channel, pubKey};
     return client.publish(pubKey, event, { routingKey: event.code }, callback);
 }
 
