@@ -73,11 +73,11 @@ function _assembleClientConfig(vhost, params) {
 function _initClient({vhost, params}) {
     assert(vhost !== undefined);
     assert(params !== undefined);
-    let clientConf = _assembleClientConfig(vhost, params);
-    logger.debug(`${this.$name}: Create new RacalClient with ${tools.inspect(clientConf)}`);
-    this.state = eClientState.Init;
-    //
     const self = this;
+    const clientConf = _assembleClientConfig(vhost, params);
+    logger.debug(`${this.$name}: Create new RacalClient with ${tools.inspect(clientConf)}`);
+    self.state = eClientState.Init;
+    //
     Broker.create(clientConf, function (err, broker) {
         if (err) {
             logger.error(`${self.$name}[${self.state}]: Creating broker error! - ${err.message}`);
@@ -145,10 +145,10 @@ function _initClient({vhost, params}) {
                 }
                 return process.nextTick(callback);
             }
-        ], () => {
+        ], function () {
             // Save broker and activate client
-            this._broker = broker;
-            this.state = eClientState.Conn;
+            self._broker = broker;
+            self.state = eClientState.Conn;
             logger.debug(`${self.$name}[${self.state}]: broker created.`);
         });
     });
