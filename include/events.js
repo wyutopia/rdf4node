@@ -66,7 +66,7 @@ class EventModule extends EventObject {
         this._triggers = props.triggers || {};
         // Auto wire ebus instance
         this._eventOptions = {
-            engine: props.engine || sysdefs.eEventBusEngine.Resident,
+            engine: props.engine || sysdefs.eEventBusEngine.Native,
             channel: props.channel || _DEFAULT_CHANNEL_,
             pubKey: props.pubKey || _DEFAULT_PUBKEY_
         }

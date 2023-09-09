@@ -22,7 +22,7 @@ function _initSelf(options) {
     // Config hostPath
     this._hostPath = options.hostPath || _DEFAULT_DIR;
     // Config 3rd-party oss engine
-    this._engine = options.engine || sysdefs.eOSSEngine.Resident;
+    this._engine = options.engine || sysdefs.eOSSEngine.Native;
     if (this._engine === sysdefs.eOSSEngine.AliOSS) {
         let config = options[this._engine];
         this._alioss = new AliOSS(config);

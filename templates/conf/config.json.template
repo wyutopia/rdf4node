@@ -91,7 +91,6 @@
     }
   },
   "eventBus": {
-    "engine": "resident",
     "lo": true,
     "disableEvents": [],
     "persistent": true,

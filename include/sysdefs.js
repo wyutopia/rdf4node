@@ -313,13 +313,13 @@ exports.eDbType = eDbType;
 
 const eCacheEngine = {
     PROCMEM       : 'procmem',
-    RESIDENT      : 'resident',
+    NATIVE        : 'native',
     REDIS         : 'redis',
 };
 exports.eCacheEngine = eCacheEngine;
 
 const eEventBusEngine = {
-    Resident      : 'resident',
+    Native        : 'native',
     RabbitMQ      : 'rabbitmq',
     RocketMQ      : 'rocketmq',
     Redis         : 'redis'
@@ -327,7 +327,7 @@ const eEventBusEngine = {
 exports.eEventBusEngine = eEventBusEngine;
 
 const eOSSEngine = {
-    Resident      : 'resident',
+    Native        : 'native',
     AliOSS        : 'alioss'
 };
 exports.eOSSEngine = eOSSEngine;

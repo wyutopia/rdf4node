@@ -47,7 +47,6 @@
     }
   },
   "eventBus": {
-    "engine": "resident",
     "lo": true,
     "disabledEvents": [],
     "persistent": true,
@@ -74,7 +73,7 @@
     }
   },
   "upload": {
-    "engine": "resident",
+    "engine": "native",
     "hostPath": "uploads/"
   }
 }

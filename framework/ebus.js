@@ -142,7 +142,7 @@ function _triggerEvents (evt, options, callback) {
 
 const _typePubOptions = {
     // 
-    engine: sysdefs.eEventBusEngine.Resident,
+    engine: sysdefs.eEventBusEngine.Native,
     channel: _DEFAULT_CHANNEL_,
     //
     dest: _DEFAULT_DEST_,
@@ -177,7 +177,7 @@ function _extMqPub(event, options, callback) {
 }
 
 const _typeRegisterOptions = {
-    subEvents: 'Array<String>', // Conditional on engine = 'resident'
+    subEvents: 'Array<String>', // Conditional on engine = 'native'
     channel: 'string'
 };
 
@@ -231,8 +231,8 @@ class EventBus extends EventEmitter {
                 }
             });
             // TODO: Append eventTriggers
-            let engine = options.engine || sysdefs.eEventBusEngine.Resident;
-            if (engine === sysdefs.eEventBusEngine.Resident) {
+            let engine = options.engine || sysdefs.eEventBusEngine.Native;
+            if (engine === sysdefs.eEventBusEngine.Native) {
                 return callback();
             }
             let engineConf = config[engine];
@@ -285,7 +285,7 @@ class EventBus extends EventEmitter {
             }
             return this._eventLogger.pub(event, options, () => {
                 //
-                if (options.dest === 'local' || options.channel === undefined || options.engine === sysdefs.eEventBusEngine.Resident) {
+                if (options.dest === 'local' || options.channel === undefined || options.engine === sysdefs.eEventBusEngine.Native) {
                     return _consumeEvent.call(this, event, options, callback);
                 }
                 return _extMqPub.call(this, event, options, callback);
