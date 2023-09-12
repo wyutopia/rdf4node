@@ -75,6 +75,7 @@ class UploadHelper extends CommonObject {
     constructor(props) {
         super(props);
         _initSelf.call(this, props.config);
+        loggers.info(`>>> UploadHelper created with configuration: ${tools.inspect(props.config)}`);
         // Define member variables
         this._uploads = {};
         // Implementing methods
