@@ -56,7 +56,7 @@ function _genSignature(options) {
     const signature = crypto.createHmac('sha1', this._engineConf.config.accessKeySecret).update(base64Policy).digest('base64');
     // Pack signature
     let vDir = path.join(options.catalog, options.subPath || '');
-    return {
+    const result = {
         accessid: this._engineConf.config.accessKeyId,
         host: this._engineConf.config.cname === true?  
             this._engineConf.config.endpoint : `https://${this._engineConf.config.bucket}.${this._engineConf.config.endpoint}`,
@@ -64,7 +64,12 @@ function _genSignature(options) {
         dir: `${vDir}/`,
         policy: base64Policy,
         signature: signature,
+    };
+    const callbackPart = tools.safeGetJsonValue(this._engineConf, 'params.callback');
+    if (callbackPart) {
+        result.callback = Buffer.from(JSON.stringify(callbackPart)).toString('base64');
     }
+    return result;
 }
 
 class UploadHelper extends CommonObject {
