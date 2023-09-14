@@ -48,7 +48,7 @@ function _genSignature(options) {
         conditions: [
             {bucket: this._engineConf.config.bucket},
             ["content-length-range", 1, sysdefs.eSize._50M],
-            ["eq", "$success_action_status", "200"],
+//            ["eq", "$success_action_status", "200"],
             ["in", "$content-type", _ALLOW_CONTENT_TYPE]
         ]
     }
