@@ -53,7 +53,7 @@ function _genSignature(options) {
         ]
     }
     const base64Policy = Buffer.from(JSON.stringify(policy), 'utf8').toString('base64');
-    const signature = crypto.createHmac('sha1', this._akSecret).update(base64Policy).digest('base64');
+    const signature = crypto.createHmac('sha1', this._engineConf.config.accessKeySecret).update(base64Policy).digest('base64');
     // Pack signature
     let vDir = path.join(options.catalog, options.subPath || '');
     return {
@@ -89,6 +89,9 @@ class UploadHelper extends CommonObject {
             }
             loggers.error(`${this.$name}: The OSSEngine shoud be alioss!`);
             return {};
+        };
+        this.setObjectAcl = (name, options, callback) => {
+            return callback();
         };
         this.getOSSClient = () => {
             return this._alioss;
