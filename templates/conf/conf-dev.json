@@ -74,6 +74,18 @@
   },
   "upload": {
     "engine": "native",
-    "hostPath": "uploads/"
+    "hostPath": "uploads/",
+    "alioss": {
+      "config": {
+        "accessKeyId": "<accessKeyId>",
+        "accessKeySecret": "<accessKeySecret",
+        "bucket": "<bucket-name>",
+        "endpoint": "oss-cn-hangzhou.aliyuncs.com"
+      },
+      "params": {
+        
+      }
+    },
+    "minio": {}
   }
 }

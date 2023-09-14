@@ -23,19 +23,14 @@ function _initSelf(options) {
     this._hostPath = options.hostPath || _DEFAULT_DIR;
     // Config 3rd-party oss engine
     this._engine = options.engine || sysdefs.eOSSEngine.Native;
-    if (this._engine === sysdefs.eOSSEngine.AliOSS) {
-        let config = options[this._engine];
-        this._alioss = new AliOSS(config);
-        //
-        this._akId = config.accessKeyId;
-        this._akSecret = config.accessKeySecret;
-        this._bucket = config.bucket;
-        this._host = config.endpoint;
-        //
-        this._cname = config.cname;
-        this._region = config.region;
-    } else if (this._engine === sysdefs.eOSSEngine.MINIO) {
-        // TODO: Add minio configures
+    this._engineConf = options[this._engine];
+    if (this._engineConf) {
+        if (this._engine === sysdefs.eOSSEngine.AliOSS) {
+            this._alioss = new AliOSS(this._engineConf.config);
+        } else if (this._engine === sysdefs.eOSSEngine.MINIO) {
+            // TODO: Add minio configures
+            //this._minio = new Minio(this._engineConf.config);
+        }
     }
 }
 
@@ -51,7 +46,7 @@ function _genSignature(options) {
     const policy = {
         expiration: tenMinLater.toISOString(),
         conditions: [
-            {bucket: this._bucket},
+            {bucket: this._engineConf.config.bucket},
             ["content-length-range", 1, sysdefs.eSize._50M],
             ["eq", "$success_action_status", "200"],
             ["in", "$content-type", _ALLOW_CONTENT_TYPE]
@@ -62,8 +57,9 @@ function _genSignature(options) {
     // Pack signature
     let vDir = path.join(options.catalog, options.subPath || '');
     return {
-        accessid: this._akId,
-        host: options.host || this._host || "http://oss.aliyuncs.com",
+        accessid: this._engineConf.config.accessKeyId,
+        host: this._engineConf.config.cname === true?  
+            this._engineConf.config.endpoint : `https://${this._engineConf.config.bucket}.${this._engineConf.config.endpoint}`,
         expire: options.expiresAt || Math.floor(tenMinLater.valueOf() / 1000),
         dir: `${vDir}/`,
         policy: base64Policy,
