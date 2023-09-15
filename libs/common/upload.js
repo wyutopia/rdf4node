@@ -95,8 +95,18 @@ class UploadHelper extends CommonObject {
             loggers.error(`${this.$name}: The OSSEngine shoud be alioss!`);
             return {};
         };
-        this.setObjectAcl = (name, options, callback) => {
+        /**
+         * 
+         * @param {string} name 
+         * @param {string} acl (private/public-read/public-read-write)
+         * @param {*} callback 
+         * @returns 
+         */
+        this.setObjectAcl = (name, acl, callback) => {
             return callback();
+        };
+        this.getSignatureUrl = (name, options) => {
+            return this._engine === sysdefs.eOSSEngine.AliOSS? this._alioss.signatureUrl(name, options) : name;
         };
         this.getOSSClient = () => {
             return this._alioss;
