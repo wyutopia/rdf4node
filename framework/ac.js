@@ -282,7 +282,7 @@ function _parseParameters (params, validator, callback) {
     for (let i = 0; i < fields.length; i++) {
         let field = fields[i];
         let val = validator[field];
-        let argv = (params[field] !== undefined && val.type === 'Number')? parseInt(params[field]) : params[field];
+        let argv = (params[field] !== undefined && val.type === 'Number')? parseFloat(params[field]) : params[field];
 
         if (argv === undefined) {
             if (val.required === true) {
