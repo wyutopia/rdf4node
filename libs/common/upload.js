@@ -36,7 +36,8 @@ function _initSelf(options) {
             //this._minio = new Minio(this._engineConf.config);
         }
     } else {
-        this._baseUrl = '';   // Using local 
+        this._baseUrl = '';   // Using local
+        this._baseUrlPattern = new RegExp();
     }
 }
 

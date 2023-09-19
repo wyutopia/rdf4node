@@ -608,7 +608,11 @@ class EntityController extends ControllerBase {
         // Create one new entity
         this.addOne = {
             val: (() => {
-                let validator = tools.deepAssign({}, this._addVal);
+                let validator = tools.deepAssign({
+                    oid: {
+                        type: 'ObjectId'
+                    }
+                }, this._addVal);
                 _setMandatoryKeys(this._mandatoryAddKeys, validator);
                 return validator;
             }).call(this),
@@ -624,6 +628,9 @@ class EntityController extends ControllerBase {
                         this._beforeAdd(req, (err, data) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
+                            }
+                            if (data._id === undefined && req.$args.oid !== undefined) {
+                                data._id = req.$args.oid;
                             }
                             repo.create(data, (err, doc) => {
                                 if (err) {
