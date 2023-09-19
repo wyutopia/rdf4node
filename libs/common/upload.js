@@ -122,17 +122,19 @@ class UploadHelper extends CommonObject {
             return path.join(this._baseUrlPattern, name);
         };
         this.deleteOneAsync = async (url, options) => {
-            let objName = url.replace(this._baseUrlPattern, '').split('?')[0];
-            logger.debug(`Try to delete object with name: ${objName}`);
-            return this._alioss.delete(objName);
+            const objName = url.replace(this._baseUrlPattern, '').split('?')[0];
+            const result = await this._alioss.delete(objName);
+            logger.debug(`Delete object: ${objName} result: ${tools.inspect(result)}`);
+            return result;
         };
         this.deleteMultiAsync = async (urls, options) => {
             const names = [];
             urls.forEach(url => {
                 names.push(url.replace(this._baseUrlPattern, '').split('?')[0]);
             })
-            logger.debug(`Trying to delete multiple objects with names: ${tools.inspect(names)}`);
-            return this._alioss.deleteMuti(names);
+            const result = await this._alioss.deleteMulti(names);
+            logger.debug(`Delete multiple objects: ${tools.inspect(names)} result: ${tools.inspect(result)}`);
+            return result;
         };
         this.getOSSClient = () => {
             return this._alioss;
