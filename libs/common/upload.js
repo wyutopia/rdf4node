@@ -29,15 +29,19 @@ function _initSelf(options) {
     if (this._engineConf) {
         if (this._engine === sysdefs.eOSSEngine.AliOSS) {
             this._alioss = new AliOSS(this._engineConf.config);
-            this._baseUrl = this._engineConf.config.cname === true?  
-                this._engineConf.config.endpoint : `https://${this._engineConf.config.bucket}.${this._engineConf.config.endpoint}`;
+            if (this._engineConf.config.cname === true) {
+                this._baseUrl = this._baseUrlPattern = this._engineConf.config.endpoint;
+            } else {
+                this._baseUrl = `https://${this._engineConf.config.bucket}.${this._engineConf.config.endpoint}`;
+                this._baseUrlPattern = `http://${this._engineConf.config.bucket}.${this._engineConf.config.endpoint}`
+            }
         } else if (this._engine === sysdefs.eOSSEngine.MINIO) {
             // TODO: Add minio configures
             //this._minio = new Minio(this._engineConf.config);
         }
     } else {
         this._baseUrl = '';   // Using local
-        this._baseUrlPattern = new RegExp();
+        this._baseUrlPattern = new RegExp('');
     }
 }
 
@@ -115,17 +119,17 @@ class UploadHelper extends CommonObject {
             return this._engine === sysdefs.eOSSEngine.AliOSS? this._alioss.signatureUrl(name, options) : name;
         };
         this.getObjectUrl = (name, options) => {
-            
+            return path.join(this._baseUrlPattern, name);
         };
         this.deleteOneAsync = async (url, options) => {
-            let objName = url.split('?')[0].replace(this._baseUrl, '');
+            let objName = url.replace(this._baseUrlPattern, '').split('?')[0];
             logger.debug(`Try to delete object with name: ${objName}`);
             return this._alioss.delete(objName);
         };
         this.deleteMultiAsync = async (urls, options) => {
             const names = [];
             urls.forEach(url => {
-                names.push(url.split('?')[0].replace(this._baseUrl, ''));
+                names.push(url.replace(this._baseUrlPattern, '').split('?')[0]);
             })
             logger.debug(`Trying to delete multiple objects with names: ${tools.inspect(names)}`);
             return this._alioss.deleteMuti(names);
