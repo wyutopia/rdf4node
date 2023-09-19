@@ -13,9 +13,11 @@ const sysdefs = require('../../include/sysdefs');
 const { CommonObject } = require('../../include/base');
 const { upload: uploadConf } = require('../../include/config');
 const tools = require('../../utils/tools');
+const {WinstonLogger} = require("../base/winston.wrapper");
+const logger = WinstonLogger(process.env.SRV_ROLE || 'uploads');
 //
 const _DEFAULT_DIR = process.env.UPLOAD_DIR || path.join(appRoot.path, 'public/uploads/');
-console.log('>>>>>> The default upload dir: ', _DEFAULT_DIR);
+logger.info(`>>>>>> The default upload dir: ${_DEFAULT_DIR}`);
 
 //
 function _initSelf(options) {
@@ -27,10 +29,14 @@ function _initSelf(options) {
     if (this._engineConf) {
         if (this._engine === sysdefs.eOSSEngine.AliOSS) {
             this._alioss = new AliOSS(this._engineConf.config);
+            this._baseUrl = this._engineConf.config.cname === true?  
+                this._engineConf.config.endpoint : `https://${this._engineConf.config.bucket}.${this._engineConf.config.endpoint}`;
         } else if (this._engine === sysdefs.eOSSEngine.MINIO) {
             // TODO: Add minio configures
             //this._minio = new Minio(this._engineConf.config);
         }
+    } else {
+        this._baseUrl = '';   // Using local 
     }
 }
 
@@ -48,7 +54,7 @@ function _genSignature(options) {
         conditions: [
             {bucket: this._engineConf.config.bucket},
             ["content-length-range", 1, sysdefs.eSize._50M],
-//            ["eq", "$success_action_status", "200"],
+            ["eq", "$success_action_status", "200"],
             ["in", "$content-type", _ALLOW_CONTENT_TYPE]
         ]
     }
@@ -58,8 +64,7 @@ function _genSignature(options) {
     let vDir = path.join(options.catalog, options.subPath || '');
     const result = {
         accessid: this._engineConf.config.accessKeyId,
-        host: this._engineConf.config.cname === true?  
-            this._engineConf.config.endpoint : `https://${this._engineConf.config.bucket}.${this._engineConf.config.endpoint}`,
+        host: this._baseUrl,
         expire: options.expiresAt || Math.floor(tenMinLater.valueOf() / 1000),
         dir: `${vDir}/`,
         policy: base64Policy,
@@ -76,7 +81,7 @@ class UploadHelper extends CommonObject {
     constructor(props) {
         super(props);
         _initSelf.call(this, props.config);
-        console.log(`>>>>>> UploadHelper created with configuration: ${tools.inspect(props.config)}`);
+        logger.info(`>>>>>> UploadHelper created with configuration: ${tools.inspect(props.config)}`);
         // Define member variables
         this._uploads = {};
         // Implementing methods
@@ -92,7 +97,7 @@ class UploadHelper extends CommonObject {
             if (this._engine === sysdefs.eOSSEngine.AliOSS) {
                 return _genSignature.call(this, options || {});
             }
-            loggers.error(`${this.$name}: The OSSEngine shoud be alioss!`);
+            logger.error(`${this.$name}: The OSSEngine shoud be alioss!`);
             return {};
         };
         /**
@@ -107,6 +112,22 @@ class UploadHelper extends CommonObject {
         };
         this.getSignatureUrl = (name, options) => {
             return this._engine === sysdefs.eOSSEngine.AliOSS? this._alioss.signatureUrl(name, options) : name;
+        };
+        this.getObjectUrl = (name, options) => {
+            
+        };
+        this.deleteOneAsync = async (url, options) => {
+            let objName = url.split('?')[0].replace(this._baseUrl, '');
+            logger.debug(`Try to delete object with name: ${objName}`);
+            return this._alioss.delete(objName);
+        };
+        this.deleteMultiAsync = async (urls, options) => {
+            const names = [];
+            urls.forEach(url => {
+                names.push(url.split('?')[0].replace(this._baseUrl, ''));
+            })
+            logger.debug(`Trying to delete multiple objects with names: ${tools.inspect(names)}`);
+            return this._alioss.deleteMuti(names);
         };
         this.getOSSClient = () => {
             return this._alioss;
