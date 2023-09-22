@@ -535,7 +535,7 @@ class EntityController extends ControllerBase {
                         type: 'ObjectId',
                         required: true
                     },
-                    });
+                });
                 _setMandatoryKeys(this._mandatorySearchKeys, validator);
                 return validator;
             }).call(this),

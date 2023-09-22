@@ -104,7 +104,7 @@ function _updateOne(params, callback) {
 
 // Should return string
 function _$parseCacheKey (options, cacheSpec) {
-    logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${tools.inspect(cacheSpec)}`);
+    //logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${tools.inspect(cacheSpec)}`);
     if (tools.isTypeOfPrimitive(options)) {
         return options;
     }
@@ -121,7 +121,7 @@ function _$parseCacheKey (options, cacheSpec) {
         keyNameArray.push(options[field] === undefined? '*' : tools.stringifyDocId(options[field]));
     });
     const cacheKey  = keyNameArray.join(':');
-    logger.debug(`cacheKey: ${cacheKey}`);
+    logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${cacheKey}`);
     return cacheKey;
 }
 
