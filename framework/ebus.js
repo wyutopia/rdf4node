@@ -76,12 +76,27 @@ const _typeEventBusProps = {
     redis: {}
 };
 
+function _parseEventTriggers(triggersConf) {
+    const _triggers = [];
+    triggersConf.forEach(item => {
+        _triggers.push({
+            pattern: new RegExp(item.match),
+            code: item.code
+        })
+    });
+    return _triggers;
+}
+
 function _initEventBusProps(props) {
     initModule.call(this, props);
     //
     Object.keys(_typeEventBusProps).forEach(key => {
         let propKey = `_${key}`;
-        this[propKey] = props[key] !== undefined ? props[key] : _typeEventBusProps[key];
+        if (key === 'triggers') {
+            this[propKey] = _parseEventTriggers(props[key]);
+        } else {
+            this[propKey] = props[key] !== undefined ? props[key] : _typeEventBusProps[key];
+        }
     });
     //
     this._eventLogger = global._$eventLogger;
@@ -186,7 +201,7 @@ class EventBus extends EventEmitter {
     constructor(props) {
         super(props);
         //
-        _initEventBusProps.call(this, Object.assign({}, props, config));
+        _initEventBusProps.call(this, Object.assign(props, config));
         //
         // For icp
         this._registries = {};

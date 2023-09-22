@@ -18,7 +18,6 @@ const appRoot = require('app-root-path');
 const sysdefs = require('./include/sysdefs');
 const tools = require('./utils/tools');
 // Create application core instance
-const config = require('./include/config');
 global._$theApp = require('./framework/app');
 // Framework libs
 const {EventBus} = require('./framework/ebus');
@@ -34,19 +33,7 @@ function _initFramework(callback) {
     logger.info('++++++ Stage 1: Initializing framwork ++++++');
     // Step 1: Create event-bus 
     global._$ebus = new EventBus({
-        $name: sysdefs.eFrameworkModules.EBUS,
-        triggers: [
-            {
-                pattern: new RegExp(/^prj\.(.)+/),
-                code: 'project.activity'
-            }, {
-                pattern: new RegExp(/^tnt\.(.)+/),
-                code: 'tenant.activity'
-            }, {
-                pattern: new RegExp(/^grp\.(.)+/),
-                code: 'group.activity'
-            }
-        ]
+        $name: sysdefs.eFrameworkModules.EBUS
     });
     // Step 2: Create timer
     return callback();
