@@ -96,7 +96,7 @@ function _updateOne(params, callback) {
             });
         }
         // Append cache
-        _appendCache.call(this, doc, () => {
+        _appendCache.call(this, doc, {updates: updates}, () => {
             return callback(null, doc);
         });
     });
@@ -121,7 +121,8 @@ function _$parseCacheKey (options, cacheSpec) {
         keyNameArray.push(options[field] === undefined? '*' : tools.stringifyDocId(options[field]));
     });
     const cacheKey  = keyNameArray.join(':');
-    logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${cacheKey}`);
+    //logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${cacheKey}`);
+    logger.debug(`The cacheKey: ${cacheKey}`);
     return cacheKey;
 }
 
@@ -139,14 +140,42 @@ function _parseCacheValue(doc, valueKeys) {
     return cv;
 }
 
-function _appendCache(data, callback) {
-    if (this.allowCache === false || !data) {
+const _checkPaths = ['$set', '$push', '$pull', '$addToSet', '$unset'];
+function _cacheValueUpdated(valueKeys, {mandatory, updates}) {
+    if (mandatory === true) {
+        return true;
+    }
+    let result = false;
+    if (!updates) {
+        return result;
+    }
+    const cacheKeys = valueKeys.split(' ');
+    for (let i = 0; i < _checkPaths.length && !result; i++) {
+        const chkPath = _checkPaths[i];
+        if (updates[chkPath]) {
+            const chkPathKeys = Object.keys(updates[chkPath]);
+            for (let j = 0; j < chkPathKeys.length && !result; j++) {
+                if (cacheKeys.indexOf(chkPathKeys[j]) !== -1) {
+                    result = true;
+                }
+            }
+        }
+    }
+    return result;
+}
+
+function _appendCache(data, options, callback) {
+    if (typeof options === 'function') {
+        callback = options;
+        options = { mandatory: true};
+    }
+    if (this.allowCache === false || !data || !_cacheValueUpdated(this.cacheSpec.valueKeys, options)) {
         return callback(null, data);
     }
     let cacheValues = [];
     let docs = Array.isArray(data)? data : [data];
     //
-    async.each(docs, (doc, next) => {
+    async.eachLimit(docs, 3, (doc, next) => {
         let cacheKey = _$parseCacheKey(doc, this.cacheSpec);
         let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);
         cacheValues.push(cacheVal);
@@ -215,22 +244,21 @@ class Repository extends EventObject {
                         message: 'Invalid cache key!'
                     });
                 }
-                let queryOptions = {
-                    filter: filter
-                };
+                let options = {};
                 if (this.cacheSpec.populate) {
-                    queryOptions.populate = this.cacheSpec.populate;
+                    options.populate = this.cacheSpec.populate;
                 }
                 if (this.cacheSpec.select) {
-                    queryOptions.select = this.cacheSpec.select;
+                    options.select = this.cacheSpec.select;
                 }
-                this.findOne(queryOptions, (err, doc) => {
+                let query = this._model.findOne(filter);
+                return _uniQuery.call(this, query, options, (err, doc) => {
                     if (err) {
                         return callback(err);
                     }
                     logger.debug(`Document found: ${tools.inspect(doc)}`);
                     _appendCache.call(this, doc, (err, cacheVal) => {
-                        return callback(null, cacheVal);
+                        return callback(err, cacheVal);
                     });
                 });
             });
@@ -296,7 +324,9 @@ class Repository extends EventObject {
                     })
                 }
                 // Append cache
-                _appendCache.call(this, doc, () => {
+                _appendCache.call(this, doc, {
+                    updates: params.updates
+                }, () => {
                     return callback(null, doc);
                 });
             });
