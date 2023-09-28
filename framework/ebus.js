@@ -34,11 +34,11 @@ class EventLogger extends EventEmitter {
                 options = {};
             }
             let src = tools.safeGetJsonValue(evt, 'headers.source');
-            if (process.env.NODE_ENV === 'production') {
-                logger.info(`Publish event: ${evt.code} - ${src}`);
-            } else {
-                logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)} - ${tools.inspect(options)}`);
-            }
+            // if (process.env.NODE_ENV === 'production') {
+            //     logger.info(`Publish event: ${evt.code} - ${src}`);
+            // } else {
+            //     logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)} - ${tools.inspect(options)}`);
+            // }
             return this._execPersistent({
                 publisher: src,
                 code: evt.code,
@@ -125,7 +125,7 @@ function _consumeEvent(rawEvent, options, callback) {
             }
         });
     }
-    return _triggerEvents.call(this, event, options, callback);
+    setTimeout(_triggerEvents.bind(this, event, options, callback), 2);
 }
 
 const _typeTrigger = {
