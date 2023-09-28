@@ -28,7 +28,7 @@ const eLoadPolicy = {
 
 const _defaultCacheProps = {
     logLevel: 'error',
-    engine: sysdefs.eCacheEngine.PROCMEM,   // Set default cache to local process memory
+    engine: sysdefs.eCacheEngine.Native,   // Set default cache to local process memory
     configName: 'default',
     //
     prefix: null,                       // No default key prefix
@@ -98,13 +98,13 @@ class Cache extends EventModule {
                 callback = options;
                 options = undefined;
             }
-            if (this._engine === sysdefs.eCacheEngine.PROCMEM) {
+            if (this._engine === sysdefs.eCacheEngine.Native) {
                 return _setValue.call(this, key, val, options, callback);
             }
             return this._client.execute('set', key, this._json? JSON.stringify(val) : val, callback);
         };
         this.get = (key, callback) => {
-            if (this._engine === sysdefs.eCacheEngine.PROCMEM) {
+            if (this._engine === sysdefs.eCacheEngine.Native) {
                 return _getvalue.call(this, key, callback);
             }
             this._client.execute('get', key, (err, result) => {
@@ -115,7 +115,7 @@ class Cache extends EventModule {
             });
         };
         this.unset = (key, callback) => {
-            if (this._engine === sysdefs.eCacheEngine.PROCMEM) {
+            if (this._engine === sysdefs.eCacheEngine.Native) {
                 return _unsetValue.call(this, key, callback);
             }
             return this._client.execute('unset', key, callback);
@@ -126,7 +126,7 @@ class Cache extends EventModule {
                 callback = options;
                 options = {};
             }
-            if (this._engine === sysdefs.eCacheEngine.PROCMEM) {
+            if (this._engine === sysdefs.eCacheEngine.Native) {
                 return _setMultiValues.call(this, data, options, callback);
             }
             let args = [];
@@ -145,7 +145,7 @@ class Cache extends EventModule {
         };
         //
         (() => {
-            if (this._engine !== sysdefs.eCacheEngine.PROCMEM) {
+            if (this._engine !== sysdefs.eCacheEngine.Native) {
                 // Extract client config from system configuration
                 let clientConfig = tools.safeGetJsonValue(sysConf.caches, `${this._engine}.${this._configName}`);
                 if (clientConfig) {

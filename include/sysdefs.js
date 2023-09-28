@@ -305,6 +305,7 @@ exports.isValidAuthType = function(t) { return Object.values(eRequestAuthType).i
 
 const eDbType = {
     PROCMEM       : 'procmem',
+    NATIVE        : 'native',
     MONGO         : 'mongo',
     MYSQL         : 'mysql',
     SQLSERVER     : 'sqlsrv'
@@ -312,9 +313,8 @@ const eDbType = {
 exports.eDbType = eDbType;
 
 const eCacheEngine = {
-    PROCMEM       : 'procmem',
-    NATIVE        : 'native',
-    REDIS         : 'redis',
+    Native        : 'native',
+    Redis         : 'redis',
 };
 exports.eCacheEngine = eCacheEngine;
 

@@ -108,7 +108,7 @@ function _consumeEvent(rawEvent, options, callback) {
         options = {};
     }
     logger.debug(`Perform consuming event: ${tools.inspect(rawEvent)} - ${tools.inspect(options)}`);
-    let event = options.engine === sysdefs.eCacheEngine.NATIVE? rawEvent : rawEvent.content;
+    let event = options.engine === sysdefs.eCacheEngine.Native? rawEvent : rawEvent.content;
     let subscribers = this._subscribers[event.code];
     if (tools.isTypeOfArray(subscribers)) {
         subscribers.forEach(moduleName => {

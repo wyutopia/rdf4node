@@ -142,6 +142,7 @@ function _parseCacheValue(doc, valueKeys) {
 
 const _checkPaths = ['$set', '$push', '$pull', '$addToSet', '$unset'];
 function _cacheValueUpdated(valueKeys, {mandatory, updates}) {
+    logger.debug(`Check cache value updates: ${valueKeys} - ${mandatory} - ${tools.inspect(updates)}`);
     if (mandatory === true) {
         return true;
     }
@@ -173,6 +174,7 @@ function _appendCache(data, options, callback) {
         logger.debug(`Ignore cache updating dur no cacheValue changed!`);
         return callback(null, data);
     }
+    logger.debug(`Perform updating cache ...`);
     let cacheValues = [];
     let docs = Array.isArray(data)? data : [data];
     //
@@ -181,7 +183,10 @@ function _appendCache(data, options, callback) {
         let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);
         cacheValues.push(cacheVal);
         return this._cache.set(cacheKey, cacheVal, next);
-    }, () => {
+    }, (err) => {
+        if (err) {
+            logger.error(`Set cache error! - ${err.message}`);
+        }        
         return callback(null, tools.isTypeOfArray(data)? cacheValues : cacheValues[0]);
     });
 }

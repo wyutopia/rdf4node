@@ -36,7 +36,7 @@ class DataSource extends EventObject {
     constructor(props) {
         super(props);
         // Save class properites
-        this.dbType = props.dbType || sysdefs.eDbType.PROCMEM;
+        this.dbType = props.dbType || sysdefs.eDbType.NATIVE;
         this.conf = props.conf || {};
         // Declaring member variables
         this.isConnected = false;
@@ -55,7 +55,7 @@ class DataSource extends EventObject {
         //
         (() => {
             switch(this.dbType) {
-                case sysdefs.eDbType.PROCMEM:
+                case sysdefs.eDbType.NATIVE:
                     _initProcMemoryStorage.call(this, this.conf);
                     break;
                 case sysdefs.eDbType.MONGO:
@@ -110,7 +110,7 @@ class DataSourceFactory extends EventModule {
                 logger.error(`>>> Set default data-source to in-memory storage! <<<`);
                 this._ds['default'] = new DataSource({
                     name: 'default',
-                    dbType: sysdefs.eDbType.PROCMEM,
+                    dbType: sysdefs.eDbType.NATIVE,
                     conf: {}
                 })
             }
