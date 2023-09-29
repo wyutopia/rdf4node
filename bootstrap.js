@@ -16,7 +16,7 @@ const async = require('async');
 const appRoot = require('app-root-path');
 // Common definitions and utilities
 const sysdefs = require('./include/sysdefs');
-const config = reuqire("./include/config");
+const config = require("./include/config");
 const tools = require('./utils/tools');
 // Create application core instance
 global._$theApp = require('./framework/app');
@@ -59,13 +59,12 @@ function _readModelDirSync(modelDir) {
         try {
             let modelSpec = require(fullPath);
             let modelName = modelSpec.modelName;
-            let modelConfig = config.dataModels[modelName] || {};
             repoFactory.registerSchema(modelName, {
                 schema: modelSpec.modelSchema,
                 refs: modelSpec.modelRefs || [],
                 // Cache options
                 allowCache: modelSpec.allowCache !== undefined? modelSpec.allowCache : false,
-                cacheSpec: Object.assign(modelSpec.cacheSpec || {}, modelConfig.cacheSpec || {})
+                cacheSpec: Object.assign(modelSpec.cacheSpec || {}, config.caches[modelName] || {})
             });
             _loadedModels.push(modelName);
         } catch (ex) {
