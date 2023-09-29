@@ -16,6 +16,7 @@ const async = require('async');
 const appRoot = require('app-root-path');
 // Common definitions and utilities
 const sysdefs = require('./include/sysdefs');
+const config = reuqire("./include/config");
 const tools = require('./utils/tools');
 // Create application core instance
 global._$theApp = require('./framework/app');
@@ -58,16 +59,15 @@ function _readModelDirSync(modelDir) {
         try {
             let modelSpec = require(fullPath);
             let modelName = modelSpec.modelName;
-            if (modelName) {
-                repoFactory.registerSchema(modelName, {
-                    schema: modelSpec.modelSchema,
-                    refs: modelSpec.modelRefs || [],
-                    // Cache options
-                    allowCache: modelSpec.allowCache !== undefined? modelSpec.allowCache : false,
-                    cacheSpec: modelSpec.cacheSpec || {}
-                });
-                _loadedModels.push(modelName);
-            }
+            let modelConfig = config.dataModels[modelName] || {};
+            repoFactory.registerSchema(modelName, {
+                schema: modelSpec.modelSchema,
+                refs: modelSpec.modelRefs || [],
+                // Cache options
+                allowCache: modelSpec.allowCache !== undefined? modelSpec.allowCache : false,
+                cacheSpec: Object.assign(modelSpec.cacheSpec || {}, modelConfig.cacheSpec || {})
+            });
+            _loadedModels.push(modelName);
         } catch (ex) {
             logger.error(`====== Load database schema from: ${dirent.name} error! - ${ex.message}`);
         }
