@@ -105,13 +105,13 @@ const _defaultCacheProps = {
     KeyNameTemplate: null,
     populate: null,
     select: null,
-    valueKeys: null,
+    valueKeys: 'username name title',
 };
 
-function _initCache (options) {
+function _initCache (props, workMode = 0) { // 0: init cache object  1: init cacheSpec variable
     Object.keys(_defaultCacheProps).forEach( key => {
-        let propKey = `_${key}`;
-        this[propKey] = options[key] !== undefined? options[key] : _defaultCacheProps[key];
+        let propKey = workMode === 0? `_${key}` : key;
+        this[propKey] = props[key] !== undefined? props[key] : _defaultCacheProps[key];
     });
 }
 
@@ -215,6 +215,7 @@ module.exports = exports = {
     _CACHE_DEFAULT_: 'default',
     eDataType: eDataType,
     eLoadPolicy: eLoadPolicy,
+    initCacheSpec: _initCache,
     cacheFactory: new CacheFactory({
         $name: _MODULE_NAME
     })

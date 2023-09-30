@@ -17,7 +17,7 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 //
 const {dsFactory} = require('./data-source');
-const {eDataType, eLoadPolicy, cacheFactory} = require('./cache');
+const {eDataType, eLoadPolicy, initCacheSpec, cacheFactory} = require('./cache');
 
 function _uniQuery(query, options, callback) {
     ['select', 'sort', 'skip', 'limit', 'populate'].forEach(method => {
@@ -220,7 +220,8 @@ class Repository extends EventObject {
         };
         // Set cache property and declaring member variable
         this.allowCache = props.allowCache !== undefined? props.allowCache : false;
-        this.cacheSpec = props.cacheSpec || {};
+        this.cacheSpec = {};
+        initCacheSpec.call(this.cacheSpec, props.cacheSpec || {}, 1);
         this._cache = null;
         this.getCache = () => {
             return this._cache;
