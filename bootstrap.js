@@ -59,13 +59,15 @@ function _readModelDirSync(modelDir) {
         try {
             let modelSpec = require(fullPath);
             let modelName = modelSpec.modelName;
+            let cacheSpec = Object.assign(modelSpec.cacheSpec || {}, config.caches[modelName] || {});
             repoFactory.registerSchema(modelName, {
                 schema: modelSpec.modelSchema,
                 refs: modelSpec.modelRefs || [],
                 // Cache options
-                allowCache: modelSpec.allowCache !== undefined? modelSpec.allowCache : false,
-                cacheSpec: Object.assign(modelSpec.cacheSpec || {}, config.caches[modelName] || {})
+                allowCache: modelSpec.allowCache || cacheSpec.allowCache || false,
+                cacheSpec: cacheSpec
             });
+            logger.debug(`${modelName} cacheSpec: ${tools.inspect(cacheSpec)}`);
             _loadedModels.push(modelName);
         } catch (ex) {
             logger.error(`====== Load database schema from: ${dirent.name} error! - ${ex.message}`);

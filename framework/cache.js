@@ -200,7 +200,7 @@ class CacheFactory extends EventModule {
         this.getCache = (name, cacheSpecOptions) => {
             if (this._caches[name] === undefined) {
                 this._caches[name] = new Cache({
-                    $name: name,
+                    $name: `${name}@${cacheSpecOptions.server || _CACHE_DEFAULT_}`,
                     spec: cacheSpecOptions
                 });
                 logger.info(`Cache ${name} : ${tools.inspect(cacheSpecOptions)} created.`);

@@ -174,7 +174,7 @@ function _appendCache(data, options, callback) {
         logger.debug(`Ignore cache updating dur no cacheValue changed!`);
         return callback(null, data);
     }
-    logger.debug(`Perform updating cache ...`);
+    logger.debug(`${this.$name}: Perform updating cache ...`);
     let cacheValues = [];
     let docs = Array.isArray(data)? data : [data];
     //
@@ -582,7 +582,7 @@ class Repository extends EventObject {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
             if (this.allowCache === true) {
-                this._cache = cacheFactory.getCache(this.$name, this.cacheSpec);
+                this._cache = cacheFactory.getCache(this.modelName, this.cacheSpec);
             }
         })();
     }

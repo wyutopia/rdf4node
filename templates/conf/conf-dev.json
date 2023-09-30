@@ -34,16 +34,22 @@
       "enabled": true
     }
   },
-  "caches": {
-    "shareClient": false,
+  "redis": {
+    "shareConnection": false,
     "shareDatabase": false,
-    "redis": {
+    "servers": {
       "default": {
         "host": "127.0.0.1",
         "port": 6379,
-        "database": 1,
         "password": "Dev#2023"
       }
+    }
+  },
+  "caches": {
+    "User": {
+      "allowCache": true,
+      "engine": "redis",
+      "database": 0
     }
   },
   "eventBus": {
