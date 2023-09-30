@@ -177,10 +177,14 @@ class Cache extends EventModule {
         //
         (() => {
             if (this._engine !== sysdefs.eCacheEngine.Native) {
-                this._client = redisWrapper.createClient(props.$name, this._server, {
-                    prefix: this._prefix,
-                    database: this._database
-                });
+                let options = {};
+                if (this._prefix) {
+                    options.prefix = this._prefix;
+                }
+                if (this._database) {
+                    options.database = this._database;
+                }
+                this._client = redisWrapper.createClient(props.$name, this._server, options);
                 //this._client = _fakeClient;
             }
         })()
