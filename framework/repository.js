@@ -108,22 +108,21 @@ function _$parseCacheKey (options, cacheSpec) {
     if (tools.isTypeOfPrimitive(options)) {
         return options;
     }
+    if (cacheSpec.keyNameTemplate) {
+        let keyNameArray = [];
+        cacheSpec.keyNameTemplate.split(':').forEach( field => {
+            keyNameArray.push(options[field] === undefined? '*' : tools.stringifyDocId(options[field]));
+        });
+        const cacheKey  = keyNameArray.join(':');
+        //logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${cacheKey}`);
+        logger.debug(`The cacheKey: ${cacheKey}`);
+        return cacheKey;
+    }
     if (cacheSpec.keyName) {
         let cacheKey = options[cacheSpec.keyName];
         return typeof cacheKey === 'string'? cacheKey : cacheKey.toString();
     }
-    let template = cacheSpec.keyNameTemplate;
-    if (template === undefined) {
-        return options['_id'];   // Using _id as default key
-    }
-    let keyNameArray = [];
-    template.split(':').forEach( field => {
-        keyNameArray.push(options[field] === undefined? '*' : tools.stringifyDocId(options[field]));
-    });
-    const cacheKey  = keyNameArray.join(':');
-    //logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${cacheKey}`);
-    logger.debug(`The cacheKey: ${cacheKey}`);
-    return cacheKey;
+    return options['_id'];
 }
 
 function _parseCacheValue(doc, valueKeys) {
@@ -193,14 +192,16 @@ function _appendCache(data, options, callback) {
 
 function _$buildQueryFilter(data, cacheSpec) {
     let filter = {};
-    if (cacheSpec.keyName !== undefined) {
-        filter[cacheSpec.keyName] = tools.isTypeOfPrimitive(data)? data : data[cacheSpec.keyName];
-    } else if (cacheSpec.keyNameTemplate !== undefined) {
+    if (cacheSpec.keyNameTemplate) {
         cacheSpec.keyNameTemplate.split(':').forEach (key => {
             if (data[key] !== undefined) {
                 filter[key] = data[key];
             }
         });
+    } else if (cacheSpec.keyName) {
+        filter[cacheSpec.keyName] = tools.isTypeOfPrimitive(data)? data : data[cacheSpec.keyName];
+    } else {
+        filter._id = data._id;
     }
     return filter;
 }
