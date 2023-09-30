@@ -102,7 +102,7 @@ const _defaultCacheProps = {
     json: true,
     loadPolicy: eLoadPolicy.SetAfterFound,
     keyName: '_id',
-    KeyNameTemplate: null,
+    keyNameTemplate: null,
     populate: null,
     select: null,
     valueKeys: 'username name title',
