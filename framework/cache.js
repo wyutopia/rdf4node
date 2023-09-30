@@ -26,28 +26,6 @@ const eLoadPolicy = {
     SetAfterFound  : 'setAfterFound'
 };
 
-const _defaultCacheProps = {
-    logLevel: 'error',
-    engine: sysdefs.eCacheEngine.Native,   // Set default cache to local process memory
-    configName: 'default',
-    //
-    prefix: null,                       // No default key prefix
-    dataType: eDataType.Kv,
-    json: true,
-    loadPolicy: eLoadPolicy.SetAfterFound,
-    keyName: '_id',
-    KeyNameTemplate: null,
-    populate: null,
-    select: null,
-    valueKeys: null
-};
-
-function _initCache (options) {
-    Object.keys(_defaultCacheProps).forEach( key => {
-        let propKey = `_${key}`;
-        this[propKey] = options[key] !== undefined? options[key] : _defaultCacheProps[key];
-    });
-}
 
 function _setValue (key, val, options, callback) {
     if (typeof options === 'function') {
@@ -84,6 +62,59 @@ const _fakeClient = {
         });
     }
 }
+
+const _sampleCacheSpec = {
+    // Default value is 'native'. enum: 'native', 'redis'
+    engine: 'redis',
+    // Default value is 'kv'.
+    dataType: 'kv',
+    loadPolicy: 'setAfterFound',
+    // Default keyName is '_id'
+    keyName: '_id',
+    keyNameTemplate: 'user:project:group:tenant',
+    populate: [
+      {
+        path: 'role',
+        select: 'name permissions',
+        populate: { path: 'permissions', select: 'resource operations' }
+      }
+    ],
+    select: 'user project group tenant role',
+    valueKeys: 'user project group tenant role',
+    allowCache: true,
+    //
+    server: 'default',
+    database: 0
+};
+
+// model.cacheSpec + config.caches[modelName] + config.redis.servers[serverName];
+const _defaultCacheProps = {
+    allowCache: false,
+    logLevel: 'error',
+    //
+    engine: sysdefs.eCacheEngine.Native,   // Set default cache to local process memory
+    server: 'default',
+    database: 0,
+    prefix: null,                       // No default key prefix
+    ttl: 0, 
+    //
+    dataType: eDataType.Kv,
+    json: true,
+    loadPolicy: eLoadPolicy.SetAfterFound,
+    keyName: '_id',
+    KeyNameTemplate: null,
+    populate: null,
+    select: null,
+    valueKeys: null,
+};
+
+function _initCache (options) {
+    Object.keys(_defaultCacheProps).forEach( key => {
+        let propKey = `_${key}`;
+        this[propKey] = options[key] !== undefined? options[key] : _defaultCacheProps[key];
+    });
+}
+
 // The cache class
 class Cache extends EventModule {
     constructor(props) {
@@ -146,13 +177,11 @@ class Cache extends EventModule {
         //
         (() => {
             if (this._engine !== sysdefs.eCacheEngine.Native) {
-                // Extract client config from system configuration
-                let clientConfig = tools.safeGetJsonValue(sysConf.caches, `${this._engine}.${this._configName}`);
-                if (clientConfig) {
-                    this._client = redisWrapper.createClient(props.$name, clientConfig);
-                } else {
-                    this._client = _fakeClient;
-                }
+                this._client = redisWrapper.createClient(props.$name, this._server, {
+                    prefix: this._prefix,
+                    database: this._database
+                });
+                //this._client = _fakeClient;
             }
         })()
     }

@@ -197,16 +197,17 @@ const gClientSpecOptions = {
 };
 
 function _genClientId (config) {
-    if (!this.shareClient) {
+    if (!this._shareConnection) { // Always create new connection
         return tools.uuidv4();
     }
-    let seed = this.shareDatabase? `${config.host}:${config.port}` : `${config.database}@${config.host}:${config.port}`
+    let endpoint = `${config.host}:${config.port}`;
+    let seed = this._shareDatabase?  endpoint : `${config.database}@${endpoint}`;
     return tools.md5Sign(seed);
 }
 
 const _typeRedisWrapperProps = {
     name: 'string',
-    shareClient: 'boolean',
+    shareConnection: 'boolean',
     shareDatabase: 'boolean'
 };
 
@@ -215,8 +216,9 @@ class RedisWrapper extends EventModule {
     constructor(props) {
         super(props)
         //
-        this.shareClient = props.shareClient !== undefined? props.shareClient : false;
-        this.shareDatabase = props.shareDatabase !== undefined? props.shareDatabase : false;
+        this._shareConnection = props.shareConnection !== undefined? props.shareConnection : false;
+        this._shareDatabase = props.shareDatabase !== undefined? props.shareDatabase : false;
+        this._servers = props.servers || {};
         // Define member variable
         this._clients = {};
         // Implementing event handlers
@@ -229,10 +231,13 @@ class RedisWrapper extends EventModule {
         // Implementing member methods
         /**
          * 
-         * @param {mode, db, gClientSpecOptions} options 
+         * @param {String} name 
+         * @param {String} server 
+         * @param {database, prefix, ttl} options 
          * @returns 
          */
-        this.createClient = (name, config) => {
+        this.createClient = (name, server, options) => {
+            let config = tools.deepAssign({}, this._servers[server], options);
             logger.info(`${this.$name}: Create client with ${name} - ${tools.inspect(config)}`);
             //
             let clientId = _genClientId.call(this, config);
@@ -240,9 +245,9 @@ class RedisWrapper extends EventModule {
                 this._clients[clientId] = new RedisClient({
                     $id: clientId,
                     $name: name,
-                    config: config,
-                    //
                     parent: this,
+                    //
+                    config: config,
                 });
             }
             return this._clients[clientId];
@@ -270,12 +275,11 @@ class RedisWrapper extends EventModule {
     }
 }
 
-const redisWrapper = new RedisWrapper({
+const _props = Object.assign({
     $name: _MODULE_NAME,
     $type: sysdefs.eModuleType.CM,
     mandatory: true,
-    state: sysdefs.eModuleState.ACTIVE,
-    //
-    config: sysconf.caches || {}
-});
+    state: sysdefs.eModuleState.ACTIVE
+}, sysconf.redis || {});
+const redisWrapper = new RedisWrapper(_props);
 module.exports = redisWrapper;
