@@ -14,6 +14,7 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 const redisWrapper = require('../libs/common/redis.wrapper');
 
+const _CACHE_DEFAULT = 'default';
 const eDataType = {
     Kv              : 'kv',
     List            : 'ls',
@@ -88,18 +89,18 @@ const _sampleCacheSpec = {
 };
 
 // model.cacheSpec + config.caches[modelName] + config.redis.servers[serverName];
-const _defaultCacheProps = {
+const _typeCacheOptions = {
     allowCache: false,
-    logLevel: 'error',
-    //
+    // Following is CacheEntity properties
     engine: sysdefs.eCacheEngine.Native,   // Set default cache to local process memory
+    logLevel: 'error',
     server: 'default',
     database: 0,
     prefix: null,                       // No default key prefix
     ttl: 0, 
-    //
-    dataType: eDataType.Kv,
     json: true,
+    // Following is CacheSpec properties
+    dataType: eDataType.Kv,
     loadPolicy: eLoadPolicy.SetAfterFound,
     keyName: '_id',
     keyNameTemplate: null,
@@ -108,10 +109,37 @@ const _defaultCacheProps = {
     valueKeys: 'username name title',
 };
 
-function _initCache (props, workMode = 0) { // 0: init cache object  1: init cacheSpec variable
-    Object.keys(_defaultCacheProps).forEach( key => {
-        let propKey = workMode === 0? `_${key}` : key;
-        this[propKey] = props[key] !== undefined? props[key] : _defaultCacheProps[key];
+const _typeCacheSpecProps = {
+    dataType: eDataType.Kv,
+    loadPolicy: eLoadPolicy.SetAfterFound,
+    keyName: '_id',
+    keyNameTemplate: null,
+    populate: null,
+    select: null,
+    valueKeys: 'username name title',
+}
+
+function _initCacheSpec (props) {
+    let spec = {};
+    Object.keys(_typeCacheSpecProps).forEach( key => {
+        spec[key] = props[key] !== undefined? props[key] : _typeCacheSpecProps[key];
+    });
+    return spec;
+}
+
+const _typeCacheEntityProps = {
+    logLevel: 'error',
+    engine: sysdefs.eCacheEngine.Native,   // Set default cache to local process memory
+    server: 'default',
+    database: 0,
+    prefix: null,                       // No default key prefix
+    ttl: 0, 
+    json: true,
+}
+function _initCacheEntity (ett, props) {
+    Object.keys(_typeCacheEntityProps).forEach( key => {
+        let propKey = `_${key}`;
+        ett[propKey] = props[key] !== undefined? props[key] : _typeCacheEntityProps[key];
     });
 }
 
@@ -119,8 +147,8 @@ function _initCache (props, workMode = 0) { // 0: init cache object  1: init cac
 class Cache extends EventModule {
     constructor(props) {
         super(props);
-        //
-        _initCache.call(this, props.spec);
+        // Define cache-entity properties
+        _initCacheEntity(this, props.cacheOptions);
         this._dataRepo = {};
         this._client = null;
         // Implementing all the cache operation methods
@@ -197,13 +225,19 @@ class CacheFactory extends EventModule {
         super(props);
         //
         this._caches = {};
-        this.getCache = (name, cacheSpecOptions) => {
+        /**
+         * 
+         * @param {string} name 
+         * @param {_typeCacheEntityProps} cacheEntityOptions 
+         * @returns 
+         */
+        this.getCache = (name, cacheOptions) => {
             if (this._caches[name] === undefined) {
                 this._caches[name] = new Cache({
-                    $name: `${name}@${cacheSpecOptions.server || _CACHE_DEFAULT_}`,
-                    spec: cacheSpecOptions
+                    $name: `${name}@${cacheOptions.server || _CACHE_DEFAULT}`,
+                    cacheOptions: cacheOptions
                 });
-                logger.info(`Cache ${name} : ${tools.inspect(cacheSpecOptions)} created.`);
+                logger.info(`Cache ${name} : ${tools.inspect(cacheOptions)} created.`);
             }
             return this._caches[name];
         };
@@ -212,10 +246,10 @@ class CacheFactory extends EventModule {
 
 // Declaring cache singleton and set module exports
 module.exports = exports = {
-    _CACHE_DEFAULT_: 'default',
+    _CACHE_DEFAULT_: _CACHE_DEFAULT,
     eDataType: eDataType,
     eLoadPolicy: eLoadPolicy,
-    initCacheSpec: _initCache,
+    initCacheSpec: _initCacheSpec,
     cacheFactory: new CacheFactory({
         $name: _MODULE_NAME
     })

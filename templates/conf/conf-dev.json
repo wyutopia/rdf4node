@@ -47,9 +47,11 @@
   },
   "caches": {
     "User": {
-      "allowCache": true,
-      "engine": "redis",
-      "database": 0
+      "enabled": true,
+      "spec": {
+        "engine": "redis",
+        "database": 0
+      }
     }
   },
   "eventBus": {

@@ -58,16 +58,23 @@ function _readModelDirSync(modelDir) {
         //logger.debug(`====== Load model: ${fullPath}`);
         try {
             let modelSpec = require(fullPath);
+            //
             let modelName = modelSpec.modelName;
-            let cacheSpec = Object.assign(modelSpec.cacheSpec || {}, config.caches[modelName] || {});
+            let cacheConf = config.caches[modelName] || {};
+            // Get allowCache switch
+            let allowCache = ((allowCache, config) => { // cache config has the privilege
+                return config.enabled !== undefined? config.enabled : (allowCache !== undefined? allowCache : false);
+            })(modelSpec.allowCache, cacheConf);
+            // Assemble cacheOptions = cacheSpecProps + cacheEntityProps
+            let cacheOptions = Object.assign({}, modelSpec.cacheSpec, cacheConf.spec);
             repoFactory.registerSchema(modelName, {
                 schema: modelSpec.modelSchema,
                 refs: modelSpec.modelRefs || [],
                 // Cache options
-                allowCache: modelSpec.allowCache || cacheSpec.allowCache || false,
-                cacheSpec: cacheSpec
+                allowCache: allowCache,
+                cacheOptions: cacheOptions 
             });
-            logger.debug(`${modelName} cacheSpec: ${tools.inspect(cacheSpec)}`);
+            logger.debug(`${modelName} cache settings: ${allowCache} - ${tools.inspect(cacheOptions)}`);
             _loadedModels.push(modelName);
         } catch (ex) {
             logger.error(`====== Load database schema from: ${dirent.name} error! - ${ex.message}`);

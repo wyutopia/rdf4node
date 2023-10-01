@@ -221,8 +221,7 @@ class Repository extends EventObject {
         };
         // Set cache property and declaring member variable
         this.allowCache = props.allowCache !== undefined? props.allowCache : false;
-        this.cacheSpec = {};
-        initCacheSpec.call(this.cacheSpec, props.cacheSpec || {}, 1);
+        this.cacheSpec = initCacheSpec(props.cacheOptions);
         this._cache = null;
         this.getCache = () => {
             return this._cache;
@@ -584,7 +583,7 @@ class Repository extends EventObject {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
             if (this.allowCache === true) {
-                this._cache = cacheFactory.getCache(this.modelName, this.cacheSpec);
+                this._cache = cacheFactory.getCache(this.modelName, props.cacheOptions);
             }
         })();
     }
@@ -655,7 +654,7 @@ class RepositoryFactory extends EventModule {
                         dsName: dsName,
                         // cache 
                         allowCache: spec.allowCache,
-                        cacheSpec: spec.cacheSpec
+                        cacheOptions: spec.cacheOptions   // _typeCacheOptions
                     });
                     logger.info(`>>> New repository: ${key} created. <<<`);
                 }
