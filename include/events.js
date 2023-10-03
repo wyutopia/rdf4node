@@ -64,12 +64,13 @@ class EventModule extends EventObject {
         // Save event properties
         this._eventHandlers = props.eventHandlers || {};
         this._triggers = props.triggers || {};
-        // Auto wire ebus instance
+        // Set eventOptions
         this._eventOptions = {
             engine: props.engine || sysdefs.eEventBusEngine.Native,
             channel: props.channel || _DEFAULT_CHANNEL_,
             pubKey: props.pubKey || _DEFAULT_PUBKEY_
         }
+        // Auto wire ebus instance
         this._ebus = props.ebus || global._$ebus || null;
         //
         this.pubEvent = (event, options, callback) => {

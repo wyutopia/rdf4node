@@ -25,29 +25,44 @@ class RascalClientMangager extends EventModule {
         //
         this._clients = {};
         // Implementing member methods
-        this.createClient = (options) => {
-            options.$factory = this; // Add clientManager reference
-            let client = new RascalClient(options);
-            this._clients[client.id] = client;
-            return client;
+        /**
+         * 
+         * @param {string} name 
+         * @param {vhost, connection, params} options 
+         * @returns 
+         */
+        this.getClient = (name, options) => {
+            // options.$factory = this; // Add clientManager reference
+            // let client = new RascalClient(options);
+            // this._clients[client.id] = client;
+            // return client;
+            if (this._clients[name] === undefined) {
+                this._clients[name] = new RascalClient({
+                    $parent: this,
+                    $name: name,
+                    //
+                    options: options
+                });
+            }
+            this._clients[name];
         }
         this.dispose = (callback) => {
-            logger.info(`${this.$name}: Destroy all amqp clients ...`);
-            async.eachLimit(Object.keys(this._clients), 3, (id, next) => {
-                let client = this._clients[id];
+            logger.info(`${this.$name}: Destroy all rascal clients ...`);
+            async.eachLimit(Object.keys(this._clients), 3, (name, next) => {
+                let client = this._clients[name];
                 if (client === undefined) {
                     return process.nextTick(next);
                 }
                 return client.dispose(next);
             }, () => {
-                logger.info(`${this.$name}: All amqp clients have been destroyed.`);
+                logger.info(`${this.$name}: All rascal clients have been destroyed.`);
                 return callback();
             });
         }
         // Implementing event handle
-        this.on('client-end', (clientId, err) => {
-            logger.info(`${this.$name}: On client [END] - ${clientId} - ${tools.inspect(err)}`);
-            delete this._clients[clientId];
+        this.on('client-end', (name, err) => {
+            logger.info(`${this.$name}: On client [END] - ${name} - ${tools.inspect(err)}`);
+            delete this._clients[name];
         });
         //         
         (() => {
@@ -56,10 +71,17 @@ class RascalClientMangager extends EventModule {
     }
 }
 
-//const _configKeys = ['connection', 'exchanges', 'queues', 'bindings', 'publications', 'subscriptions'];
-function _assembleClientConfig(vhost, params) {
+const _configKeys = ['exchanges', 'queues', 'bindings', 'publications', 'subscriptions'];
+function _assembleClientConfig(vhost, connection, params) {
     let vhosts = {};
-    vhosts[vhost] = params;
+    vhosts[vhost] = {
+        connection: connection
+    };
+    _configKeys.forEach(key => {
+        if (params[key] !== undefined) {
+            vhosts[vhost][key] = params[key];
+        }
+    });
     return {
         vhosts: vhosts
     };
@@ -68,13 +90,16 @@ function _assembleClientConfig(vhost, params) {
 /**
  * 
  * @param {string} vhost 
- * @param {connection, exchanges, queues, bindings, publications, subscriptions} params 
+ * @param {*} connection
+ * @param {exchanges, queues, bindings, publications, subscriptions} params 
  */
-function _initClient({vhost, params}) {
+function _initClientEntity({vhost, connection, params}) {
     assert(vhost !== undefined);
+    assert(connection !== undefined);
     assert(params !== undefined);
+    //
     const self = this;
-    const clientConf = _assembleClientConfig(vhost, params);
+    const clientConf = _assembleClientConfig(vhost, connection, params);
     logger.debug(`${this.$name}: Create new RacalClient with ${tools.inspect(clientConf)}`);
     self.state = eClientState.Init;
     //
@@ -89,7 +114,7 @@ function _initClient({vhost, params}) {
         broker.on('error', function (err) {
             logger.error(`${self.$name}[${self.state}]: Broker error! - ${err.message}`);
             self.state = eClientState.Null;
-            self.$factory.emit('client-end', self.$id, err);
+            self.$parent.emit('client-end', self.$name, err);
         });
         // Perform subscribe and store publication keys
         async.parallel([
@@ -158,9 +183,10 @@ const _typeClientProps = {
     $id: 'string',
     $name: 'string',
     $parent: 'object',
-    $factory: 'object',
-    config: 'object'
+    //
+    options: 'object'
 };
+
 
 // The client class
 class RascalClient extends CommonObject {
@@ -168,7 +194,7 @@ class RascalClient extends CommonObject {
         super(props);
         // Declaring member variables
         this.$parent = props.$parent;
-        this.$factory = props.$factory;
+        this.$name = props.$name;
         //
         this.state = eClientState.Null;
         this._broker = null;
@@ -232,7 +258,7 @@ class RascalClient extends CommonObject {
             });
         }
         // Implementing event handlers
-        _initClient.call(this, props.config);
+        _initClientEntity.call(this, props.options);
     }
 }
 
