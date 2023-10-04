@@ -315,8 +315,6 @@ class EventBus extends EventEmitter {
             Object.keys(mqConf.channels).forEach(chn => {
                 let clientId = `${chn}@${config.engine}`;
                 let options = {
-                    ebus: this,
-                    //
                     vhost: vhost,
                     connection: connection,
                     params: mqConf.channels[chn]

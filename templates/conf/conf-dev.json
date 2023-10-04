@@ -56,13 +56,14 @@
   },
   "eventBus": {
     "lo": true,
-    "disabledEvents": [],
+    "disableEvents": [],
     "persistent": true,
+    "engine": "rabbitmq",
     "rabbitmq": {
       "vhost": "rdf4node",
       "connection": {
         "slashes": true,
-        "protocol": "ampq",
+        "protocol": "amqp",
         "hostname": "127.0.0.1",
         "user": "admin",
         "password": "Dev#2023",
@@ -71,12 +72,35 @@
           "heartbeat": 4
         }
       },
-      "default": {
-        "exchanges": {},
-        "queues": [],
-        "publications": {},
-        "bindings": {},
-        "subscriptions": {}
+      "channels": {
+        "default": {
+          "exchanges": {
+            "global.fanout": {
+              "type": "fanout"
+            },
+            "global.topic": {
+              "type": "topic"
+            }
+          },
+          "queues": ["events_q"],
+          "bindings": {
+            "broadcast": {
+              "source": "global.fanout",
+              "destination": "events_q",
+              "destinationType": "queue",
+              "bindingKeys": ["#"]
+            }
+          },
+          "publications": {},
+          "subscriptions": {}
+        },
+        "other": {
+          "exchange": {},
+          "queues": [],
+          "bindings": {},
+          "publications": {},
+          "subscriptions": {}
+        }
       }
     }
   },
@@ -95,5 +119,12 @@
       }
     },
     "minio": {}
+  },
+  "modules": {
+    "UserCtl": {
+      "engine": "rabbitmq",
+      "channel": "User",
+      "pubKey": "pubUserEvents"
+    }
   }
 }
