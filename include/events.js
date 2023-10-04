@@ -122,7 +122,7 @@ class EventModule extends EventObject {
                 let options = Object.assign({
                     subEvents: Object.keys(this._eventHandlers)
                 }, this._eventOptions);
-                this._ebus.register(this, options, tools.noop);
+                this._ebus.register(this, options);
             }
         })();
     }

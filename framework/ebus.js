@@ -215,10 +215,9 @@ class EventBus extends EventEmitter {
          * 
          * @param {instanceof EventModule} moduleRef 
          * @param {_typeRegisterOptions} options 
-         * @param {*} callback 
          * @returns 
          */
-        this.register = (moduleRef, options, callback) => {
+        this.register = (moduleRef, options) => {
             if (typeof options === 'function') {
                 callback = options;
                 options = {};
@@ -226,7 +225,7 @@ class EventBus extends EventEmitter {
             //
             if (!(moduleRef instanceof EventModule)) {
                 logger.error(`Error: should be EventModule!`);
-                return callback();
+                return null;
             }
             let moduleName = moduleRef.$name;
             logger.debug(`Register ${moduleName} with options - ${tools.inspect(options)}`);
@@ -250,7 +249,7 @@ class EventBus extends EventEmitter {
             // TODO: Append eventTriggers
             let engine = options.engine || sysdefs.eEventBusEngine.Native;
             if (engine === sysdefs.eEventBusEngine.Native) {
-                return callback();
+                return null;
             }
             // Create mq client
             let engineConf = config[engine];  // {vhost, connection, ...channelParameters}
@@ -265,7 +264,7 @@ class EventBus extends EventEmitter {
                     params: tools.deepAssign({}, engineConf.base, engineConf[channel] || {})
                 });
             }
-            return callback(null, this._clients[clientId]);
+            return null;
         };
         this.on('message', (evt, callback) => {
             return _consumeEvent.call(this, evt, callback);
