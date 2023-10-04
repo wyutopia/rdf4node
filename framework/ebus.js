@@ -247,23 +247,23 @@ class EventBus extends EventEmitter {
                 }
             });
             // TODO: Append eventTriggers
-            let engine = options.engine || sysdefs.eEventBusEngine.Native;
-            if (engine === sysdefs.eEventBusEngine.Native) {
-                return null;
-            }
-            // Create mq client
-            let engineConf = config[engine];  // {vhost, connection, ...channelParameters}
-            // Create rabbitmq-client
-            let channel = options.channel || _DEFAULT_CHANNEL_;
-            let clientId = `${channel}@${engine}`;
-            if (this._clients[clientId] === undefined) {
-                // getClient(name, options: {vhost, connection, params})
-                this._clients[clientId] = rascalWrapper.getClient(clientId, {
-                    vhost: engineConf.vhost,
-                    connection: engineConf.connection,
-                    params: tools.deepAssign({}, engineConf.base, engineConf[channel] || {})
-                });
-            }
+            // let engine = options.engine || sysdefs.eEventBusEngine.Native;
+            // if (engine === sysdefs.eEventBusEngine.Native) {
+            //     return null;
+            // }
+            // // Create mq client
+            // let engineConf = config[engine];  // {vhost, connection, ...channelParameters}
+            // // Create rabbitmq-client
+            // let channel = options.channel || _DEFAULT_CHANNEL_;
+            // let clientId = `${channel}@${engine}`;
+            // if (this._clients[clientId] === undefined) {
+            //     // getClient(name, options: {vhost, connection, params})
+            //     this._clients[clientId] = rascalWrapper.getClient(clientId, {
+            //         vhost: engineConf.vhost,
+            //         connection: engineConf.connection,
+            //         params: tools.deepAssign({}, engineConf.base, engineConf[channel] || {})
+            //     });
+            // }
             return null;
         };
         this.on('message', (evt, callback) => {
@@ -303,6 +303,22 @@ class EventBus extends EventEmitter {
                     return process.nextTick(_consumeEvent.bind(this, event, options, callback));
                 }
                 return _extMqPub.call(this, event, options, callback);
+            });
+        }
+        // Initializing the rabbitmq clients channels
+        if (config.engine === sysdefs.eEventBusEngine.RabbitMQ) {
+            let mqConf = config[config.engine] || {};
+            //
+            let vhost = mqConf.vhost;
+            let connection = mqConf.connection;
+            Object.keys(mqConf.channels).forEach(chn => {
+                let clientId = `${chn}@${config.engine}`;
+                let options = {
+                    vhost: vhost,
+                    connection: connection,
+                    params: mqConf.channels[chn]
+                }
+                this._clients[clientId] = rascalWrapper.getClient(clientId,options);
             });
         }
     }
