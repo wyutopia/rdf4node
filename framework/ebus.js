@@ -70,18 +70,19 @@ const _typeEventBusProps = {
     lo: true,         // Indicate local-loop. default is true: all events consumed localy.
     persistent: true,
     disabledEvents: [],
-    triggerEvents: []
+    triggerEvents: [],
+    engine: sysdefs.eEventBusEngine.Native
 };
 
 function _parseTriggerEvents(triggersConf) {
-    const triggers = [];
+    const triggerEvents = [];
     triggersConf.forEach(item => {
-        triggers.push({
+        triggerEvents.push({
             pattern: new RegExp(item.match),
             code: item.code
         })
     });
-    return triggers;
+    return triggerEvents;
 }
 
 function _initEventBus(props) {
@@ -106,7 +107,7 @@ function _consumeEvent(rawEvent, options, callback) {
         options = {};
     }
     logger.debug(`Perform consuming event: ${tools.inspect(rawEvent)} - ${tools.inspect(options)}`);
-    let event = options.engine === sysdefs.eCacheEngine.Native? rawEvent : rawEvent.content;
+    let event = (this._lo === true || options.engine === sysdefs.eCacheEngine.Native)? rawEvent : rawEvent.content;
     let subscribers = this._subscribers[event.code];
     if (tools.isTypeOfArray(subscribers)) {
         subscribers.forEach(moduleName => {
@@ -228,7 +229,7 @@ class EventBus extends EventEmitter {
                 return null;
             }
             let moduleName = moduleRef.$name;
-            logger.debug(`Register ${moduleName} with options - ${tools.inspect(options)}`);
+            //logger.debug(`Register ${moduleName} with options - ${tools.inspect(options)}`);
             if (this._registries[moduleName] === undefined) {
                 this._registries[moduleName] = {
                     name: moduleName,
@@ -299,7 +300,7 @@ class EventBus extends EventEmitter {
             }
             return this._eventLogger.pub(event, options, () => {
                 //
-                if (this._lo === true || options.channel === undefined || options.engine === sysdefs.eEventBusEngine.Native) {
+                if (this._lo === true || options.engine === sysdefs.eEventBusEngine.Native) {
                     return process.nextTick(_consumeEvent.bind(this, event, options, callback));
                 }
                 return _extMqPub.call(this, event, options, callback);
@@ -314,12 +315,15 @@ class EventBus extends EventEmitter {
             Object.keys(mqConf.channels).forEach(chn => {
                 let clientId = `${chn}@${config.engine}`;
                 let options = {
+                    ebus: this,
+                    //
                     vhost: vhost,
                     connection: connection,
                     params: mqConf.channels[chn]
                 }
-                this._clients[clientId] = rascalWrapper.getClient(clientId,options);
+                this._clients[clientId] = rascalWrapper.getClient(clientId, options);
             });
+            logger.info(`${this.$name}: rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
         }
     }
 }

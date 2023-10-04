@@ -32,10 +32,6 @@ class RascalClientMangager extends EventModule {
          * @returns 
          */
         this.getClient = (name, options) => {
-            // options.$factory = this; // Add clientManager reference
-            // let client = new RascalClient(options);
-            // this._clients[client.id] = client;
-            // return client;
             if (this._clients[name] === undefined) {
                 this._clients[name] = new RascalClient({
                     $parent: this,
@@ -44,7 +40,7 @@ class RascalClientMangager extends EventModule {
                     options: options
                 });
             }
-            this._clients[name];
+            return this._clients[name];
         }
         this.dispose = (callback) => {
             logger.info(`${this.$name}: Destroy all rascal clients ...`);
@@ -153,7 +149,7 @@ function _initClientEntity({vhost, connection, params}) {
                                 logger.error(`${self.$name}[${self.state}]: Unrecognized contentType! Should be text/plain or application/json`);
                             }
                             // Processing message
-                            self.$parent.emit('message', evt, ackOrNack);
+                            self.ebus.emit('message', evt, ackOrNack);
                         }).on('error', (err) => {
                             logger.error(`${self.$name}[${self.state}]: Handle message error! - ${err.code}#${err.message}`);
                         });
@@ -195,6 +191,7 @@ class RascalClient extends CommonObject {
         // Declaring member variables
         this.$parent = props.$parent;
         this.$name = props.$name;
+        this.ebus = props.ebus;
         //
         this.state = eClientState.Null;
         this._broker = null;
