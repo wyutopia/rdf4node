@@ -50,7 +50,7 @@ class EventLogger extends EventEmitter {
         this.publish = this.pub;
         this.con = (evt, consumer, callback) => {
             let src = tools.safeGetJsonValue(evt, 'headers.source');
-            logger.info(`Consume event: ${evt.code} - ${src} - ${consumer}`);
+            logger.debug(`Consume event: ${evt.code} - ${src} - ${consumer}`);
             return this._execPersistent({
                 consumer: consumer,
                 code: evt.code,
@@ -67,33 +67,32 @@ global._$eventLogger = new EventLogger({
 
 
 const _typeEventBusProps = {
-    lo: true,
+    lo: true,         // Indicate local-loop. default is true: all events consumed localy.
     persistent: true,
     disabledEvents: [],
-    triggers: null,
-    rabbitmq: {},
-    rocketmq: {},
-    redis: {}
+    triggerEvents: [],
+    engine: sysdefs.eEventBusEngine.Native
 };
 
-function _parseEventTriggers(triggersConf) {
-    const _triggers = [];
+function _parseTriggerEvents(triggersConf) {
+    const triggerEvents = [];
     triggersConf.forEach(item => {
-        _triggers.push({
+        triggerEvents.push({
             pattern: new RegExp(item.match),
             code: item.code
         })
     });
-    return _triggers;
+    return triggerEvents;
 }
 
-function _initEventBusProps(props) {
+function _initEventBus(props) {
+    // Init module base
     initModule.call(this, props);
-    //
+    // 
     Object.keys(_typeEventBusProps).forEach(key => {
         let propKey = `_${key}`;
-        if (key === 'triggers') {
-            this[propKey] = _parseEventTriggers(props[key]);
+        if (key === 'triggerEvents') {
+            this[propKey] = _parseTriggerEvents(props[key]);
         } else {
             this[propKey] = props[key] !== undefined ? props[key] : _typeEventBusProps[key];
         }
@@ -108,7 +107,7 @@ function _consumeEvent(rawEvent, options, callback) {
         options = {};
     }
     logger.debug(`Perform consuming event: ${tools.inspect(rawEvent)} - ${tools.inspect(options)}`);
-    let event = options.engine === sysdefs.eCacheEngine.Native? rawEvent : rawEvent.content;
+    let event = (this._lo === true || options.engine === sysdefs.eCacheEngine.Native)? rawEvent : rawEvent.content;
     let subscribers = this._subscribers[event.code];
     if (tools.isTypeOfArray(subscribers)) {
         subscribers.forEach(moduleName => {
@@ -125,30 +124,30 @@ function _consumeEvent(rawEvent, options, callback) {
             }
         });
     }
-    setTimeout(_triggerEvents.bind(this, event, options, callback), 2);
+    setTimeout(_pubTriggerEvents.bind(this, event, options, callback), 5);
 }
 
-const _typeTrigger = {
+const _typeTriggerEvent = {
     pattern: 'regexp',
     code: 'string',
     bodyParser: '(event.body) => { return body;}'
 };
 
-function _triggerEvents (evt, options, callback) {
-    if (!this._triggers || this._triggers.length === 0) {
+function _pubTriggerEvents (evt, options, callback) {
+    if (!this._triggerEvents || this._triggerEvents.length === 0) {
         return callback();
     }
-    async.eachLimit(this._triggers, 3, (trigger, next) => {
-        let result = trigger.pattern.exec(evt.code);
+    async.eachLimit(this._triggerEvents, 3, (triggerEvent, next) => {
+        let result = triggerEvent.pattern.exec(evt.code);
         if (!result) {
             return process.nextTick(next);
         }
         let event = {
-            code: trigger.code,
+            code: triggerEvent.code,
             headers: evt.headers,
-            body: typeof trigger.bodyParser === 'function'? trigger.bodyParser(evt.body) : evt.body
+            body: typeof triggerEvent.bodyParser === 'function'? triggerEvent.bodyParser(evt.body) : evt.body
         }
-        logger.debug(`Chained event: ${trigger.code} triggered for ${evt.code}`);
+        logger.debug(`Chained event: ${triggerEvent.code} triggered for ${evt.code}`);
         return this.publish(event, evt.headers.triggerOptions || options, next);
     }, () => {
         return callback();
@@ -178,7 +177,7 @@ function _extMqPub(event, options, callback) {
     let engine = options.engine || sysdefs.eEventBusEngine.RabbitMQ;
     let channel = options.channel || _typePubOptions.channel;
     let pubKey = options.pubKey || _typePubOptions.pubKey;
-    //
+    // Find client
     let clientId = `${channel}@${engine}`;
     let client = this._clients[clientId];
     if (!client) {
@@ -187,13 +186,18 @@ function _extMqPub(event, options, callback) {
             message: `Invalid client! - id=${clientId}`
         })
     }
+    // Set triggerOptions for publishing triggerEvents
     event.headers.triggerOptions = {engine, channel, pubKey};
+    // Invoke publishing
     return client.publish(pubKey, event, { routingKey: event.code }, callback);
 }
 
 const _typeRegisterOptions = {
     subEvents: 'Array<String>', // Conditional on engine = 'native'
-    channel: 'string'
+    // For message queue
+    engine: 'native',
+    channel: 'default',
+    pubKey: 'pubEvent'
 };
 
 // Define the EventBus class
@@ -201,9 +205,8 @@ class EventBus extends EventEmitter {
     constructor(props) {
         super(props);
         //
-        _initEventBusProps.call(this, Object.assign(props, config));
+        _initEventBus.call(this, props);
         //
-        // For icp
         this._registries = {};
         this._subscribers = {};
         // For external MQ
@@ -211,12 +214,11 @@ class EventBus extends EventEmitter {
         // Implementing methods
         /**
          * 
-         * @param {object} moduleRef 
+         * @param {instanceof EventModule} moduleRef 
          * @param {_typeRegisterOptions} options 
-         * @param {*} callback 
          * @returns 
          */
-        this.register = (moduleRef, options, callback) => {
+        this.register = (moduleRef, options) => {
             if (typeof options === 'function') {
                 callback = options;
                 options = {};
@@ -224,10 +226,10 @@ class EventBus extends EventEmitter {
             //
             if (!(moduleRef instanceof EventModule)) {
                 logger.error(`Error: should be EventModule!`);
-                return callback();
+                return null;
             }
             let moduleName = moduleRef.$name;
-            logger.debug(`Register ${moduleName} with options - ${tools.inspect(options)}`);
+            //logger.debug(`Register ${moduleName} with options - ${tools.inspect(options)}`);
             if (this._registries[moduleName] === undefined) {
                 this._registries[moduleName] = {
                     name: moduleName,
@@ -236,8 +238,8 @@ class EventBus extends EventEmitter {
                 }
             }
             // Update subscriptions
-            let allEvents = Object.values(eSysEvents).concat(options.subEvents || []);
-            allEvents.forEach(code => {
+            let sumEvents = Object.values(eSysEvents).concat(options.subEvents || []);
+            sumEvents.forEach(code => {
                 if (this._subscribers[code] === undefined) {
                     this._subscribers[code] = [];
                 }
@@ -246,26 +248,24 @@ class EventBus extends EventEmitter {
                 }
             });
             // TODO: Append eventTriggers
-            let engine = options.engine || sysdefs.eEventBusEngine.Native;
-            if (engine === sysdefs.eEventBusEngine.Native) {
-                return callback();
-            }
-            let engineConf = config[engine];
-            // Create rabbitmq-client
-            let channel = options.channel || _DEFAULT_CHANNEL_;
-            let clientId = `${channel}@${engine}`;
-            if (this._clients[clientId] === undefined) {
-                this._clients[clientId] = rascalWrapper.createClient({
-                    $id: clientId,
-                    $parent: this,
-                    // the client config
-                    config: {
-                        vhost: engineConf.vhost,
-                        params: tools.deepAssign({}, engineConf.default, engineConf[channel] || {})
-                    }
-                });
-            }
-            return callback(null, this._clients[clientId]);
+            // let engine = options.engine || sysdefs.eEventBusEngine.Native;
+            // if (engine === sysdefs.eEventBusEngine.Native) {
+            //     return null;
+            // }
+            // // Create mq client
+            // let engineConf = config[engine];  // {vhost, connection, ...channelParameters}
+            // // Create rabbitmq-client
+            // let channel = options.channel || _DEFAULT_CHANNEL_;
+            // let clientId = `${channel}@${engine}`;
+            // if (this._clients[clientId] === undefined) {
+            //     // getClient(name, options: {vhost, connection, params})
+            //     this._clients[clientId] = rascalWrapper.getClient(clientId, {
+            //         vhost: engineConf.vhost,
+            //         connection: engineConf.connection,
+            //         params: tools.deepAssign({}, engineConf.base, engineConf[channel] || {})
+            //     });
+            // }
+            return null;
         };
         this.on('message', (evt, callback) => {
             return _consumeEvent.call(this, evt, callback);
@@ -295,16 +295,33 @@ class EventBus extends EventEmitter {
             logger.debug(`Publish event - ${tools.inspect(event)} - ${tools.inspect(options)}`)
             //
             if (this._disabledEvents.indexOf(event.code) !== -1) {
-                logger.debug(`Ignore event: ${event.code}`);
+                logger.debug(`Ignore disabled event: ${event.code}`);
                 return callback();
             }
             return this._eventLogger.pub(event, options, () => {
                 //
-                if (options.dest === 'local' || options.channel === undefined || options.engine === sysdefs.eEventBusEngine.Native) {
-                    return _consumeEvent.call(this, event, options, callback);
+                if (this._lo === true || options.engine === sysdefs.eEventBusEngine.Native) {
+                    return process.nextTick(_consumeEvent.bind(this, event, options, callback));
                 }
                 return _extMqPub.call(this, event, options, callback);
             });
+        }
+        // Initializing the rabbitmq clients channels
+        if (config.engine === sysdefs.eEventBusEngine.RabbitMQ) {
+            let mqConf = config[config.engine] || {};
+            //
+            let vhost = mqConf.vhost;
+            let connection = mqConf.connection;
+            Object.keys(mqConf.channels).forEach(chn => {
+                let clientId = `${chn}@${config.engine}`;
+                let options = {
+                    vhost: vhost,
+                    connection: connection,
+                    params: mqConf.channels[chn]
+                }
+                this._clients[clientId] = rascalWrapper.getClient(clientId, options);
+            });
+            logger.info(`${this.$name}: rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
         }
     }
 }

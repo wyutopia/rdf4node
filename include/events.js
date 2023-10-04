@@ -10,6 +10,7 @@ const os = require('os');
 const EventEmitter = require('events');
 // Framework libs
 const sysdefs = require('./sysdefs');
+const { modules: moduleConf } = require('./config');
 const eRetCodes = require('./retcodes');
 const {initObject, initModule, CommonModule, CommonObject} = require('./base');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
@@ -63,13 +64,14 @@ class EventModule extends EventObject {
         initModule.call(this, props);
         // Save event properties
         this._eventHandlers = props.eventHandlers || {};
-        this._triggers = props.triggers || {};
-        // Auto wire ebus instance
+        // Set eventOptions
+        let eventConf = moduleConf[props.$name] || {};
         this._eventOptions = {
-            engine: props.engine || sysdefs.eEventBusEngine.Native,
-            channel: props.channel || _DEFAULT_CHANNEL_,
-            pubKey: props.pubKey || _DEFAULT_PUBKEY_
-        }
+            engine: eventConf.engine || props.engine || sysdefs.eEventBusEngine.Native,
+            channel: eventConf.channel || props.channel || _DEFAULT_CHANNEL_,
+            pubKey: eventConf.pubKey || props.pubKey || _DEFAULT_PUBKEY_
+        };
+        // Auto wire ebus instance
         this._ebus = props.ebus || global._$ebus || null;
         //
         this.pubEvent = (event, options, callback) => {
@@ -121,7 +123,7 @@ class EventModule extends EventObject {
                 let options = Object.assign({
                     subEvents: Object.keys(this._eventHandlers)
                 }, this._eventOptions);
-                this._ebus.register(this, options, tools.noop);
+                this._ebus.register(this, options);
             }
         })();
     }
