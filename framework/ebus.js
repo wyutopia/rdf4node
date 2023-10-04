@@ -126,27 +126,27 @@ function _consumeEvent(rawEvent, options, callback) {
     setTimeout(_pubTriggerEvents.bind(this, event, options, callback), 5);
 }
 
-const _typeTrigger = {
+const _typeTriggerEvent = {
     pattern: 'regexp',
     code: 'string',
     bodyParser: '(event.body) => { return body;}'
 };
 
 function _pubTriggerEvents (evt, options, callback) {
-    if (!this._triggers || this._triggers.length === 0) {
+    if (!this._triggerEvents || this._triggerEvents.length === 0) {
         return callback();
     }
-    async.eachLimit(this._triggers, 3, (trigger, next) => {
-        let result = trigger.pattern.exec(evt.code);
+    async.eachLimit(this._triggerEvents, 3, (triggerEvent, next) => {
+        let result = triggerEvent.pattern.exec(evt.code);
         if (!result) {
             return process.nextTick(next);
         }
         let event = {
-            code: trigger.code,
+            code: triggerEvent.code,
             headers: evt.headers,
-            body: typeof trigger.bodyParser === 'function'? trigger.bodyParser(evt.body) : evt.body
+            body: typeof triggerEvent.bodyParser === 'function'? triggerEvent.bodyParser(evt.body) : evt.body
         }
-        logger.debug(`Chained event: ${trigger.code} triggered for ${evt.code}`);
+        logger.debug(`Chained event: ${triggerEvent.code} triggered for ${evt.code}`);
         return this.publish(event, evt.headers.triggerOptions || options, next);
     }, () => {
         return callback();
