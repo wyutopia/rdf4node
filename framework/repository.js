@@ -227,14 +227,14 @@ class Repository extends EventObject {
             return this._cache;
         };
         // Implementing cache methods
-        this.cacheGet = (options, callback) => {
+        this.cacheGet = (keyOpt, callback) => {
             if (this.allowCache === false) {
                 return callback({
                     code: eRetCodes.METHOD_NOT_ALLOWED,
                     message: 'Set allowCache=true before using.'
                 });
             }
-            let cacheKey = _$parseCacheKey(options, this.cacheSpec);
+            let cacheKey = _$parseCacheKey(keyOpt, this.cacheSpec);
             this._cache.get(cacheKey, (err, v) => {
                 if (err) {
                     logger.error(`cacheGet error! - ${err.message}`);
@@ -243,7 +243,7 @@ class Repository extends EventObject {
                     return callback(null, v);
                 }
                 logger.debug(`Cache not hit! Load ${this.modelName} from database...`);
-                let filter = _$buildQueryFilter(options, this.cacheSpec);
+                let filter = _$buildQueryFilter(keyOpt, this.cacheSpec);
                 logger.debug(`The query filter: ${tools.inspect(filter)}`);
                 if (Object.keys(filter).length === 0) {
                     return callback({
