@@ -79,7 +79,8 @@ function _parseTriggerEvents(triggersConf) {
     triggersConf.forEach(item => {
         triggerEvents.push({
             pattern: new RegExp(item.match),
-            code: item.code
+            code: item.code,
+            ignore: item.ignore || []
         })
     });
     return triggerEvents;
@@ -138,6 +139,9 @@ function _pubTriggerEvents (evt, options, callback) {
         return callback();
     }
     async.eachLimit(this._triggerEvents, 3, (triggerEvent, next) => {
+        if (triggerEvent.ignore.indexOf(evt.code) !== -1) {
+            return process.nextTick(next);
+        }
         let result = triggerEvent.pattern.exec(evt.code);
         if (!result) {
             return process.nextTick(next);
