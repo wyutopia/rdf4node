@@ -65,8 +65,11 @@ const _fakeClient = {
 }
 
 const _sampleCacheSpec = {
+    allowCache: true,
     // Default value is 'native'. enum: 'native', 'redis'
     engine: 'redis',
+    server: 'default',
+    database: 0,
     // Default value is 'kv'.
     dataType: 'kv',
     loadPolicy: 'setAfterFound',
@@ -81,11 +84,7 @@ const _sampleCacheSpec = {
       }
     ],
     select: 'user project group tenant role',
-    valueKeys: 'user project group tenant role',
-    allowCache: true,
-    //
-    server: 'default',
-    database: 0
+    valueKeys: 'user project group tenant role'
 };
 
 // model.cacheSpec + config.caches[modelName] + config.redis.servers[serverName];
@@ -106,7 +105,7 @@ const _typeCacheOptions = {
     keyNameTemplate: null,
     populate: null,
     select: null,
-    valueKeys: 'username name title',
+    valueKeys: null,
 };
 
 const _typeCacheSpecProps = {
@@ -116,7 +115,7 @@ const _typeCacheSpecProps = {
     keyNameTemplate: null,
     populate: null,
     select: null,
-    valueKeys: 'username name title',
+    valueKeys: null,
 }
 
 function _initCacheSpec (props) {
