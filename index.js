@@ -10,6 +10,7 @@ exports.components = require('./framework/components');
 exports.repository = require('./framework/repository');
 exports.cache = require('./framework/cache');
 exports.registry = require('./framework/registry');
+exports.distLocker = require('./framework/distributed-locker');
 const config = require('./include/config');
 exports.sysConfig = config;
 exports.allConfig = config;

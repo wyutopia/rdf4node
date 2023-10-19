@@ -59,7 +59,8 @@ const eFrameworkModules = {
     REPOSITORY      : '_repository_',
     CACHE           : '_cache_',
     ENDPOINT        : '_endpoint_',
-    ROUTER          : '_router_'
+    ROUTER          : '_router_',
+    DLOCKER         : '_distlocker_'
 };
 exports.eFrameworkModules = eFrameworkModules;
 
