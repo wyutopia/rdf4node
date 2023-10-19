@@ -29,17 +29,23 @@ const _typeCallOptions = {
     caller: 'String'
 };
 
-const _errConflict = {
-    code: eRetCodes.CONFLICT,
-    message: ''
-}
-
 function _packKey (entity) {
     return `${entity.modelName}:${entity.id}`;
 }
 
-function _ttlClearLocker (key) {
-    delete this._lockers[key];
+function _createLock (options) {
+    let lock = {
+        caller: options.caller || 'Anonymous'
+    };
+    if (options.auto === true) {
+        lock.ttl = options.ttl || _DEFAULT_TTL;
+        lock.hTimeout = setTimeout(_ttlRemoveLock.bind(this, key), lock.ttl);
+    }
+    return lock;
+}
+
+function _ttlRemoveLock (key) {
+    delete this._locks[key];
 }
 
 // The class
@@ -48,7 +54,7 @@ class DistributedEntityLocker extends CommonObject {
         super(props);
         //
         this._persistant = props.persistant !== undefined? props.persistant : false;
-        this._lockers = {};
+        this._locks = {};
         // Implement methods
         this.lockOne = (entity, options, callback) => {
             if (typeof options === 'function') {
@@ -56,28 +62,21 @@ class DistributedEntityLocker extends CommonObject {
                 options = {};
             }
             let key = _packKey(entity);
-            if (this._lockers[key] !== undefined) {
+            if (this._locks[key] !== undefined) {
                 return callback({
                     code: eRetCodes.CONFLICT,
-                    message: `Specified entity has been locked by ${this._lockers[key].caller}`
+                    message: `Specified entity has been locked by ${this._locks[key].caller}`
                 })
             }
-            let locker = {
-                caller: options.caller || 'Anonymous'
-            };
-            if (options.auto === true) {
-                locker.ttl = options.ttl || _DEFAULT_TTL;
-                locker.hTimeout = setTimeout(_ttlClearLocker.bind(this, key), locker.ttl);
-            }
-            this._lockers[key] = locker;
+            this._locks[key] = _createLock.call(this, options);
             return callback(null, key);
         },
         this.unlockOne = (key, callback) => {
-            let locker = this._lockers[key];
+            let locker = this._locks[key];
             if (locker.hTimeout) {
                 clearTimeout(locker.hTimeout);
             }
-            delete this._lockers[key];
+            delete this._locks[key];
             return callback(null, key);
         },
         this.lockMany = (entities, options, callback) => {
@@ -86,30 +85,41 @@ class DistributedEntityLocker extends CommonObject {
                 options = {};
             }
             // Check all entites
-            let lockers = {};
+            let locks = {};
             let err = null;
             for (let i = 0; i < entities.length && !err; i++) {
-
+                let key = _packKey(entities[i]);
+                if (this._locks[key] !== undefined) {
+                    err = {
+                        code: eRetCodes.CONFLICT,
+                        message: `One of the specified entity: ${key} has beed locked by ${this._locks[key].caller}}`
+                    }
+                } else {
+                    locks[key] = _createLock.call(this, options);
+                }
             }
             if (err) {
                 return callback(err);
             }
-            let keys = Object.keys(lockers);
+            let keys = Object.keys(locks);
             keys.forEach(key => {
-                this._lockers[key] = lockers[key];
+                this._locks[key] = locks[key];
             });
             return callback(null, keys);
         },
         this.unlockMany = (keys, callback) => {
             keys.forEach(key => {
-                let locker = this._lockers[key];
-                if (locker.hTimeout) { // Stop timer if exists
-                    clearTimeout(locker.hTimeout);
-                    hTimeout = null;
+                let lock = this._locks[key];
+                if (lock.hTimeout) { // Stop timer if exists
+                    clearTimeout(lock.hTimeout);
                 }
-                delete this._lockers[key];
+                delete this._locks[key];
             });
             return callback(null, keys);
+        }
+        //
+        this.listPartial = ({pageSize, pageNum, page}, callback) => {
+            return callback(null, Object.keys(this._locks));
         }
     }
 }
