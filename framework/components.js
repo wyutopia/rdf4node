@@ -67,6 +67,17 @@ function _$parsePatch(jsonPatch) {
 }
 
 const _reNotAllowed = new RegExp(/^-/);
+/**
+ * 
+ * @param { Object } options
+ * @param { number } options.mode
+ * @param { string } options.method
+ * @param { Object } options.headers
+ * @param { string } options.dsName
+ * @param { Object } options.data
+ * @param { Callback } callback 
+ * @returns 
+ */
 function _publishEvents(options, callback) {
     if (typeof options === 'function') {
         callback = options;
@@ -207,6 +218,17 @@ function _initCtlSpec(ctlSpec) {
     });
 }
 
+/**
+ * 
+ * @param { Object } req - The express request
+ * @param { Object } baseOptions - The base find options
+ * @param { Object } baseOptions.filter - The filter conditions
+ * @param { ObjectId } baseOptions.filter.id - The entity ObjectId
+ * @param { Object } baseOptions.filter.sort - The sort option
+ * @param { Object } baseOptions.filter.select - The select option
+ * @param { Object } baseOptions.filter.populate - The populate option
+ * @returns { Object } options - The total wrapper of query options
+ */
 function _packFindOption (req, baseOptions = {}) {
     let baseFilter = baseOptions.filter || {};
     let filter = tools.deepAssign(baseFilter, req.$args);
@@ -272,6 +294,15 @@ function _getObjectIdString(v) {
     }
     return null;
 }
+
+/**
+ * 
+ * @param { Object } doc - The entity document
+ * @param { Object } updates - All update values in JSON format
+ * @param { Object } options - The update query options
+ * @param { boolean } options.new - Flag for return updated document
+ * @returns 
+ */
 function _findUpdatedKeys (doc, updates, options) {
     let configKeys = Object.keys(this._chainUpdateKeys);
     if (options.new === true || configKeys.length === 0) {

@@ -463,9 +463,13 @@ exports.deleteFromArray = function (arr, item) {
 };
 
 function _stringifyDocId (doc) {
-    if (!doc || typeof doc === 'string' || doc instanceof ObjectId) {
+    if (!doc || doc instanceof ObjectId) {
         return doc;
+    }
+    if (typeof doc === 'string') {
+        return ObjectId(doc);
     }
     return _stringifyDocId(doc._id);
 }
+
 exports.stringifyDocId = _stringifyDocId;

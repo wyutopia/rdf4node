@@ -73,7 +73,14 @@ class EventModule extends EventObject {
         };
         // Auto wire ebus instance
         this._ebus = props.ebus || global._$ebus || null;
-        //
+        /**
+         * 
+         * @param { Object } event 
+         * @param { string } event.code - The event code
+         * @param { Object } options 
+         * @callback callback 
+         * @returns 
+         */
         this.pubEvent = (event, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
