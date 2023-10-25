@@ -151,6 +151,15 @@ class Cache extends EventModule {
         this._dataRepo = {};
         this._client = null;
         // Implementing all the cache operation methods
+        /**
+         * Set the key-value
+         * @param { string } key 
+         * @param { string | Object} val 
+         * @param { Object } options - Set options
+         * @param { Number } options.ttl - The ttl value in milesecond 
+         * @param { * } callback 
+         * @returns 
+         */
         this.set = (key, val, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -178,7 +187,13 @@ class Cache extends EventModule {
             }
             return this._client.execute('unset', key, callback);
         };
-        //
+        /**
+         * Set multiply KVs
+         * @param { Object } data - The JSON value
+         * @param {*} options 
+         * @param {*} callback 
+         * @returns 
+         */
         this.mset = (data, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;

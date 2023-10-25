@@ -211,6 +211,17 @@ const _typeRedisWrapperProps = {
     shareDatabase: 'boolean'
 };
 
+/**
+ * Client type definition
+ * @typedef { Object } ClientOptions
+ * @property { string } engine
+ * @property { number } database
+ * @property { string } host
+ * @property { string } port
+ * @property { string } user
+ * @property { string } password
+ */
+
 // The wrapper class
 class RedisWrapper extends EventModule {
     constructor(props) {
@@ -231,9 +242,15 @@ class RedisWrapper extends EventModule {
         // Implementing member methods
         /**
          * 
-         * @param {String} name 
-         * @param {String} server 
-         * @param {database, prefix, ttl} options 
+         * @param { string } name - The client name
+         * @param { string } server - The server config key
+         * @param { Object } options
+         * @param { string } options.engine - The engine type. enum: native, redis
+         * @param { number } options.database - The database number
+         * @param { string } options.host - The host ip
+         * @param { number } options.port - The host port
+         * @param { string } options.user - The username
+         * @param { string } options.password - The password
          * @returns 
          */
         this.createClient = (name, server, options) => {
