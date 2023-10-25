@@ -96,6 +96,7 @@ const eStatus = {
     SUSPEND     : 7,
     DEL_PENDING : 8,
     DELETED     : 9,
+    CLOSED      : 10,
     EXTEND      : 100
 };
 exports.eStatus = eStatus;
