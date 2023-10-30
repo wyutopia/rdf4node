@@ -88,6 +88,9 @@ function _updateOne(params, callback) {
             });
         }
         if (!doc) {
+            if (params.allowEmpty) {
+                return callback(null, null);
+            }
             let msg = `Specified ${this.$name} not found! - ${tools.inspect(filter)}`;
             logger.error(msg);
             return callback({
