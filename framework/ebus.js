@@ -19,6 +19,20 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 //
 const rascalWrapper = require('../libs/common/rascal.wrapper');
 
+/**
+ * The event headers
+ * @typedef { Object } EventHeaders
+ * @property { string } dsName
+ */
+
+/**
+ * The event object
+ * @typedef { Object } Event
+ * @property { string } code - The event code
+ * @property { EventHeaders } headers - The header options
+ * @property { Object } body - The event body
+ */
+
 // Define the eventLogger instance
 class EventLogger extends EventEmitter {
     constructor(props) {
@@ -102,6 +116,13 @@ function _initEventBus(props) {
     this._eventLogger = global._$eventLogger;
 }
 
+/**
+ * 
+ * @param { Event } rawEvent 
+ * @param { Object } options 
+ * @param { string } options.engine
+ * @param { * } callback 
+ */
 function _consumeEvent(rawEvent, options, callback) {
     if (typeof options === 'function') {
         callback = options;

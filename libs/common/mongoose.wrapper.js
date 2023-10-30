@@ -6,6 +6,7 @@ let mongoose = require('mongoose');
 const tools = require("../../utils/tools");
 //mongoose.Promise = require('bluebird');
 mongoose.set('strictQuery', true);
+mongoose.set('strictPopulate', false);
 
 // Add new SchemaDL class into mongoose lib
 mongoose.SchemaDL = function (options) {
