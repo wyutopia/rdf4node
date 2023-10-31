@@ -168,7 +168,7 @@ function _parseTriggerEventBody (origBody, select) {
     let body = {};
     select.split(' ').forEach( key => {
         if (origBody[key] !== undefined) {
-            body[key = origBody[key]];
+            body[key] = origBody[key];
         }
     })
     return body;
@@ -189,7 +189,7 @@ function _pubTriggerEvents (evt, options, callback) {
         let event = {
             code: triggerEvent.code,
             headers: evt.headers,
-            body: triggerEvent.select? _parseTriggerEventBody(evt.body, select) : evt.body
+            body: triggerEvent.select? _parseTriggerEventBody(evt.body, triggerEvent.select) : evt.body
         }
         logger.debug(`Chained event: ${triggerEvent.code} triggered for ${evt.code}`);
         return this.publish(event, evt.headers.triggerOptions || options, next);
