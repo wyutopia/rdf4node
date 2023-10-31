@@ -94,7 +94,8 @@ function _parseTriggerEvents(triggersConf) {
         triggerEvents.push({
             pattern: new RegExp(item.match),
             code: item.code,
-            ignore: item.ignore || []
+            ignore: item.ignore || [],
+            select: item.select || null
         })
     });
     return triggerEvents;
@@ -149,11 +150,29 @@ function _consumeEvent(rawEvent, options, callback) {
     setTimeout(_pubTriggerEvents.bind(this, event, options, callback), 5);
 }
 
+/**
+ * @typedef { Object} TriggerEvent - The TriggerEvent Class
+ * @property { String } pattern - The RegExp pattern for matching original event code
+ * @property { String } code - The new event code
+ * @property { String[] } ignore - The ignored original event code list
+ * @property { String } select - The selected values from original event body, 
+ */
 const _typeTriggerEvent = {
     pattern: 'regexp',
     code: 'string',
-    bodyParser: '(event.body) => { return body;}'
+    ignore: 'string',
+    select: 'string'
 };
+
+function _parseTriggerEventBody (origBody, select) {
+    let body = {};
+    select.split(' ').forEach( key => {
+        if (origBody[key] !== undefined) {
+            body[key = origBody[key]];
+        }
+    })
+    return body;
+}
 
 function _pubTriggerEvents (evt, options, callback) {
     if (!this._triggerEvents || this._triggerEvents.length === 0) {
@@ -170,7 +189,7 @@ function _pubTriggerEvents (evt, options, callback) {
         let event = {
             code: triggerEvent.code,
             headers: evt.headers,
-            body: typeof triggerEvent.bodyParser === 'function'? triggerEvent.bodyParser(evt.body) : evt.body
+            body: triggerEvent.select? _parseTriggerEventBody(evt.body, select) : evt.body
         }
         logger.debug(`Chained event: ${triggerEvent.code} triggered for ${evt.code}`);
         return this.publish(event, evt.headers.triggerOptions || options, next);
