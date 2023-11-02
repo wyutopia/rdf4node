@@ -145,7 +145,7 @@ function _parseCacheValue(doc, valueKeys) {
 const _checkPaths = ['$set', '$push', '$pull', '$addToSet', '$unset'];
 function _cacheValueUpdated(valueKeys, {mandatory, updates}) {
     logger.debug(`Check cache value updates: ${valueKeys} - ${mandatory} - ${tools.inspect(updates)}`);
-    if (mandatory === true) {
+    if (mandatory === true || !valueKeys) {
         return true;
     }
     let result = false;
