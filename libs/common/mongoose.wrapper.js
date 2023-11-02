@@ -23,7 +23,7 @@ mongoose.SchemaDL = function (options) {
 }
 
 // Following are methos for extracting validators from schema ddl
-const _constValProps = ['min', 'max', 'minLength', 'maxLength', 'enum', 'match'];
+const _constValProps = ['min', 'max', 'minLength', 'maxLength', 'enum', 'match', 'allowEmpty'];
 function _parseValProps(doc, val) {
     _constValProps.forEach(key => {
         if (doc[key]) {
