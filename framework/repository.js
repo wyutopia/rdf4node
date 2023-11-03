@@ -6,6 +6,7 @@ const async = require('async');
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const util = require('util');
 const appRoot = require('app-root-path');
 const ObjectId = require('mongoose').Types.ObjectId;
 // Framework libs
@@ -273,6 +274,7 @@ class Repository extends EventObject {
                 });
             });
         };
+        this.cacheGetAsync = util.promisify(this.cacheGet);
         // Create one or many documents
         this.create = (data, callback) => {
             if (typeof data === 'function') {
@@ -301,6 +303,8 @@ class Repository extends EventObject {
                 });
             });
         };
+        this.createAsync = util.promisify(this.create);
+        // Create one document by findAndUpdateOne
         this.insert = (params, callback) => {
             if (typeof params === 'function') {
                 callback = params;
@@ -341,6 +345,7 @@ class Repository extends EventObject {
                 });
             });
         };
+        this.insertAsync = util.promisify(this.insert);
         // Find one document
         this.findOne = (options, callback) => {
             if (typeof options === 'function') {
@@ -362,6 +367,7 @@ class Repository extends EventObject {
                 });
             });
         };
+        this.findOneAsync = util.promisify(this.findOne);
         // Find all documents
         this.findMany = (options, callback) => {
             if (typeof options === 'function') {
@@ -383,6 +389,7 @@ class Repository extends EventObject {
                 });
             });
         };
+        this.findManyAsync = util.promisify(this.findMany);
         // Paginating find documents
         this.findPartial = (options, callback) => {
             if (typeof options === 'function') {
@@ -445,6 +452,7 @@ class Repository extends EventObject {
                 });
             });
         };
+        this.findPartialAsync = util.promisify(this.findPartial);
         // Find one document by id
         this.findById = (id, options, callback) => {
             if (typeof options === 'function') {
@@ -462,7 +470,11 @@ class Repository extends EventObject {
             let query = this._model.findById(id);
             return _uniQuery.call(this, query, options, callback);
         };
+        this.findByIdAsync = util.promisify(this.findById);
+        // Update one
         this.updateOne = _updateOne.bind(this);
+        this.updateOneAsync = util.promisify(this.updateOne);
+        // Update many
         this.updateMany = (options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -491,22 +503,23 @@ class Repository extends EventObject {
                 return callback(null, result);
             });
         };
-        this.aggregate = (pipeline, callback) => {
-            if (typeof pipeline === 'function') {
-                callback = pipeline;
-                pipeline = [];
+        this.updateManyAsync = util.promisify(this.updateMany);
+        // Aggregate
+        this.aggregate = (pipeline, options, callback) => {
+            if (typeof options === 'function') {
+                callback = options;
+                options = {};
             }
             if (!this._model) {
                 return callback({
                     code: eRetCodes.DB_ERROR,
-                    message: 'Model should be initialized before using!'
+                    message: `Model: ${this.$name} should be initialized before using!`
                 });
             }
             //
-            logger.debug(`Aggregate ${this.$name} with pipeline: ${tools.inspect(pipeline)}`);
             return this._model.aggregate(pipeline).allowDiskUse(true).exec((err, results) => {
                 if (err) {
-                    let msg = `Aggregate ${this.$name} error! - ${err.message}`;
+                    let msg = `Aggregate ${this.$name} with pipeline: ${tools.inspect(pipeline)} error! - ${err.message}`;
                     logger.error(msg);
                     return callback({
                         code: eRetCodes.DB_AGGREGATE_ERR,
@@ -514,6 +527,9 @@ class Repository extends EventObject {
                     });
                 }
                 if (!results || results.length === 0) {
+                    if (options.allowEmpty) {
+                        return callback(null, []);
+                    }
                     let msg = 'Empty data set.';
                     logger.error(`Aggregate ${this.$name} with ${tools.inspect(pipeline)} results: ${msg}`);
                     return callback({
@@ -525,6 +541,8 @@ class Repository extends EventObject {
                 return callback(null, results);
             });
         };
+        this.aggregateAsync = util.promisify(this.aggregate);
+        // Count documents
         this.count = (options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -550,6 +568,8 @@ class Repository extends EventObject {
                 return callback(null, count);
             });
         };
+        this.countAsync = util.promisify(this.count);
+        // Delete documents
         this.remove = (options, callback) => {
             assert(options !== undefined);
             assert(typeof callback === 'function');
@@ -579,7 +599,8 @@ class Repository extends EventObject {
                 return callback(null, result);
             });
         };
-        //
+        this.removeAsync = util.promisify(this.remove);
+        // Initialize data model and cache
         (() => {
             let ds = dsFactory.getDataSource(this.dsName);
             if (ds) {
