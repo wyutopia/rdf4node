@@ -66,15 +66,15 @@ function _readModelDirSync(modelDir) {
                 return config.enabled !== undefined? config.enabled : (allowCache !== undefined? allowCache : false);
             })(modelSpec.allowCache, cacheConf);
             // Assemble cacheOptions = cacheSpecProps + cacheEntityProps
-            let cacheOptions = Object.assign({}, modelSpec.cacheSpec, cacheConf.spec);
+            let cacheSpec = Object.assign({}, modelSpec.cacheSpec, cacheConf.spec);
             repoFactory.registerSchema(modelName, {
                 schema: modelSpec.modelSchema,
                 refs: modelSpec.modelRefs || [],
                 // Cache options
-                allowCache: allowCache,
-                cacheOptions: cacheOptions 
+                allowCache,
+                cacheSpec 
             });
-            logger.debug(`${modelName} cache settings: ${allowCache} - ${tools.inspect(cacheOptions)}`);
+            logger.debug(`${modelName} cache settings: ${allowCache} - ${tools.inspect(cacheSpec)}`);
             _loadedModels.push(modelName);
         } catch (ex) {
             logger.error(`====== Load database schema from: ${dirent.name} error! - ${ex.message}`);

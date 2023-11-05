@@ -1,6 +1,7 @@
 /**
  * Created by Eric on 2023/02/07
  */
+const Types = require('../include/types');
 // System libs
 const async = require('async');
 const assert = require('assert');
@@ -20,6 +21,12 @@ const tools = require('../utils/tools');
 const {dsFactory} = require('./data-source');
 const {eDataType, eLoadPolicy, initCacheSpec, cacheFactory} = require('./cache');
 
+/**
+ * 
+ * @param {Object} query - The query promise 
+ * @param {Types.QueryOptions} options - The additional query options 
+ * @param {function} callback 
+ */
 function _uniQuery(query, options, callback) {
     ['select', 'sort', 'skip', 'limit', 'populate'].forEach(method => {
         if (options[method]) {
@@ -45,6 +52,11 @@ function _uniQuery(query, options, callback) {
     });
 }
 
+/**
+ * 
+ * @param {Types.UpdateOptions} params 
+ * @callback
+ */
 function _updateOne(params, callback) {
     if (typeof params === 'function') {
         callback = params;
@@ -106,36 +118,46 @@ function _updateOne(params, callback) {
     });
 }
 
-// Should return string
-function _$parseCacheKey (options, cacheSpec) {
-    //logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${tools.inspect(cacheSpec)}`);
-    if (tools.isTypeOfPrimitive(options)) {
-        return options;
+/**
+ * Get cacheKey from data by cacheSpec
+ * @param {(string|Object)} data 
+ * @param {Types.CacheSpecOptions} cacheSpec 
+ * @returns {string}
+ */
+function _parseCacheKey (data, cacheSpec) {
+    //logger.debug(`Parse cacheKey: ${tools.inspect(data)} - ${tools.inspect(cacheSpec)}`);
+    if (tools.isTypeOfPrimitive(data)) {
+        return data;
     }
     if (cacheSpec.keyNameTemplate) {
         let keyNameArray = [];
         cacheSpec.keyNameTemplate.split(':').forEach( field => {
-            keyNameArray.push(options[field] === undefined? '*' : tools.stringifyDocId(options[field]));
+            keyNameArray.push(data[field] === undefined? '*' : tools.stringifyDocId(data[field]));
         });
         const cacheKey  = keyNameArray.join(':');
-        //logger.debug(`Parse cacheKey: ${tools.inspect(options)} - ${cacheKey}`);
+        //logger.debug(`Parse cacheKey: ${tools.inspect(data)} - ${cacheKey}`);
         logger.debug(`The cacheKey: ${cacheKey}`);
         return cacheKey;
     }
     if (cacheSpec.keyName) {
-        let cacheKey = options[cacheSpec.keyName];
+        let cacheKey = data[cacheSpec.keyName];
         return typeof cacheKey === 'string'? cacheKey : cacheKey.toString();
     }
-    return options['_id'];
+    return data['_id'];
 }
 
+/**
+ * Parsing the cache value from original document
+ * @param {Object} doc - The document
+ * @param {string} valueKeys - The value keys joined with space. ex: '_id username role'
+ * @returns The real cache value
+ */
 function _parseCacheValue(doc, valueKeys) {
     if (!valueKeys) {
         return doc;
     }
-    let keys = typeof valueKeys === 'string'? valueKeys.split(' ') : valueKeys;
     let cv = {};
-    keys.forEach (key => {
+    valueKeys.split(' ').forEach (key => {
         if (doc[key]) {
             cv[key] = doc[key];
         }
@@ -182,7 +204,7 @@ function _appendCache(data, options, callback) {
     let docs = Array.isArray(data)? data : [data];
     //
     async.eachLimit(docs, 3, (doc, next) => {
-        let cacheKey = _$parseCacheKey(doc, this.cacheSpec);
+        let cacheKey = _parseCacheKey(doc, this.cacheSpec);
         let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);
         cacheValues.push(cacheVal);
         return this._cache.set(cacheKey, cacheVal, next);
@@ -194,7 +216,13 @@ function _appendCache(data, options, callback) {
     });
 }
 
-function _$buildQueryFilter(data, cacheSpec) {
+/**
+ * Build query filter from document data with cacheSpec
+ * @param {Object} data 
+ * @param {Types.CacheSpecOptions} cacheSpec 
+ * @returns 
+ */
+function _buildQueryFilter(data, cacheSpec) {
     let filter = {};
     if (cacheSpec.keyNameTemplate) {
         cacheSpec.keyNameTemplate.split(':').forEach (key => {
@@ -205,7 +233,7 @@ function _$buildQueryFilter(data, cacheSpec) {
     } else if (cacheSpec.keyName) {
         filter[cacheSpec.keyName] = tools.isTypeOfPrimitive(data)? data : data[cacheSpec.keyName];
     } else {
-        filter._id = data._id;
+        filter._id = tools.isTypeOfPrimitive(data)? data : data._id;
     }
     return filter;
 }
@@ -225,7 +253,7 @@ class Repository extends EventObject {
         };
         // Set cache property and declaring member variable
         this.allowCache = props.allowCache !== undefined? props.allowCache : false;
-        this.cacheSpec = initCacheSpec(props.cacheOptions);
+        this.cacheSpec = initCacheSpec(props.cacheSpec);
         this._cache = null;
         this.getCache = () => {
             return this._cache;
@@ -238,7 +266,7 @@ class Repository extends EventObject {
                     message: 'Set allowCache=true before using.'
                 });
             }
-            let cacheKey = _$parseCacheKey(keyOpt, this.cacheSpec);
+            let cacheKey = _parseCacheKey(keyOpt, this.cacheSpec);
             this._cache.get(cacheKey, (err, v) => {
                 if (err) {
                     logger.error(`cacheGet error! - ${err.message}`);
@@ -246,8 +274,8 @@ class Repository extends EventObject {
                 if (v !== undefined || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
                     return callback(null, v);
                 }
-                logger.debug(`Cache not hit! Load ${this.modelName} from database...`);
-                let filter = _$buildQueryFilter(keyOpt, this.cacheSpec);
+                logger.debug(`Cache not hit! Fetch ${this.modelName} data from database...`);
+                let filter = _buildQueryFilter(keyOpt, this.cacheSpec);
                 logger.debug(`The query filter: ${tools.inspect(filter)}`);
                 if (Object.keys(filter).length === 0) {
                     return callback({
@@ -453,7 +481,12 @@ class Repository extends EventObject {
             });
         };
         this.findPartialAsync = util.promisify(this.findPartial);
-        // Find one document by id
+        /**
+         * Find one document by id
+         * @param {(string|Object)} id - The document id
+         * @param {Types.QueryOptions} options - The query options
+         * @param {function} callback
+         */
         this.findById = (id, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -504,7 +537,13 @@ class Repository extends EventObject {
             });
         };
         this.updateManyAsync = util.promisify(this.updateMany);
-        // Aggregate
+        /**
+         * Aggregate documents by specific pipeline
+         * @param {Object[]} pipeline 
+         * @param {Object} options - The query options
+         * @param {boolean} allowEmpty - Whether treating empty result as error. Default is false: empty result as error.
+         * @param {function} callback 
+         */
         this.aggregate = (pipeline, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -542,7 +581,12 @@ class Repository extends EventObject {
             });
         };
         this.aggregateAsync = util.promisify(this.aggregate);
-        // Count documents
+        /**
+         * Count documents
+         * @param {Types.CountOptions} options 
+         * @param {*} callback 
+         * @returns 
+         */
         this.count = (options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -569,8 +613,14 @@ class Repository extends EventObject {
             });
         };
         this.countAsync = util.promisify(this.count);
-        // Delete documents
-        this.remove = (options, callback) => {
+        
+        /**
+         * Delete one or many documents
+         * @param {Types.DeleteOptions} options 
+         * @param {*} callback 
+         * @returns 
+         */
+        this.delete = (options, callback) => {
             assert(options !== undefined);
             assert(typeof callback === 'function');
             //
@@ -581,7 +631,7 @@ class Repository extends EventObject {
                 });
             }
             //
-            let filter = options.filter || { 
+            let filter = options.filter || { // Fill-in specififc _id for disaster protection
                 _id: new ObjectId(),
                 isDeleteProtection: true
             };
@@ -599,7 +649,11 @@ class Repository extends EventObject {
                 return callback(null, result);
             });
         };
-        this.removeAsync = util.promisify(this.remove);
+        this.deleteAsync = util.promisify(this.remove);
+        this.remove = (options, callback) => {
+            logger.warn(`${this.$name}: The remove method will be deprecated soon, please use delete instead`);
+            return this.delete(options, callback);
+        };
         // Initialize data model and cache
         (() => {
             let ds = dsFactory.getDataSource(this.dsName);
@@ -607,14 +661,14 @@ class Repository extends EventObject {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
             if (this.allowCache === true) {
-                this._cache = cacheFactory.getCache(this.modelName, props.cacheOptions);
+                this._cache = cacheFactory.getCache(this.modelName, this.cacheSpec);
             }
         })();
     }
 }
 
-function _deepGetRefs(key, totalRefs) {
-    let spec = this._modelSpecs[key];
+function _deepGetModelRefs(modelSpecs, key, totalRefs) {
+    let spec = modelSpecs[key];
     if (!spec) {
         // Ignore no spec model
         return;
@@ -634,7 +688,7 @@ function _deepGetRefs(key, totalRefs) {
         }
     });
     nextKeys.forEach( nextKey => {
-        _deepGetRefs.call(this, nextKey, totalRefs);
+        _deepGetModelRefs(modelSpecs, nextKey, totalRefs);
     });
 }
 
@@ -646,10 +700,15 @@ class RepositoryFactory extends EventModule {
         this._modelSpecs = {};
         this._repos = {};
         // Implementing methods
+        /**
+         * Register model with modelSpec
+         * @param {string} modelName 
+         * @param {Types.ModelSpecOptions} modelSpec 
+         */
         this.registerSchema = (modelName, modelSpec) => {
             this._modelSpecs[modelName] = modelSpec;
         };
-        this.getRepo = (modelName, dsName = 'default') => {
+        this.getRepo = (modelName, dsName = _DS_DEFAULT_) => {
             assert(modelName !== undefined);
             //
             let repoKey = `${modelName}@${dsName}`;
@@ -665,7 +724,7 @@ class RepositoryFactory extends EventModule {
                 return this._repos[repoKey];
             }            
             let totalRefModels = [];
-            _deepGetRefs.call(this, modelName, totalRefModels);
+            _deepGetModelRefs(this._modelSpecs, modelName, totalRefModels);
             totalRefModels.forEach(name => {
                 let spec = this._modelSpecs[name];
                 let key = `${name}@${dsName}`;
@@ -678,43 +737,7 @@ class RepositoryFactory extends EventModule {
                         dsName: dsName,
                         // cache 
                         allowCache: spec.allowCache,
-                        cacheOptions: spec.cacheOptions   // _typeCacheOptions
-                    });
-                    logger.info(`>>> New repository: ${key} created. <<<`);
-                }
-            });
-            return this._repos[repoKey];
-        };
-        this._$getRepo = (modelName, dsName = 'default') => {
-            assert(modelName !== undefined);
-            let repoKey = `${modelName}@${dsName}`;
-            if (repoKey === 'test@default') {
-                logger.error(`Using ${key} repository is not recommended in real project!`);
-            }
-            let modelSpec = this._modelSpecs[modelName];
-            if (!modelSpec) {
-                logger.error(`modelSpec: ${modelName} not registered.`);
-                return null;
-            }
-            // Begin deeply load reference models
-            if (this._repos[repoKey]) {
-                return this._repos[repoKey];
-            }            
-            let totalRefModels = [];
-            _deepGetRefs.call(this, modelName, totalRefModels);
-            totalRefModels.forEach(name => {
-            // End 
-            // Note: uncomment next line and comment up section between begin and end to init reference models each time get repository
-//            [modelName].concat(modelSpec.refs).forEach(name => {
-                let spec = this._modelSpecs[name];
-                let key = `${name}@${dsName}`;
-                if (spec !== undefined && this._repos[key] === undefined) {
-                    this._repos[key] = new Repository({
-                        name: key,
-                        //
-                        modelName: name,
-                        modelSchema: spec.schema,
-                        dsName: dsName
+                        cacheSpec: spec.cacheSpec   // _typeCacheOptions
                     });
                     logger.info(`>>> New repository: ${key} created. <<<`);
                 }

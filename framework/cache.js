@@ -4,6 +4,7 @@
 const path = require('path');
 const appRoot = require('app-root-path');
 //
+const Types = require('../include/types');
 const sysdefs = require('../include/sysdefs')
 const eRetCodes = require('../include/retcodes');
 const {EventModule, EventObject, sysEvents} = require('../include/events');
@@ -87,28 +88,7 @@ const _sampleCacheSpec = {
     valueKeys: 'user project group tenant role'
 };
 
-// model.cacheSpec + config.caches[modelName] + config.redis.servers[serverName];
-const _typeCacheOptions = {
-    allowCache: false,
-    // Following is CacheEntity properties
-    engine: sysdefs.eCacheEngine.Native,   // Set default cache to local process memory
-    logLevel: 'error',
-    server: 'default',
-    database: 0,
-    prefix: null,                       // No default key prefix
-    ttl: 0, 
-    json: true,
-    // Following is CacheSpec properties
-    dataType: eDataType.Kv,
-    loadPolicy: eLoadPolicy.SetAfterFound,
-    keyName: '_id',
-    keyNameTemplate: null,
-    populate: null,
-    select: null,
-    valueKeys: null,
-};
-
-const _typeCacheSpecProps = {
+const _defaultCacheSpec = {
     dataType: eDataType.Kv,
     loadPolicy: eLoadPolicy.SetAfterFound,
     keyName: '_id',
@@ -118,15 +98,20 @@ const _typeCacheSpecProps = {
     valueKeys: null,
 }
 
-function _initCacheSpec (props) {
+/**
+ * 
+ * @param {Types.CacheSpecOptions} options 
+ * @returns 
+ */
+function _initCacheSpec (options) {
     let spec = {};
-    Object.keys(_typeCacheSpecProps).forEach( key => {
-        spec[key] = props[key] !== undefined? props[key] : _typeCacheSpecProps[key];
+    Object.keys(_defaultCacheSpec).forEach( key => {
+        spec[key] = options[key] !== undefined? options[key] : _defaultCacheSpec[key];
     });
     return spec;
 }
 
-const _typeCacheEntityProps = {
+const _defaultCacheProps = {
     logLevel: 'error',
     engine: sysdefs.eCacheEngine.Native,   // Set default cache to local process memory
     server: 'default',
@@ -135,10 +120,16 @@ const _typeCacheEntityProps = {
     ttl: 0, 
     json: true,
 }
+
+/**
+ * Initializing the cache instance with default and specififed properties
+ * @param {Object} ett 
+ * @param {Types.CacheProperties} props 
+ */
 function _initCacheEntity (ett, props) {
-    Object.keys(_typeCacheEntityProps).forEach( key => {
+    Object.keys(_defaultCacheProps).forEach( key => {
         let propKey = `_${key}`;
-        ett[propKey] = props[key] !== undefined? props[key] : _typeCacheEntityProps[key];
+        ett[propKey] = props[key] !== undefined? props[key] : _defaultCacheProps[key];
     });
 }
 
@@ -147,7 +138,7 @@ class Cache extends EventModule {
     constructor(props) {
         super(props);
         // Define cache-entity properties
-        _initCacheEntity(this, props.cacheOptions);
+        _initCacheEntity(this, props.cacheProps);
         this._dataRepo = {};
         this._client = null;
         // Implementing all the cache operation methods
@@ -242,16 +233,16 @@ class CacheFactory extends EventModule {
         /**
          * 
          * @param {string} name 
-         * @param {_typeCacheEntityProps} cacheEntityOptions 
+         * @param {Types.CacheProperties} cacheProps 
          * @returns 
          */
-        this.getCache = (name, cacheOptions) => {
+        this.getCache = (name, cacheProps) => {
             if (this._caches[name] === undefined) {
                 this._caches[name] = new Cache({
-                    $name: `${name}@${cacheOptions.server || _CACHE_DEFAULT}`,
-                    cacheOptions: cacheOptions
+                    $name: `${name}@${cacheProps.server || _CACHE_DEFAULT}`,
+                    cacheProps
                 });
-                logger.info(`Cache ${name} : ${tools.inspect(cacheOptions)} created.`);
+                logger.info(`Cache ${name} : ${tools.inspect(cacheProps)} created.`);
             }
             return this._caches[name];
         };
