@@ -91,4 +91,4 @@
  * @prop {boolean?} multi - Choose the method between deleteOne and deleteMany. Default: false for deleteOne.
  */
 
-export const Types = {}
+module.exports = exports = {};

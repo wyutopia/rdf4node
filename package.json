@@ -1,6 +1,6 @@
 {
     "name": "@icedeer/rdf4node",
-    "version": "0.50.2",
+    "version": "0.50.5",
     "description": "A rapid develop framework based on express for nodejs",
     "author": {
         "name": "Eric Wang",
@@ -20,7 +20,7 @@
         "@influxdata/influxdb-client-apis": "^1.33.2",
         "ali-oss": "^6.18.1",
         "app-root-path": "3.1.0",
-        "async": "^3.2.4",
+        "async": "^3.2.5",
         "bluebird": "^3.7.2",
         "clickhouse": "^2.6.0",
         "connect-mongodb-session": "^3.1.1",

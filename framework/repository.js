@@ -649,7 +649,7 @@ class Repository extends EventObject {
                 return callback(null, result);
             });
         };
-        this.deleteAsync = util.promisify(this.remove);
+        this.deleteAsync = util.promisify(this.delete);
         this.remove = (options, callback) => {
             logger.warn(`${this.$name}: The remove method will be deprecated soon, please use delete instead`);
             return this.delete(options, callback);
