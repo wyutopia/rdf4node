@@ -3,13 +3,22 @@
  */
 
 /**
+ * @typedef {Object} XTaskProperties
+ * @prop {string} alias - The task alias
+ * @prop {number} interval - The task interval in milliseconds
+ * @prop {string} startup - The startup policy: AUTO or MANUAL
+ * @prop {boolean} immediateExec - Indicator whether executing the task immediatly after creation
+ * @prop {number} startDelayMs - The startup delay in milliseconds 
+ */
+
+/**
  * @typedef {Object} CacheProperties
  * @prop {string} logLevel - The log level. enum: debug, info, error
  * @prop {string} engine - The cache engine type. enum: native, redis
  * @prop {string} server - The server config name
  * @prop {number} database - The database number
  * @prop {string} prefix - The key prefix
- * @prop {number} ttl - The TTL value in mileseconds
+ * @prop {number} ttl - The TTL value in milliseconds
  * @prop {boolean} json - Whether the data value should be parsed as JSON
  */
 

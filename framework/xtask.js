@@ -6,6 +6,7 @@ const assert = require('assert');
 const async = require('async');
 const schedule = require('node-schedule');
 // 
+const Types = require('../include/types');
 const theApp = require('./app');
 const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
@@ -70,6 +71,10 @@ const taskMng = new XTaskManager({
 
 // The interval task wrapper
 class XTask extends EventObject {
+    /**
+     * The class constructor
+     * @param {Types.XTaskProperties} props 
+     */
     constructor(props) {
         assert(props !== undefined);
         super(props);
