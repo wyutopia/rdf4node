@@ -355,3 +355,10 @@ const eServerState = {
     Init: 'init'
 };
 exports.eServerState = eServerState;
+
+const ePatchOp = {
+    Add     : 'add',
+    Remove  : 'rm',
+    Replace : 'rep'
+};
+exports.ePatchOp = ePatchOp;
