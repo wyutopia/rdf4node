@@ -202,7 +202,7 @@ const _defaultCtlSpec = {
 //    beforeUpdateOne: tools.noop,
     afterUpdateOne: function (req, doc, callback) { return callback(null, doc); },
     //
-    allowDelete: function ({id, dsName, user}, callback) { 
+    allowDelete: function (req, id, callback) { 
         return callback({
             code: eRetCodes.METHOD_NOT_ALLOWED,
             message: 'Not allowed!'
@@ -782,11 +782,7 @@ class EntityController extends ControllerBase {
                         return res.sendRsp(err.code, err.message);
                     }
                     let dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                    this._allowDelete({
-                        id: req.$args.id, 
-                        dsName, 
-                        user: req.$token.id
-                    }, (err) => {
+                    this._allowDelete(req, req.$args.id, (err) => {
                         if (err) {
                             return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                         }
@@ -852,7 +848,7 @@ class EntityController extends ControllerBase {
                         return res.sendRsp(err.code, err.message);
                     }
                     let dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                    this._allowDelete(req.$args.id, dsName, (err) => {
+                    this._allowDelete(req, req.$args.id, (err) => {
                         if (err) {
                             return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                         }
