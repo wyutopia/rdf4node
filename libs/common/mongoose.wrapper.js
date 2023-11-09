@@ -9,18 +9,32 @@ mongoose.set('strictQuery', true);
 mongoose.set('strictPopulate', false);
 
 // Add new SchemaDL class into mongoose lib
-mongoose.SchemaDL = function (options) {
+
+/**
+ * @constructor
+ * @param {Object} options - The schema spec
+ */
+function SchemaDL (options) {
     this.spec = options;
-    this.extractValidators = (paths) => {
-        let doc = {};
+    /**
+     * Extract validators from schema sdl based on paths and options
+     * @param {string[]} paths - The path array
+     * @param {*} options 
+     * @returns 
+     */
+    this.extractValidators = (paths, options = {}) => {
+        const isSearch = options.isSearch !== undefined? options.isSearch : false;
+        const doc = {};
         paths.forEach(key => {
             if (this.spec[key] !== undefined) {
                 doc[key] = this.spec[key];
             }
         });
-        return _extractValidatorsFromDoc(doc);
+        return _extractValidatorsFromDoc(doc, isSearch);
     };
 }
+mongoose.SchemaDL = SchemaDL;
+
 
 // Following are methos for extracting validators from schema ddl
 const _constValProps = ['min', 'max', 'minLength', 'maxLength', 'enum', 'match', 'allowEmpty'];
@@ -32,36 +46,44 @@ function _parseValProps(doc, val) {
         }
     });
 }
-function _extractValidator(doc) {
+
+/**
+ * 
+ * @param {Object} doc 
+ * @param {boolean} isSearch - For search opeartion or not
+ * @returns 
+ */
+function _parseValidator(doc, isSearch) {
     let validator = {};
     if (doc.type) {
         validator.type = doc.type.name;
         _parseValProps(doc, validator);
     } else if (tools.isTypeOfArray(doc)) {
         if (doc[0].type) {
-            validator.type = `Array<${doc[0].type.name}>`;
+            validator.type = isSearch? doc[0].type.name : `Array<${doc[0].type.name}>`;  // No Array required on search request
             _parseValProps(doc[0], validator);
         } else {
             validator.type = 'Array<EmbeddedObject>';
-            validator.$embeddedValidators = _extractValidatorsFromDoc(doc[0]);
+            validator.$embeddedValidators = _extractValidatorsFromDoc(doc[0], isSearch);
         }
     } else {
         validator.type = 'EmbeddedObject';
-        validator.$embeddedValidators = _extractValidatorsFromDoc(doc);
+        validator.$embeddedValidators = _extractValidatorsFromDoc(doc, isSearch);
     }
     return validator;
 }
 
-function _extractValidatorsFromDoc(doc) {
+function _extractValidatorsFromDoc(doc, isSearch) {
     let validators = {};
     Object.keys(doc).forEach(key => {
         if (key !== '_id') {
-            validators[key] = _extractValidator(doc[key]);
+            validators[key] = _parseValidator(doc[key], isSearch);
         }
     });
     return validators;
 }
 
+/*
 const Schema = mongoose.Schema;
 // Followings are old extraction methods
 Schema.prototype.extractValidators = function (keys, options = {isSearch: false}) {
@@ -126,7 +148,7 @@ function _extractValidator3 (path, options) {
     }
     return validator;
 }
-
+*/
 module.exports = exports = mongoose;
 
  //http://mongoosejs.com/docs/middleware.html
