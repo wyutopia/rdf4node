@@ -708,6 +708,9 @@ class RepositoryFactory extends EventModule {
         this.registerSchema = (modelName, modelSpec) => {
             this._modelSpecs[modelName] = modelSpec;
         };
+        this.getSubSchema = (modelName, subSchemaName) => {
+            return this._modelSpecs[modelName].subSchemas[subSchemaName];
+        };
         this.getRepo = (modelName, dsName = _DS_DEFAULT_) => {
             assert(modelName !== undefined);
             //
