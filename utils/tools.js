@@ -462,6 +462,12 @@ exports.deleteFromArray = function (arr, item) {
     return null;
 };
 
+exports.addToSet = function (arr, item) {
+    if (arr.indexOf(item) === -1) {
+        arr.push(item);
+    }
+}
+
 function _stringifyDocId (doc) {
     if (!doc || doc instanceof ObjectId) {
         return doc;
