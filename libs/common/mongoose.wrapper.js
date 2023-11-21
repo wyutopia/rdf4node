@@ -1,12 +1,14 @@
 /**
  * Created by Eric on 2021/11/15.
+ * Modified by Eric on 2023/11/21
  */
-let assert = require('assert');
-let mongoose = require('mongoose');
-const tools = require("../../utils/tools");
-//mongoose.Promise = require('bluebird');
+const mongoose = require('mongoose');
 mongoose.set('strictQuery', true);
 mongoose.set('strictPopulate', false);
+const ObjectId = mongoose.Types.ObjectId;
+//mongoose.Promise = require('bluebird');
+const tools = require("../../utils/tools");
+
 
 // Add new SchemaDL class into mongoose lib
 
@@ -32,8 +34,33 @@ function SchemaDL (options) {
         });
         return _extractValidatorsFromDoc(doc, isSearch);
     };
+    this.extractRefs = () => {
+        return _parseRefs(this.spec);
+    }
 }
 mongoose.SchemaDL = SchemaDL;
+
+function _parseRefs (doc) {
+    const refs = [];
+    if (doc === undefined) {
+        return refs;
+    }
+    if (doc.type) {
+        if (doc.type === ObjectId && refs.indexOf(doc.ref) === -1) {
+            refs.push(doc.ref);
+        }
+        return refs;
+    }
+    let obj = tools.isTypeOfArray(doc)? doc[0] : doc;
+    Object.keys(obj).forEach(path => {
+        _parseRefs(obj[path]).forEach(ref => {
+            if (refs.indexOf(ref) === -1) {
+                refs.push(ref);
+            }
+        })
+    })
+    return refs;
+}
 
 
 // Following are methos for extracting validators from schema ddl
