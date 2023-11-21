@@ -242,8 +242,8 @@ function _packFindOption (req, baseOptions = {}) {
     let options = {
         filter: filter
     };
-    if (this._sort) {
-        options.sort = this._sort;
+    if (baseOptions.sort || this._sort) {
+        options.sort = baseOptions.sort || this._sort;
     }
     if (req.$args.brief) { // Using briefSelect and no populate
         options.select = this._briefSelect; 
