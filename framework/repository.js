@@ -542,7 +542,8 @@ class Repository extends EventObject {
          * @param {Object[]} pipeline 
          * @param {Object} options - The query options
          * @param {boolean} allowEmpty - Whether treating empty result as error. Default is false: empty result as error.
-         * @param {function} callback 
+         * @param {function} callback
+         * @callback
          */
         this.aggregate = (pipeline, options, callback) => {
             if (typeof options === 'function') {
@@ -613,7 +614,6 @@ class Repository extends EventObject {
             });
         };
         this.countAsync = util.promisify(this.count);
-        
         /**
          * Delete one or many documents
          * @param {Types.DeleteOptions} options 
@@ -635,11 +635,11 @@ class Repository extends EventObject {
                 _id: new ObjectId(),
                 isDeleteProtection: true
             };
-            let methodName = options.multi === true ? 'deleteMany' : 'deleteOne';
+            let methodName = options.multi === true ? 'deleteMany' : 'findOneAndDelete';
             logger.debug(`Remove ${this.$name} by ${methodName} with filter: ${tools.inspect(filter)}`);
             this._model[methodName](filter, (err, result) => {
                 if (err) {
-                    let msg = `Delete with options: ${tools.inspect(options)} error! - ${err.code}#${err.message}`;
+                    let msg = `${this.$name}: delete with options: ${tools.inspect(options)} error! - ${err.message}`;
                     logger.error(msg);
                     return callback({
                         code: eRetCodes.DB_DELETE_ERR,
@@ -702,8 +702,8 @@ class RepositoryFactory extends EventModule {
         // Implementing methods
         /**
          * Register model with modelSpec
-         * @param {string} modelName 
-         * @param {Types.ModelSpecOptions} modelSpec 
+         * @param { string } modelName 
+         * @param { Types.ModelSpecOptions } modelSpec 
          */
         this.registerSchema = (modelName, modelSpec) => {
             this._modelSpecs[modelName] = modelSpec;
@@ -711,6 +711,12 @@ class RepositoryFactory extends EventModule {
         this.getSubSchema = (modelName, subSchemaName) => {
             return this._modelSpecs[modelName].subSchemas[subSchemaName];
         };
+        /**
+         * Get one repository by model name
+         * @param { string } modelName - The model name
+         * @param { string } dsName - The dataSource name
+         * @returns 
+         */
         this.getRepo = (modelName, dsName = _DS_DEFAULT_) => {
             assert(modelName !== undefined);
             //
@@ -747,6 +753,12 @@ class RepositoryFactory extends EventModule {
             });
             return this._repos[repoKey];
         };
+        /**
+         * Get multiple repositories by model names
+         * @param { string[] } modelNames - The array of model name
+         * @param { string } dsName - The dataSource name
+         * @returns 
+         */
         this.getMultiRepos = (modelNames, dsName = 'default') => {
             assert(Array.isArray(modelNames));
             let results = {};
