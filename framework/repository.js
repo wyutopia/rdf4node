@@ -614,7 +614,6 @@ class Repository extends EventObject {
             });
         };
         this.countAsync = util.promisify(this.count);
-        
         /**
          * Delete one or many documents
          * @param {Types.DeleteOptions} options 
@@ -636,11 +635,11 @@ class Repository extends EventObject {
                 _id: new ObjectId(),
                 isDeleteProtection: true
             };
-            let methodName = options.multi === true ? 'deleteMany' : 'deleteOne';
+            let methodName = options.multi === true ? 'deleteMany' : 'findOneAndDelete';
             logger.debug(`Remove ${this.$name} by ${methodName} with filter: ${tools.inspect(filter)}`);
             this._model[methodName](filter, (err, result) => {
                 if (err) {
-                    let msg = `Delete with options: ${tools.inspect(options)} error! - ${err.code}#${err.message}`;
+                    let msg = `${this.$name}: delete with options: ${tools.inspect(options)} error! - ${err.message}`;
                     logger.error(msg);
                     return callback({
                         code: eRetCodes.DB_DELETE_ERR,

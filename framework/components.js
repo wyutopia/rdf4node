@@ -781,47 +781,31 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let dsName = req.dataSource.dsName || _DS_DEFAULT_;
                     this._allowDelete(req, req.$args.id, (err) => {
                         if (err) {
                             return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                         }
                         //
-                        repo.updateOne({
-                            filter: {
+                        let options = {
+                            filter: tools.assign({
                                 _id: req.$args.id
-                            },
-                            updates: {
-                                $set: {
-                                    status: sysdefs.eStatus.DEL_PENDING,
-                                    updateAt: new Date()
-                                }
-                            }
-                        }, (err, doc) => {
+                            }, this._deleteOptions || {})
+                        }
+                        this._beforeDeleteOne(options);
+                        repo.delete(options, (err, doc) => {
                             if (err) {
-                                return res.sendRsp(err.code, 'Set del-pending error!');
+                                return res.sendRsp(err.code, err.message);
                             }
-                            let options = {
-                                filter: tools.deepAssign({
-                                    _id: req.$args.id
-                                }, this._deleteOptions || {})
+                            if (!doc) {
+                                return res.sendRsp(eRetCodes.ACCEPTED, 'No document deleted!');
                             }
-                            this._beforeDeleteOne(options);
-                            repo.remove(options, (err, result) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                if (result.deletedCount === 0) {
-                                    return res.sendRsp(eRetCodes.ACCEPTED, 'No document deleted!');
-                                }
-                                _publishEvents.call(this, {
-                                    method: 'deleteOne',
-                                    data: doc.toObject()
-                                }, () => {
-                                    this._afterDeleteOne(req, doc, () => {
-                                        return res.sendSuccess(result);
-                                    })
-                                });
+                            _publishEvents.call(this, {
+                                method: 'deleteOne',
+                                data: doc.toObject()
+                            }, () => {
+                                this._afterDeleteOne(req, doc, () => {
+                                    return res.sendSuccess(doc);
+                                })
                             });
                         });
                     });
