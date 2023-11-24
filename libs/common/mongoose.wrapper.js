@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 mongoose.set('strictQuery', true);
 mongoose.set('strictPopulate', false);
 const ObjectId = mongoose.Types.ObjectId;
+const Schema = mongoose.Schema;
 //mongoose.Promise = require('bluebird');
 const tools = require("../../utils/tools");
 
@@ -35,7 +36,15 @@ function SchemaDL (options) {
         return _extractValidatorsFromDoc(doc, isSearch);
     };
     this.extractRefs = () => {
-        return _parseRefs(this.spec);
+        const refs = [];
+        Object.keys(this.spec).forEach(path => {
+            _parseRefs(this.spec[path]).forEach(ref => {
+                if (refs.indexOf(ref) === -1) {
+                    refs.push(ref);
+                }
+            });
+        });
+        return refs;
     }
 }
 mongoose.SchemaDL = SchemaDL;
@@ -45,15 +54,19 @@ function _parseRefs (doc) {
     if (doc === undefined) {
         return refs;
     }
-    if (doc.type) {
-        if (doc.type === ObjectId && refs.indexOf(doc.ref) === -1) {
-            refs.push(doc.ref);
+    const prop = tools.isTypeOfArray(doc)? doc[0] : doc;
+    if (prop === undefined || prop instanceof Schema) { // Maybe extract ref from Schema in the future
+        return refs;
+    }
+    if (prop.type) {  // For primitive prop
+        if (prop.type === ObjectId && prop.ref && refs.indexOf(prop.ref) === -1) {
+            refs.push(prop.ref);
         }
         return refs;
     }
-    let obj = tools.isTypeOfArray(doc)? doc[0] : doc;
-    Object.keys(obj).forEach(path => {
-        _parseRefs(obj[path]).forEach(ref => {
+    // For Object prop
+    Object.keys(prop).forEach(path => {
+        _parseRefs(prop[path]).forEach(ref => {
             if (refs.indexOf(ref) === -1) {
                 refs.push(ref);
             }

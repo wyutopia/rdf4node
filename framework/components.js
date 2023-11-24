@@ -787,7 +787,7 @@ class EntityController extends ControllerBase {
                         }
                         //
                         let options = {
-                            filter: tools.assign({
+                            filter: Object.assign({
                                 _id: req.$args.id
                             }, this._deleteOptions || {})
                         }
