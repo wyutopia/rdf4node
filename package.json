@@ -10,7 +10,7 @@
         "pack": "npm pack --pack-destination=dist/"
     },
     "publishConfig": {
-        "registry": "http://119.3.71.247:32081/repository/npm-release"
+        "registry": "http://npm.ice-deer.com:30873/"
     },
     "dependencies": {
         "@elastic/elasticsearch": "^8.10.0",
