@@ -812,7 +812,7 @@ class EntityController extends ControllerBase {
                 });
             }
         };
-        this.fakeDeleteOne = {
+        this.logicDeleteOne = {
             val: {
                 tenant: {
                     type: 'ObjectId',
@@ -848,7 +848,8 @@ class EntityController extends ControllerBase {
                                     status: sysdefs.eStatus.DELETED,
                                     comment: req.$args.comment
                                 }
-                            }
+                            },
+                            allowEmpty: true
                         }, (err, doc) => {
                             if (err) {
                                 return res.sendRsp(err.code, 'Fake delete error!');
