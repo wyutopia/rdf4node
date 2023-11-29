@@ -5,6 +5,7 @@
 const assert = require('assert');
 const ObjectId = require('mongoose').Types.ObjectId;
 // Framework libs
+const Types = require('../include/types');
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
 const {EventModule} = require('../include/events');
@@ -14,7 +15,6 @@ const tools = require('../utils/tools');
 //
 const {repoFactory, paginationVal, _DS_DEFAULT_} = require('./repository');
 const {_DEFAULT_PUBKEY_, _DEFAULT_CHANNEL_} = require('./ebus');
-const { resolveSoa } = require('dns');
 
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
@@ -344,12 +344,18 @@ class EntityController extends ControllerBase {
         // Register event publishers
         this._domainEvents = props.domainEvents || {};
         // Implementing the class methods
-        this.getRepo = (dataSourceOption, callback) => {
-            if (typeof dataSourceOption === 'function') {
-                callback = dataSourceOption;
-                dataSourceOption = {};
+        /**
+         * 
+         * @param { Types.DataSourceOptions } dsOptions 
+         * @param { function } callback 
+         * @returns 
+         */
+        this.getRepo = (dsOptions, callback) => {
+            if (typeof dsOptions === 'function') {
+                callback = dsOptions;
+                dsOptions = {};
             }
-            let dsName = dataSourceOption.dsName || _DS_DEFAULT_;
+            let dsName = dsOptions.dsName || _DS_DEFAULT_;
             if (this._entityRepos[dsName] !== undefined) {
                 return callback(null, this._entityRepos[dsName]);
             }
@@ -365,11 +371,13 @@ class EntityController extends ControllerBase {
             this._entityRepos[dsName] = repo;
             return callback(null, repo);
         };
-        this.getRepoSync = (dataSourceOption) => {
-            if (dataSourceOption === undefined) {
-                dataSourceOption = {};
-            }
-            let dsName = dataSourceOption.dsName || _DS_DEFAULT_;
+        /**
+         * 
+         * @param { Types.DataSourceOptions } dsOptions 
+         * @returns 
+         */
+        this.getRepoSync = (dsOptions = {}) => {
+            let dsName = dsOptions.dsName || _DS_DEFAULT_;
             let repo = this._entityRepos[dsName];
             if (repo !== undefined) {
                 return repo;
@@ -781,54 +789,38 @@ class EntityController extends ControllerBase {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let dsName = req.dataSource.dsName || _DS_DEFAULT_;
                     this._allowDelete(req, req.$args.id, (err) => {
                         if (err) {
                             return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                         }
                         //
-                        repo.updateOne({
-                            filter: {
+                        let options = {
+                            filter: Object.assign({
                                 _id: req.$args.id
-                            },
-                            updates: {
-                                $set: {
-                                    status: sysdefs.eStatus.DEL_PENDING,
-                                    updateAt: new Date()
-                                }
-                            }
-                        }, (err, doc) => {
+                            }, this._deleteOptions || {})
+                        }
+                        this._beforeDeleteOne(options);
+                        repo.delete(options, (err, doc) => {
                             if (err) {
-                                return res.sendRsp(err.code, 'Set del-pending error!');
+                                return res.sendRsp(err.code, err.message);
                             }
-                            let options = {
-                                filter: tools.deepAssign({
-                                    _id: req.$args.id
-                                }, this._deleteOptions || {})
+                            if (!doc) {
+                                return res.sendRsp(eRetCodes.ACCEPTED, 'No document deleted!');
                             }
-                            this._beforeDeleteOne(options);
-                            repo.remove(options, (err, result) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                if (result.deletedCount === 0) {
-                                    return res.sendRsp(eRetCodes.ACCEPTED, 'No document deleted!');
-                                }
-                                _publishEvents.call(this, {
-                                    method: 'deleteOne',
-                                    data: doc.toObject()
-                                }, () => {
-                                    this._afterDeleteOne(req, doc, () => {
-                                        return res.sendSuccess(result);
-                                    })
-                                });
+                            _publishEvents.call(this, {
+                                method: 'deleteOne',
+                                data: doc.toObject()
+                            }, () => {
+                                this._afterDeleteOne(req, doc, () => {
+                                    return res.sendSuccess(doc);
+                                })
                             });
                         });
                     });
                 });
             }
         };
-        this.fakeDeleteOne = {
+        this.logicDeleteOne = {
             val: {
                 tenant: {
                     type: 'ObjectId',
@@ -864,7 +856,8 @@ class EntityController extends ControllerBase {
                                     status: sysdefs.eStatus.DELETED,
                                     comment: req.$args.comment
                                 }
-                            }
+                            },
+                            allowEmpty: true
                         }, (err, doc) => {
                             if (err) {
                                 return res.sendRsp(err.code, 'Fake delete error!');
