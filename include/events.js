@@ -124,6 +124,15 @@ class EventModule extends EventObject {
         this.on('message', (msg, ackOrNack) => {
             setTimeout(this._msgProc.bind(this, msg, ackOrNack), 1);
         });
+        this.on('sys-event', evt => {
+            setTimeout(this._onSysEvent.bind(this, evt), 1);
+        });
+        this.on('domain-event', evt => {
+            setTimeout(this._onSysEvent.bind(this, evt), 2);
+        });
+        this.on('app-event', evt => {
+            setTimeout(this._onSysEvent.bind(this, evt), 3);
+        });
         // Perform initiliazing codes...
         (() => {
             if (this._ebus) {

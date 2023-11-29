@@ -244,6 +244,24 @@ const _typeRegisterOptions = {
     pubKey: 'pubEvent'
 };
 
+
+/**
+ * Initialize the NQueue object
+ * @param {Object} props - The prop wrapper
+ * @param {string} props.code - The event code
+ */
+function _initQueue(props) {
+    this._code = props.code;
+}
+
+class NQueue extends EventEmitter {
+    constructor(props) {
+        super(props);
+        //
+        _initQueue.call(this, props);
+    }
+}
+
 // Define the EventBus class
 class EventBus extends EventEmitter {
     constructor(props) {
@@ -253,6 +271,7 @@ class EventBus extends EventEmitter {
         //
         this._registries = {};
         this._subscribers = {};
+        this._queues = {};
         // For external MQ
         this._clients = {};
         // Implementing methods
@@ -290,6 +309,14 @@ class EventBus extends EventEmitter {
                 if (this._subscribers[code].indexOf(moduleName) === -1) {
                     this._subscribers[code].push(moduleName);
                 }
+                const q = this._queues[code];
+                if (q === undefined) {
+                    q = new NQueue({code});
+                    this._queues[code] = q;
+                }
+                q.on(code, event => {
+                    moduleRef.emit(code, event);
+                });
             });
             // TODO: Append eventTriggers
             // let engine = options.engine || sysdefs.eEventBusEngine.Native;
