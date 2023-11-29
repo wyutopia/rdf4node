@@ -479,3 +479,19 @@ function _stringifyDocId (doc) {
 }
 
 exports.stringifyDocId = _stringifyDocId;
+
+/**
+ * Get pure ObjectId from Doc object recursivly
+ * @param { Object } doc - The document object
+ * @returns { ObjectId }
+ */
+function _purifyObjectId (doc) {
+    if (!doc || doc instanceof ObjectId) {
+        return doc;
+    }
+    if (typeof doc === 'string') {
+        return ObjectId(doc);
+    }
+    return _purifyObjectId(doc._id);
+}
+exports.purifyObjectId = _purifyObjectId;
