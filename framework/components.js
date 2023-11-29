@@ -5,6 +5,7 @@
 const assert = require('assert');
 const ObjectId = require('mongoose').Types.ObjectId;
 // Framework libs
+const Types = require('../include/types');
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
 const {EventModule} = require('../include/events');
@@ -14,7 +15,6 @@ const tools = require('../utils/tools');
 //
 const {repoFactory, paginationVal, _DS_DEFAULT_} = require('./repository');
 const {_DEFAULT_PUBKEY_, _DEFAULT_CHANNEL_} = require('./ebus');
-const { resolveSoa } = require('dns');
 
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
@@ -344,12 +344,18 @@ class EntityController extends ControllerBase {
         // Register event publishers
         this._domainEvents = props.domainEvents || {};
         // Implementing the class methods
-        this.getRepo = (dataSourceOption, callback) => {
-            if (typeof dataSourceOption === 'function') {
-                callback = dataSourceOption;
-                dataSourceOption = {};
+        /**
+         * 
+         * @param { Types.DataSourceOptions } dsOptions 
+         * @param { function } callback 
+         * @returns 
+         */
+        this.getRepo = (dsOptions, callback) => {
+            if (typeof dsOptions === 'function') {
+                callback = dsOptions;
+                dsOptions = {};
             }
-            let dsName = dataSourceOption.dsName || _DS_DEFAULT_;
+            let dsName = dsOptions.dsName || _DS_DEFAULT_;
             if (this._entityRepos[dsName] !== undefined) {
                 return callback(null, this._entityRepos[dsName]);
             }
@@ -365,11 +371,13 @@ class EntityController extends ControllerBase {
             this._entityRepos[dsName] = repo;
             return callback(null, repo);
         };
-        this.getRepoSync = (dataSourceOption) => {
-            if (dataSourceOption === undefined) {
-                dataSourceOption = {};
-            }
-            let dsName = dataSourceOption.dsName || _DS_DEFAULT_;
+        /**
+         * 
+         * @param { Types.DataSourceOptions } dsOptions 
+         * @returns 
+         */
+        this.getRepoSync = (dsOptions = {}) => {
+            let dsName = dsOptions.dsName || _DS_DEFAULT_;
             let repo = this._entityRepos[dsName];
             if (repo !== undefined) {
                 return repo;

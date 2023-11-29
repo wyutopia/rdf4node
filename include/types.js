@@ -12,6 +12,17 @@
  */
 
 /**
+ * @typedef { Object } AcrossPopulates
+ * @prop { string } path
+ * @prop { string } dsName
+ */
+/**
+ * @typedef {Object} DataSourceOptions
+ * @prop { string } dsName - The dataSource name
+ * @prop { AcrossPopulates[] } populates - The populates across databases
+ */
+
+/**
  * @typedef {Object} CacheProperties
  * @prop {string} logLevel - The log level. enum: debug, info, error
  * @prop {string} engine - The cache engine type. enum: native, redis
