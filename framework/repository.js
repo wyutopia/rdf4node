@@ -132,7 +132,7 @@ function _parseCacheKey (data, cacheSpec) {
     if (cacheSpec.keyNameTemplate) {
         let keyNameArray = [];
         cacheSpec.keyNameTemplate.split(':').forEach( field => {
-            keyNameArray.push(data[field] === undefined? '*' : tools.stringifyDocId(data[field]));
+            keyNameArray.push(data[field] === undefined? '*' : tools.purifyObjectId(data[field]));
         });
         const cacheKey  = keyNameArray.join(':');
         //logger.debug(`Parse cacheKey: ${tools.inspect(data)} - ${cacheKey}`);

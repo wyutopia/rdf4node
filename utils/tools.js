@@ -468,18 +468,6 @@ exports.addToSet = function (arr, item) {
     }
 }
 
-function _stringifyDocId (doc) {
-    if (!doc || doc instanceof ObjectId) {
-        return doc;
-    }
-    if (typeof doc === 'string') {
-        return ObjectId(doc);
-    }
-    return _stringifyDocId(doc._id);
-}
-
-exports.stringifyDocId = _stringifyDocId;
-
 /**
  * Get pure ObjectId from Doc object recursivly
  * @param { Object } doc - The document object
