@@ -41,7 +41,9 @@ function _packCacheSafeSelect(origSelect, cacheSpec) {
  * @param {function} callback 
  */
 function _uniQuery(query, options, callback) {
-    options.select = _packCacheSafeSelect(options.select, this.cacheSpec);
+    if (options.select) {
+        options.select = _packCacheSafeSelect(options.select, this.cacheSpec);
+    }
     ['select', 'sort', 'skip', 'limit', 'populate'].forEach(method => {
         if (options[method]) {
             query[method](options[method]);
@@ -368,10 +370,6 @@ class Repository extends EventObject {
                 setDefaultsOnInsert: true,
                 new: true
             };
-            const selectFields = _packCacheSafeSelect(options.fields, this.cacheSpec);
-            if (selectFields) {
-                options.fields = selectFields;
-            }
             return this._model.findOneAndUpdate(params.filter, params.updates, options, (err, doc) => {
                 if (err) {
                     let msg = `Insert error! - ${err.message}`;
@@ -474,7 +472,9 @@ class Repository extends EventObject {
                 }
                 // Assemble query promise
                 let query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
-                options.select = _packCacheSafeSelect(options.select, this.cacheSpec);
+                if (options.select) {
+                    options.select = _packCacheSafeSelect(options.select, this.cacheSpec);
+                }
                 ['select', 'sort', 'populate', 'allowDiskUse'].forEach(method => {
                     if (options[method]) {
                         query[method](options[method]);
