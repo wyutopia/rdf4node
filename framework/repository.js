@@ -41,12 +41,10 @@ function _packCacheSafeSelect(origSelect, cacheSpec) {
  * @param {function} callback 
  */
 function _uniQuery(query, options, callback) {
-    if (options.select) {
-        options.select = _packCacheSafeSelect(options.select, this.cacheSpec);
-    }
     ['select', 'sort', 'skip', 'limit', 'populate'].forEach(method => {
         if (options[method]) {
-            query[method](options[method]);
+            let argv = method === 'select'? _packCacheSafeSelect(options[method], this.cacheSpec) : options[method];            
+            query[method](argv);
         }
     });
     return query.exec((err, result) => {
@@ -104,7 +102,8 @@ function _updateOne(params, callback) {
     let query = this._model.findOneAndUpdate(filter, updates, options);
     ['select', 'populate'].forEach(method => {
         if (params[method]) {
-            query[method](params[method]);
+            let argv = method === 'select'? _packCacheSafeSelect(params[method], this.cacheSpec) : params[method];
+            query[method](argv);
         }
     });
     query.exec((err, doc) => {
@@ -472,12 +471,10 @@ class Repository extends EventObject {
                 }
                 // Assemble query promise
                 let query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
-                if (options.select) {
-                    options.select = _packCacheSafeSelect(options.select, this.cacheSpec);
-                }
                 ['select', 'sort', 'populate', 'allowDiskUse'].forEach(method => {
                     if (options[method]) {
-                        query[method](options[method]);
+                        let argv = method === 'select'? _packCacheSafeSelect(options[method], this.cacheSpec) : options[method];
+                        query[method](argv);
                     }
                 });
                 return query.exec((err, docs) => {
