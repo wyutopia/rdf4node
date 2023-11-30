@@ -21,6 +21,19 @@ const tools = require('../utils/tools');
 const {dsFactory} = require('./data-source');
 const {eDataType, eLoadPolicy, initCacheSpec, cacheFactory} = require('./cache');
 
+function _packCacheSafeSelect(origSelect, cacheSpec) {
+    if (cacheSpec.allowCache === false || !cacheSpec.select) {
+        return origSelect;
+    }
+    const selArr = typeof origSelect === 'string'? origSelect.split(' ') : Object.keys(origSelect || {});
+    cacheSpec.select.split(' ').forEach(key => {
+        if (selArr.indexOf(key) === -1) {
+            selArr.push(key);
+        }
+    });
+    return selArr.join(' ');
+}
+
 /**
  * 
  * @param {Object} query - The query promise 
@@ -28,6 +41,7 @@ const {eDataType, eLoadPolicy, initCacheSpec, cacheFactory} = require('./cache')
  * @param {function} callback 
  */
 function _uniQuery(query, options, callback) {
+    options.select = _packCacheSafeSelect(options.select, this.cacheSpec);
     ['select', 'sort', 'skip', 'limit', 'populate'].forEach(method => {
         if (options[method]) {
             query[method](options[method]);
@@ -199,7 +213,7 @@ function _appendCache(data, options, callback) {
         logger.debug(`Ignore cache updating dur no cacheValue changed!`);
         return callback(null, data);
     }
-    logger.debug(`${this.$name}: Perform updating cache ...`);
+    logger.debug(`${this.$name}: Update cache with data ${tools.inspect(data)} ...`);
     let cacheValues = [];
     let docs = Array.isArray(data)? data : [data];
     //
@@ -325,10 +339,8 @@ class Repository extends EventObject {
                         message: err.code === 11000 ? `Create failed, ${this.modelName} Already exists!` : msg
                     });
                 }
-                // Append cache
-                _appendCache.call(this, result, () => {
-                    return callback(null, result);
-                });
+                // Do not append cache in case the created data is not sufficient
+                return callback(null, result);
             });
         };
         this.createAsync = util.promisify(this.create);
@@ -351,11 +363,15 @@ class Repository extends EventObject {
                 });
             }
             logger.debug(`findOneAndUpdate with params: ${tools.inspect(params)}`);
-            let options = params.options || {
+            const options = params.options || {
                 upsert: true,
                 setDefaultsOnInsert: true,
                 new: true
             };
+            const selectFields = _packCacheSafeSelect(options.fields, this.cacheSpec);
+            if (selectFields) {
+                options.fields = selectFields;
+            }
             return this._model.findOneAndUpdate(params.filter, params.updates, options, (err, doc) => {
                 if (err) {
                     let msg = `Insert error! - ${err.message}`;
@@ -458,6 +474,7 @@ class Repository extends EventObject {
                 }
                 // Assemble query promise
                 let query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
+                options.select = _packCacheSafeSelect(options.select, this.cacheSpec);
                 ['select', 'sort', 'populate', 'allowDiskUse'].forEach(method => {
                     if (options[method]) {
                         query[method](options[method]);
