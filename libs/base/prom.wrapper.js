@@ -3,9 +3,9 @@
  */
 const assert = require('assert');
 const client = require('prom-client');
-const theApp = require('../../bootstrap');
-const pubdefs = require('../../include/sysdefs');
-
+const sysdefs = require('../../include/sysdefs');
+//
+const theApp = global._$theApp;
 const register = client.register;
 
 const collectDefaultMetrics = client.collectDefaultMetrics;
@@ -14,7 +14,7 @@ collectDefaultMetrics({
 });
 
 const defaultLabels = {
-    service: theApp.getRegistry(),
+    service: theApp.getName(),
     instance: theApp.getInstance()
 };
 register.setDefaultLabels(defaultLabels);
@@ -55,9 +55,9 @@ exports.regMetrics = function (options) {
         let name = `${prefix}_${metric.name}`
         let help = metric.help || `${name}_help`;
         let labelNames = metric.labelNames || [];
-        if (metric.type === pubdefs.eMetricType.COUNTER) {
+        if (metric.type === sysdefs.eMetricType.Counter) {
             collectors[metric.name] = _regCounter(name, help, labelNames);
-        } else if (metric.type === pubdefs.eMetricType.GAUGE) {
+        } else if (metric.type === sysdefs.eMetricType.Gauge) {
             if (metric.fnCollectAsync) {
                 _regGaugeAsync(name, help, labelNames, metric.fnCollectAsync);
             } else {
@@ -69,11 +69,17 @@ exports.regMetrics = function (options) {
 };
 
 //Exposed API for prometheus monitoring
-exports.getMetrics = async function (req, res) {
-    let metrics = await register.metrics();
-    res.send(metrics);
+exports.getMetrics = {
+    val: {},
+    fn: async function (req, res) {
+        let metrics = await register.metrics();
+        res.send(metrics);
+    }
 };
 
-exports.checkHealth = function (req, res) {
-    res.sendStatus(200);
+exports.checkHealth = {
+    val: {},
+    fn: function (req, res) {
+        res.sendStatus(200);
+    }
 };

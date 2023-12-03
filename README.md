@@ -6,7 +6,7 @@ express --view=ejs demo
 ```
 ### Install rdf4node lib and run init script
 ```
-cd demp
+cd demo
 npm install
 npm install @icedeer/rdf4node --save
 ./node_modules/@icedeer/rdf4node/rdfinit
@@ -42,7 +42,7 @@ docker run -id --name mongo-dev \
     -p 27017:27017 \
     -e MONGO_INITDB_ROOT_USERNAME=admin \
     -e MONGO_INITDB_ROOT_PASSWORD=Dev#2022 \
-    -v /Users/$(whoami)/DataRepos/mongodb:/data/db \
+    -v /Users/$(whoami)/.repos/mongodb:/data/db \
     mongo --wiredTigerCacheSizeGB 1.5
 ```
 #### Prepare collection
@@ -78,6 +78,7 @@ docker run -id --name rmq-dev \
     -p 15672:15672 \
     -p 5672:5672 \
     -p 15692:15692 \
+    -e RABBITMQ_DEFAULT_VHOST=dev \
     -e RABBITMQ_DEFAULT_USER=admin \
     -e RABBITMQ_DEFAULT_PASS=Dev#2022 \
     rabbitmq
@@ -104,13 +105,13 @@ Then you can open web consol from http://127.0.0.1:15672
 docker pull redis:latest
 docker run -id -p 6379:6379 \
     --name redis-dev \
-    redis --requirepass "Dev#2022"
+    redis --requirepass "Dev#2023"
 
 ```
 #### Connect with cli
 ```
 docker exec -it redis-dev redis-cli
-> auth "Dev#2022"
+> auth "Dev#2023"
 > select 0         // System allocated database #
 ```
 ### Start elasticsearch instance for development

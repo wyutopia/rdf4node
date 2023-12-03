@@ -1,86 +1,195 @@
 /**
  * Created by Eric on 2021/11/15.
+ * Modified by Eric on 2023/11/21
  */
-let assert = require('assert');
-let mongoose = require('mongoose');
-mongoose.Promise = require('bluebird');
+const mongoose = require('mongoose');
 mongoose.set('strictQuery', true);
-const pubdefs = require('../../include/sysdefs');
-const theApp = require('../../bootstrap');
-const {mongodb: config} = require('../base/config');
-const { WinstonLogger } = require('../base/winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf');
+mongoose.set('strictPopulate', false);
+const ObjectId = mongoose.Types.ObjectId;
+const Schema = mongoose.Schema;
+//mongoose.Promise = require('bluebird');
+const tools = require("../../utils/tools");
 
-const MODULE_NAME = 'MONGODB_CONN';
-let conn = null;
-// register module
-theApp.regModule({
-    name: MODULE_NAME,
-    mandatory: true,
-    state: pubdefs.eModuleState.INIT,
-    type: pubdefs.eModuleType.CONN,
-    dispose: (callback) => {
-        try {
-            logger.info('Disconnect from MongoDb...');
-            if (conn === null) {
-                logger.warn('MongoDb connection not exists!');
-                return callback();
+
+// Add new SchemaDL class into mongoose lib
+
+/**
+ * @constructor
+ * @param {Object} options - The schema spec
+ */
+function SchemaDL (options) {
+    this.spec = options;
+    /**
+     * Extract validators from schema sdl based on paths and options
+     * @param {string[]} paths - The path array
+     * @param {*} options 
+     * @returns 
+     */
+    this.extractValidators = (paths, options = {}) => {
+        const isSearch = options.isSearch !== undefined? options.isSearch : false;
+        const doc = {};
+        paths.forEach(key => {
+            if (this.spec[key] !== undefined) {
+                doc[key] = this.spec[key];
             }
-            return conn.close(function (err) {
-                if (err) {
-                    logger.info('Close mongodb connection error!', err.code, err.message);
-                } else {
-                    logger.info('MongoDb disconnected.');
+        });
+        return _extractValidatorsFromDoc(doc, isSearch);
+    };
+    this.extractRefs = () => {
+        const refs = [];
+        Object.keys(this.spec).forEach(path => {
+            _parseRefs(this.spec[path]).forEach(ref => {
+                if (refs.indexOf(ref) === -1) {
+                    refs.push(ref);
                 }
-                return callback();
             });
-        }
-        catch (ex) {
-            logger.error('MongoDb cleanup error!', ex);
-            return callback();
-        }
+        });
+        return refs;
     }
-});
+}
+mongoose.SchemaDL = SchemaDL;
 
-function _getConnParams(config) {
-    let params = [];
-    let keys = Object.keys(config.parameters || {});
-    if (keys.indexOf('authSource') === -1) { // authSource not exists!
-        params.push(`authSource=${config.authSource || config.db}`);
+function _parseRefs (doc) {
+    const refs = [];
+    if (doc === undefined) {
+        return refs;
     }
-    keys.forEach(key => {
-        params.push(`${key}=${config.parameters[key]}`);
-    });
-
-    return params.join('&');
+    const prop = tools.isTypeOfArray(doc)? doc[0] : doc;
+    if (prop === undefined || prop instanceof Schema) { // Maybe extract ref from Schema in the future
+        return refs;
+    }
+    if (prop.type) {  // For primitive prop
+        if (prop.type === ObjectId && prop.ref && refs.indexOf(prop.ref) === -1) {
+            refs.push(prop.ref);
+        }
+        return refs;
+    }
+    // For Object prop
+    Object.keys(prop).forEach(path => {
+        _parseRefs(prop[path]).forEach(ref => {
+            if (refs.indexOf(ref) === -1) {
+                refs.push(ref);
+            }
+        })
+    })
+    return refs;
 }
 
-(async () => {
-    try {
-        const options = {
-            useUnifiedTopology: true,
-            useNewUrlParser: true
-        };
-        logger.info('Connect to MongoDb......');
-        let host = config.host || `${config.ip}:${config.port}`;
-        let connParams = _getConnParams(config);
-        let connStr = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}` 
-                        + `@${host}/${config.db || ''}?${connParams}`;
-        logger.debug(`>>>>>> Connection string: ${connStr}`);
-        const result = await mongoose.connect(connStr, options);
-        if (result) {
-            conn = mongoose.connection;
-            logger.info(`${config.db}@${process.env.NODE_ENV} connected!`);
-            theApp.setModuleState(MODULE_NAME, pubdefs.eModuleState.ACTIVE);
+
+// Following are methos for extracting validators from schema ddl
+const _constValProps = ['min', 'max', 'minLength', 'maxLength', 'enum', 'match', 'allowEmpty'];
+function _parseValProps(doc, val) {
+    _constValProps.forEach(key => {
+        if (doc[key]) {
+            let valKey = key === 'match'? 'regexp' : key;
+            val[valKey] = doc[key];
         }
-    } catch (err) {
-        logger.error('Connect to MongoDb error!', err.code, err.message);
+    });
+}
+
+/**
+ * 
+ * @param {Object} doc 
+ * @param {boolean} isSearch - For search opeartion or not
+ * @returns 
+ */
+function _parseValidator(doc, isSearch) {
+    let validator = {};
+    if (doc.type) {
+        validator.type = doc.type.name;
+        _parseValProps(doc, validator);
+    } else if (tools.isTypeOfArray(doc)) {
+        if (doc[0].type) {
+            validator.type = isSearch? doc[0].type.name : `Array<${doc[0].type.name}>`;  // No Array required on search request
+            _parseValProps(doc[0], validator);
+        } else {
+            validator.type = 'Array<EmbeddedObject>';
+            validator.$embeddedValidators = _extractValidatorsFromDoc(doc[0], isSearch);
+        }
+    } else {
+        validator.type = 'EmbeddedObject';
+        validator.$embeddedValidators = _extractValidatorsFromDoc(doc, isSearch);
     }
-})();
+    return validator;
+}
 
-module.exports = mongoose;
+function _extractValidatorsFromDoc(doc, isSearch) {
+    let validators = {};
+    Object.keys(doc).forEach(key => {
+        if (key !== '_id') {
+            validators[key] = _parseValidator(doc[key], isSearch);
+        }
+    });
+    return validators;
+}
 
+/*
+const Schema = mongoose.Schema;
+// Followings are old extraction methods
+Schema.prototype.extractValidators = function (keys, options = {isSearch: false}) {
+    let paths = {};
+    keys.forEach(key => {
+        let path = this.path(key);
+        if (path) {
+            paths[key] = path;
+        }
+    });
+    return _extractValidatorsFromPaths(paths, options);
+}
 
+function _extractValidatorsFromPaths(paths, options) {
+    let validators = {};
+    Object.keys(paths).forEach(key => {
+        if (key !== '_id') {
+            validators[key] = _extractValidator3(paths[key], options);
+        }
+    });
+    return validators;
+}
+
+function _extractValidator3 (path, options) {
+    let pathType = path.instance;
+    let pathValidators = path.validators;
+    if (pathType === 'Array') {
+        let embeddedSchemaType = path.$embeddedSchemaType.instance || 'EmbeddedObject';
+        pathType = options.isSearch? embeddedSchemaType : `Array<${embeddedSchemaType}>`;
+        pathValidators = path.$embeddedSchemaType.validators || [];
+    }
+    let validator = {
+        type: pathType
+    }
+    pathValidators.forEach (v => {
+        switch(v.type) {
+            case 'enum':
+                validator.enum = v.enumValues;
+                break;
+            case 'min':
+                validator.min = v.min;
+                break;
+            case 'max':
+                validator.max = v.max;
+                break;
+            case 'minlength':
+                validator.minLen = v.minlength;
+                break;
+            case 'maxlength':
+                validator.maxLen = v.maxlength;
+                break;
+            case 'regexp':
+                validator.regexp = v.regexp
+                break;
+        }
+    });
+    if (pathType === 'Array<EmbeddedObject>') {
+        let subDocPaths = tools.safeGetJsonValue(path, 'schema.paths');
+        if (subDocPaths) {
+            validator.$embeddedValidators = _extractValidatorsFromPaths(subDocPaths, options);
+        }
+    }
+    return validator;
+}
+*/
+module.exports = exports = mongoose;
 
  //http://mongoosejs.com/docs/middleware.html
  //https://mongoosejs.com/docs/deprecations.html#-findandmodify-

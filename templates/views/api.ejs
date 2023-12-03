@@ -1,0 +1,7 @@
+<ul>
+    <% routes.forEach(function(r) { %>
+       <li>
+           <%- r.method + '    ' + r.path  + '    ' + r.authType %>
+       </li>
+    <% })%>
+</ul>

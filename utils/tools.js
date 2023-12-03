@@ -9,11 +9,15 @@ const spawn = require('child_process').spawn;
 const util = require("util");
 const { networkInterfaces } = require("os");
 const { v4: uuidv4 } = require('uuid');
-
-const pubdefs = require('../include/sysdefs');
+// Framework libs
+const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes.js');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
+const { experimental } = require('@grpc/grpc-js');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'tools');
+
+function _noop() {}
+exports.noop = _noop;
 
 function _inspect(obj) {
     return util.inspect(obj, { showHidden: false, depth: null });
@@ -68,12 +72,17 @@ exports.isTypeOfDate = function (obj) {
     return '[object Date]' === Object.prototype.toString.call(obj);
 };
 
+const gPrimitiveTypes = ['undefined', 'boolean', 'number', 'bigint', 'string'];
+exports.isTypeOfPrimitive = function (v) {
+    return gPrimitiveTypes.indexOf(typeof v) !== -1;
+}
+
 exports.uuidv4 = function () {
     return uuidv4().replace(/-/g, '');
 };
 
 exports.safeGetJsonValue = function (json, path) {
-    if (typeof json !== 'object' || typeof path !== 'string') {
+    if (!json || typeof json !== 'object' || typeof path !== 'string') {
         return null;
     }
     if (path.length === 0) {
@@ -144,9 +153,9 @@ exports.getSortedString = _getSortedString;
 
 /**
  * The default parser for RESTful API's response body
- * @param {*} body 
- * @param {*} callback 
- * @returns 
+ * @param {*} body
+ * @param {*} callback
+ * @returns
  */
 exports.defaultBodyParser = function (body, callback) {
     if (!body) {
@@ -176,12 +185,12 @@ function _getFlowToken(options, callback) {
 
 /**
  * The http request wrapper based on request@2.88.2
- * @param {*} options 
- * @param {*} callback 
+ * @param {*} options
+ * @param {*} callback
  */
 exports.invokeHttpRequest = function (options, callback) {
     if (options.timeout === undefined) {
-        options.timeout = pubdefs.eInterval._5_SEC;
+        options.timeout = sysdefs.eInterval._5_SEC;
     }
     let bodyParser = options.bodyParser;
     if (typeof bodyParser === 'function') {
@@ -189,7 +198,6 @@ exports.invokeHttpRequest = function (options, callback) {
     } else {
         bodyParser = null;
     }
-
     //logger.debug(`Invoke options: ${_inspect(options)}`);
     _getFlowToken(options, (err, token) => {
         if (err) {
@@ -202,6 +210,9 @@ exports.invokeHttpRequest = function (options, callback) {
                     code: eRetCodes.INTERNAL_SERVER_ERR,
                     message: `Http invoke error! - ${err.code}#${err.message}`
                 });
+            }
+            if (options.rawResponse === true) {
+                return callback(null, rsp);
             }
             if ([eRetCodes.SUCCESS, eRetCodes.CREATED].indexOf(rsp.statusCode) === -1) {
                 let msg = rsp.body || rsp.statusMessage || 'Server error!';
@@ -225,10 +236,10 @@ exports.invokeHttpRequest = function (options, callback) {
 
 /**
  * The parameter parser for http request
- * @param {json object} params 
- * @param {mandatory, optional} options 
- * @param {*} callback 
- * @returns 
+ * @param {json object} params
+ * @param {mandatory, optional} options
+ * @param {*} callback
+ * @returns
  */
 exports.parseParameters = function (params, options, callback) {
     logger.info(`Input parameters: ${_inspect(params)}`);
@@ -293,82 +304,26 @@ exports.parseParameters = function (params, options, callback) {
     return callback(errMsg, args);
 };
 
-function _validateParameter(field, validator, argv) {
-    let errMsg = null;
-    if (validator.enum) {
-        let enumValues = _isTypeOfArray(validator.enum)? validator.enum : Object.values(validator.enum);
-        if (enumValues.indexOf(argv) === -1) {
-            errMsg = `${field} value not allowed! - Should be one of ${_inspect(enumValues)}`;
+function _extractProps (args, propNames) {
+    let props = {};
+    let keys = Array.isArray(propNames)? propNames : Object.keys(propNames);
+    keys.forEach(key => {
+        if (args[key]) {
+            props[key] = args[key];
         }
-    }
-    if (errMsg !== null) {
-        return errMsg;
-    }
-    switch(validator.type) {
-        case 'ObjectId':
-            if (!ObjectId.isValid(argv)) {
-                errMsg = `Invalid ObjectId value: ${field}!`;
-            }
-            break;
-        case 'Number':
-            if (Number.isNaN(argv)) {
-                errMsg = `Should be Number for ${field}!`;
-            }
-            break;
-        case 'String':
-            break;
-        case 'Boolean':
-            if (typeof argv !== 'boolean') {
-                errMsg = `Should be Boolean for ${field}`;
-            }
-            break;
-    }
-    return errMsg;
+    });
+    return props;
 }
+exports.extractProps = _extractProps;
 
 exports.parseParameter2 = function (args, validator, callback) {
-    logger.debug(`Parsing: ${_inspect(args)}`);
-    if (typeof validator === 'function') {
-        callback = options;
-        validator = {};
-    }
-    let fields = Object.keys(validator);
-    if (fields.length === 0) {  // No validator provided or all arguments are validated
-        return callback(null, args);
-    }
-    // Only validated arguments will be parsed
-    let params = {};
-    let errMsg = null;
-    for (let i = 0; i < fields.length; i++) {
-        let field = fields[i];
-        let v = validator[field];
-        let argv = args[field];
-
-        if (argv === undefined) {
-            if (v.required === true) {
-                errMsg = `Missing parameter(s): ${field}!`;
-                break;
-            }
-            continue;
-        }
-        // Perform validation for exist field ...
-        errMsg = _validateParameter(field, v, argv);
-        if (errMsg !== null) {
-            break;
-        }         
-        // Copy directly
-        params[field] = argv;
-    }
-    if (errMsg) {
-        return callback({
-            code: eRetCodes.BAD_REQUEST,
-            message: errMsg
-        })
-    }
-    return callback(null, params);
+    return callback({
+        code: eRetCodes.GONE,
+        message: 'Using parseParameter from ac'
+    });
 };
 
-exports.checkSign = function (req, res, next) { 
+exports.checkSign = function (req, res, next) {
     return next();
 };
 
@@ -448,17 +403,83 @@ exports.sha1Sign = function() {
     return crypto.createHash('sha1').update(seed).digest('hex');
 };
 
-exports.isEmail = function(email) {
+function _isEmail (email) {
     let re = new RegExp(/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
     return re.test(email);
-};
+}
+exports.isEmail = _isEmail;
 
-exports.isMobile = function(mobile) {
+function _isMobile(mobile) {
     let r = new RegExp(/^1[3-9][0-9]\d{8}$/);
     return r.test(mobile);
-};
+}
+exports.isMobile = _isMobile;
 
-exports.isIpAddr = function(ip) {
+function _isIpAddr (ip) {
     let re = new RegExp(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/);
     return re.test(ip);
+}
+exports.isIpAddr = _isIpAddr;
+
+function _deepAssign () {
+    let target = arguments[0];
+    for (i = 1; i < arguments.length; i++) {
+        Object.keys(arguments[i]).forEach(key => {
+            target[key] = structuredClone(arguments[i][key]);
+        });
+    }
+    return target;
+}
+exports.deepAssign = _deepAssign;
+
+function _packMongoUri (config) {
+    let host = config.host || `${config.ip}:${config.port}`;
+    let params = ((conf) => {
+        let p = [];
+        let keys = Object.keys(conf.parameters || {});
+        if (keys.indexOf('authSource') === -1) {
+            p.push(`authSource=${conf.authSource || conf.db}`);
+        }
+        keys.forEach( key => {
+            p.push(`${key}=${conf.parameters[key]}`);
+        });
+        return p.join('&');
+    })(config);
+    let uri = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}`
+            + `@${host}/${config.db || ''}?${params}`;
+    return uri;
+}
+exports.packMongoUri = _packMongoUri;
+
+exports.deleteFromArray = function (arr, item) {
+    if (!Array.isArray(arr) || item === undefined) {
+        return null;
+    }
+    let index = arr.indexOf(item);
+    if (index !== -1) {
+        arr.splice(index, 1);
+    }
+    return null;
 };
+
+exports.addToSet = function (arr, item) {
+    if (arr.indexOf(item) === -1) {
+        arr.push(item);
+    }
+}
+
+/**
+ * Get pure ObjectId from Doc object recursivly
+ * @param { Object } doc - The document object
+ * @returns { ObjectId }
+ */
+function _purifyObjectId (doc) {
+    if (!doc || doc instanceof ObjectId) {
+        return doc;
+    }
+    if (typeof doc === 'string') {
+        return ObjectId(doc);
+    }
+    return _purifyObjectId(doc._id);
+}
+exports.purifyObjectId = _purifyObjectId;

@@ -35,18 +35,34 @@
     });
 })();
 
-const eSysMode = {
+const eSysStatus = {
     OFFLINE    : "offline",
     MAINTAIN   : "maintain",
     ONLINE     : "online"
 };
-exports.eSysMode = eSysMode;
+exports.eSysStatus = eSysStatus;
 
 const eDeployMode = {
     NATIVE     : 'native',
     K8S        : 'k8s'
 };
 exports.eDeployMode = eDeployMode;
+
+const eFrameworkModules = {
+    CONFIG          : '_config_',
+    REGISTRY        : '_registry_',
+    EBUS            : '_ebus_',
+    EVTLOGGER       : '_evtlogger_',
+    ICP             : '_icp_',
+    TIMER           : '_timer_',
+    DATASOURCE      : '_datasource_',
+    REPOSITORY      : '_repository_',
+    CACHE           : '_cache_',
+    ENDPOINT        : '_endpoint_',
+    ROUTER          : '_router_',
+    DLOCKER         : '_distlocker_'
+};
+exports.eFrameworkModules = eFrameworkModules;
 
 const eModuleState = {
     INIT         : 'init',
@@ -55,7 +71,7 @@ const eModuleState = {
     STOP_PENDING : 'pending'
 };
 exports.eModuleState = eModuleState;
-exports.isValidModuleState = (s) => {
+exports.isValidModuleStatus = function (s) {
     return Object.values(eModuleState).indexOf(s) > -1;
 };
 
@@ -63,21 +79,25 @@ const eModuleType = {
     OBJ          : 'obj',
     TASK         : 'task',
     APP          : 'app',
-    CONN         : 'conn',
-    OSEXT        : 'osext'
+    CM           : 'cm',   // connection manager
+    LIB          : 'lib'
 };
 exports.eModuleType = eModuleType;
-exports.isValidModuleType = (s) => {
+exports.isValidModuleType = function (s) {
     return Object.values(eModuleType).indexOf(s) > -1;
 };
 
 const eStatus = {
-    UNREG     : -1,
-    ACTIVE    : 0,
-    SUSPEND   : 1,
+    UNREG       : -1,
+    ACTIVE      : 0,
+    ACT_PENDING : 1,
     // set 2 - 8 as abnormal state for account
-    EXPIRED   : 2,
-    DELETED   : 9
+    EXPIRED     : 6,
+    SUSPEND     : 7,
+    DEL_PENDING : 8,
+    DELETED     : 9,
+    CLOSED      : 10,
+    EXTEND      : 100
 };
 exports.eStatus = eStatus;
 exports.isValidStatus = (s) => {
@@ -131,6 +151,37 @@ const eInterval = {
 };
 exports.eInterval = eInterval;
 
+const __1K = 1024;
+const __1M = __1K * __1K;
+const __1G = __1K * __1M;
+const eSize = {
+    _1K     : 1024,
+    _2K     : 2 * __1K,
+    _3K     : 3 * __1K,
+    _5K     : 5 * __1K,
+    _8K     : 8 * __1K,
+    _10K    : 10 * __1K,
+    _20K    : 20 * __1K,
+    _50K    : 50 * __1K,
+    _80K    : 80 * __1K,
+    _100K   : 100 * __1K,
+    _1M     : 1024 * __1K,
+    _2M     : 1 * __1M,
+    _3M     : 3 * __1M,
+    _5M     : 5 * __1M,
+    _8M     : 8 * __1M,
+    _10M    : 10 * __1M,
+    _20M    : 20 * __1M,
+    _50M    : 50 * __1M,
+    _100M   : 100 * __1M,
+    _200M   : 200 * __1M,
+    _500M   : 500 * __1M,
+    _800M   : 800 * __1M,
+    _1G     : 1024 * __1M,
+    _2G     : 2 * __1G,
+};
+exports.eSize = eSize;
+
 const eAlarmSeverity = {
     CRITICAL      : 5,        // RED       : vibrate + sound
     MAJOR         : 4,        // ORANGE    : sound
@@ -181,14 +232,13 @@ const eAlarmCode = {
 };
 exports.eAlarmCode = eAlarmCode;
 
-let eAlarmConfig = {
+const eAlarmConfig = {
     100: {
         alias: '无服务',
         severity: eAlarmSeverity.CRITICAL,
         suggest: '请尽快排查!'
     }
 };
-Object.freeze(eAlarmConfig);
 exports.eAlarmConfig = eAlarmConfig;
 
 const eRedisResult = {
@@ -228,12 +278,12 @@ const eEncoding = {
 exports.eEncoding = eEncoding;
 
 const eMetricType = {
-    COUNTER  : 'counter',
-    GAUGE    : 'gauge'
+    Counter  : 'counter',
+    Gauge    : 'gauge'
 };
 exports.eMetricType = eMetricType;
 
-exports.getUpdatableFields = function (paths, excludes = ['_id', 'version', 'createAt', 'updateAt']) {
+function  _getMutableFields (paths, excludes = ['_id', 'version', 'createAt', 'updateAt']) {
     let fields = Object.keys(paths);
     excludes.forEach( key => {
         let index = fields.indexOf(key);
@@ -242,11 +292,73 @@ exports.getUpdatableFields = function (paths, excludes = ['_id', 'version', 'cre
         }
     });
     return fields;
-};
+}
+exports.getUpdatableFields = _getMutableFields;
+exports.getMutableFields = _getMutableFields;
 
 const eRequestAuthType = {
     NONE     : 'none',
     JWT      : 'jwt',
+    COOKIE   : 'cookie',
     AKSK     : 'aksk' 
 };
 exports.eRequestAuthType = eRequestAuthType;
+exports.isValidAuthType = function(t) { return Object.values(eRequestAuthType).indexOf(t) > -1; }
+
+const eDbType = {
+    PROCMEM       : 'procmem',
+    NATIVE        : 'native',
+    MONGO         : 'mongo',
+    MYSQL         : 'mysql',
+    SQLSERVER     : 'sqlsrv'
+};
+exports.eDbType = eDbType;
+
+const eCacheEngine = {
+    Native        : 'native',
+    Redis         : 'redis',
+};
+exports.eCacheEngine = eCacheEngine;
+
+const eEventBusEngine = {
+    Native        : 'native',
+    RabbitMQ      : 'rabbitmq',
+    RocketMQ      : 'rocketmq',
+    Redis         : 'redis'
+};
+exports.eEventBusEngine = eEventBusEngine;
+
+const eOSSEngine = {
+    Native        : 'native',
+    AliOSS        : 'alioss'
+};
+exports.eOSSEngine = eOSSEngine;
+
+const eClientState = {
+    Null: 'null',
+    Init: 'init',
+    Conn0: 'conn0',
+    Conn: 'connected',
+    ConnErr: 'connerr',
+    Querying: 'querying',
+    PClosing: 'pclosed',
+    ClosePending: 'closepending',
+    Closing: 'closing',
+    Pending: 'pending',
+    Closed: 'closed'
+};
+exports.eClientState = eClientState;
+exports.eConnectionState = eClientState;
+
+const eServerState = {
+    Null: 'null',
+    Init: 'init'
+};
+exports.eServerState = eServerState;
+
+const ePatchOp = {
+    Add     : 'add',
+    Remove  : 'rm',
+    Replace : 'rep'
+};
+exports.ePatchOp = ePatchOp;

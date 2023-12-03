@@ -1,9 +1,14 @@
-# OS
+# File types
 **/.DS_Store
+**/~$*.*
+**/*.tgz
+
+# IDEs
+.idea/
+.vscode/
 
 # Project
-.idea/
 node_modules/
 logs/
 dist/
-**/*.tgz
+

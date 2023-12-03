@@ -3,7 +3,7 @@
  */
 
 // Define wings public return codes
-let eRetCodes = {
+const eRetCodes = {
     OP_FAILED: -1,
     // ========== NOTIFICATION
     CONTINUE: 100,
@@ -70,22 +70,25 @@ let eRetCodes = {
     RECHARGE_SERVER_ERR: 506,
     GATEWAY_OUT_SERVICE: 507,
     // DATABASE ERROR
-    DB_CONNECT_ERR: 510,
-    DB_QUERY_ERR: 511,
-    DB_INSERT_ERR: 512,
-    DB_UPDATE_ERR: 513,
-    DB_DELETE_ERR: 514,
-    REDIS_ERR: 515,
+    DB_ERROR: 510,
+    DB_CONNECT_ERR: 511,
+    DB_QUERY_ERR: 512,
+    DB_INSERT_ERR: 513,
+    DB_UPDATE_ERR: 514,
+    DB_DELETE_ERR: 515,
     // REDIS ERRORs
-    REDIS_CONN_ERR: 600,
-    REDIS_METHOD_NOTEXISTS: 601,
-    REDIS_METHOD_TOOMANYPARAMS: 602,
-    REDIS_BAD_REQUEST: 603,
+    REDIS_ERR: 600,
+    REDIS_CONN_ERR: 601,
+    REDIS_METHOD_NOTEXISTS: 602,
+    REDIS_METHOD_TOOMANYPARAMS: 603,
+    REDIS_BAD_REQUEST: 604,
+    // MQ ERRORs
+    MQ_ERR: 700,
+    MQ_SUB_ERR: 701,
+    MQ_PUB_ERR: 703, 
     // TEDIOUS ERRORs
     TEDIOUS_ERROR: 1433
 };
-Object.freeze(eRetCodes);
-
 
 if (typeof module !== 'undefined' && typeof module.exports != 'undefined') {
     module.exports = eRetCodes;

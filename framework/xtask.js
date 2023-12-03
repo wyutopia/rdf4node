@@ -4,60 +4,58 @@
  */
 const assert = require('assert');
 const async = require('async');
-const EventEmitter = require('events');
 const schedule = require('node-schedule');
-
-const pubdefs = require('../include/sysdefs');
-const {CommonModule} = require('../include/components');
-
-const theApp = require('../bootstrap');
+// 
+const Types = require('../include/types');
+const theApp = require('./app');
 const tools = require('../utils/tools');
-const { WinstonLogger } = require('./base/winston.wrapper');
+const sysdefs = require('../include/sysdefs');
+const { EventObject, EventModule } = require('../include/events');
+const mntService = require('../libs/base/prom.wrapper');
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'xtask');
-const mntService = require('./base/prom.wrapper');
 
 // the cron format:
 // second minute hour dayOfMonth month dayOfWeek
 
-const MODULE_NAME = "TASKS_MNG";
+const _MODULE_NAME = "TASKS_MNG";
 
 const eMetricNames = {
-    activeTasks : 'active_tasks'
+    activeTasks: 'active_tasks'
 };
 
-const metricCollector = mntService.regMetrics({
-    moduleName: MODULE_NAME,
-    metrics:[{
-        name: eMetricNames.activeTasks,
-        type: pubdefs.eMetricType.GAUGE
-    }]
-});
-
 //
-class XTaskManager extends CommonModule {
+class XTaskManager extends EventModule {
     constructor(props) {
         super(props)
         //
-        this.tasks = {};
+        this._tasks = {};
+        this._metricCollector = mntService.regMetrics({
+            moduleName: _MODULE_NAME,
+            metrics: [{
+                name: eMetricNames.activeTasks,
+                type: sysdefs.eMetricType.Gauge
+            }]
+        });
+        //
         this.register = (task) => {
-            this.tasks[task._id] = task;
+            this._tasks[task._id] = task;
             //
-            metricCollector[eMetricNames.activeTasks].inc(1);
+            this._metricCollector[eMetricNames.activeTasks].inc(1);
         },
-        this.dispose = (callback) => {
-            logger.info(`${this.name}: Stop all tasks ...`);
-            let keys = Object.keys(this.tasks);
-            async.eachLimit(keys, 4, (key, next) => {
-                let task = this.tasks[key];
-                if (typeof task.dispose === 'function') {
-                    return task.dispose(next);
-                }
-                return process.nextTick(next);
-            }, () => {
-                logger.info(`${this.name}: All tasks stopped.`);
-                return callback();
-            });
-        }
+            this.dispose = (callback) => {
+                logger.info(`${this.$name}: Stop all backgroud tasks ...`);
+                async.eachLimit(Object.keys(this._tasks), 3, (key, next) => {
+                    let task = this._tasks[key];
+                    if (typeof task.dispose === 'function') {
+                        return task.dispose(next);
+                    }
+                    return process.nextTick(next);
+                }, () => {
+                    logger.info(`${this.$name}: All backgroud tasks stopped.`);
+                    return callback();
+                });
+            }
         //
         (() => {
             theApp.regModule(this);
@@ -65,14 +63,18 @@ class XTaskManager extends CommonModule {
     }
 }
 const taskMng = new XTaskManager({
-    name: MODULE_NAME,
+    $name: _MODULE_NAME,
     mandatory: true,
-    state: pubdefs.eModuleState.ACTIVE,
-    type: pubdefs.eModuleType.TASK
+    state: sysdefs.eModuleState.ACTIVE,
+    type: sysdefs.eModuleType.TASK
 });
 
 // The interval task wrapper
-class XTask extends EventEmitter {
+class XTask extends EventObject {
+    /**
+     * The class constructor
+     * @param {Types.XTaskProperties} props 
+     */
     constructor(props) {
         assert(props !== undefined);
         super(props);
@@ -85,7 +87,7 @@ class XTask extends EventEmitter {
 
         // Member variables
         this.alias = props.alias || 'XTask';
-        this.interval = props.interval || pubdefs.eInterval._5_SEC;
+        this.interval = props.interval || sysdefs.eInterval._5_SEC;
         this.startup = props.startup !== undefined ? props.startup.toUpperCase() : 'AUTO';
         this.cronExp = props.cronExp;
         this.immediateExec = props.immediateExec;
@@ -104,11 +106,11 @@ class XTask extends EventEmitter {
         this.doWork = () => {
             //logger.debug(this.alias, 'Start working...');
             if (!this._run) {
-                logger.debug(`${this.alias}: stopped.`);
+                logger.debug(`${this.$name}: stopped.`);
                 return null;
             }
             if (this._mutex) {
-                logger.error(`${this.alias}: loop conflict!`);
+                logger.error(`${this.$name}: loop conflict!`);
                 return null;
             }
             this._mutex = true;
@@ -182,15 +184,18 @@ class XTask extends EventEmitter {
             }
         }
         // Register task
-        taskMng.register(this);
-        if (!this._isAbstract) {
-            if (this.startDelayMs) {
-                setTimeout(this._bootstrap.bind(this), this.startDelayMs);
-            } else {
-                this._bootstrap();
+        (() => {
+            taskMng.register(this);
+            if (!this._isAbstract) {
+                if (this.startDelayMs) {
+                    setTimeout(this._bootstrap.bind(this), this.startDelayMs);
+                } else {
+                    this._bootstrap();
+                }
             }
-        }
+        })();
     }
 }
 
+// Define module
 module.exports = exports = XTask;

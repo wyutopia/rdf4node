@@ -1,12 +1,14 @@
 /**
 * Created by Eric on 2021/12/28
 */
+// System libs
 const async = require('async');
 const {Connection, Request, TYPES} = require('tedious');
-const pubdefs = require('../../include/sysdefs');
+// Framework libs
+const sysdefs = require('../../include/sysdefs');
+const eClientState = sysdefs.eClientState;
 const eRetCodes = require('../../include/retcodes');
-const {CommonObject,  CommonModule, eClientState} = require('../../include/components');
-const theApp = require('../../bootstrap');
+const {CommonObject,  CommonModule} = require('../../include/base');
 const tools = require('../../utils/tools');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
@@ -65,7 +67,7 @@ const eDataTypes = {
 function _convertDataType(t) {
     let dt = eDataTypes[t];
     if (dt === undefined) {
-        logger.error(`${this.name}[${this.state}]: Invalid DataType!`);
+        logger.error(`${this.$name}[${this.state}]: Invalid DataType!`);
         dt = TYPES.Null;
     }
     return dt;
@@ -77,7 +79,7 @@ class TdsClient extends CommonObject {
         //
         this.config = options.config;
         this.connectionRetry = options.connectionRetry !== undefined? options.connectionRetry : true;
-        this.connectionRetryInterval = options.connectionRetryInterval? options.connectionRetryInterval : pubdefs.eInterval._10_SEC;
+        this.connectionRetryInterval = options.connectionRetryInterval? options.connectionRetryInterval : sysdefs.eInterval._10_SEC;
         this.hRetry = null;
         this.state = eClientState.Null;
         this.connection = null;
@@ -87,28 +89,28 @@ class TdsClient extends CommonObject {
         },
         this.connect = () => {
             if (this.state !== eClientState.Null) {
-                logger.error(`${this.name}[${this.state}]: Not idle.`)
+                logger.error(`${this.$name}[${this.state}]: Not idle.`)
                 return null;
             }
             this.state = eClientState.Init;
             let conn = new Connection(this.config);
             conn.on('connect', (err) => {
                 if (this.state !== eClientState.Init) {
-                    logger.error(`${this.name}[${this.state}]: on <CONNECT> - Invalid state!`);
+                    logger.error(`${this.$name}[${this.state}]: on <CONNECT> - Invalid state!`);
                     return null;
                 }
                 if (err) {
-                    logger.error(`${this.name}[${this.state}]: ${err.message}`);
+                    logger.error(`${this.$name}[${this.state}]: ${err.message}`);
                     this.state = eClientState.Null;
                 } else {
-                    logger.info(`${this.name}[${this.state}]: on <CONNECT> - Server connected.`);
+                    logger.info(`${this.$name}[${this.state}]: on <CONNECT> - Server connected.`);
                     this.connection = conn;
                     this.state = eClientState.Conn;
                 }
                 return null;
             });
             conn.on('end', () => {
-                logger.info(`${this.name}[${this.state}]: Connection closed.`);
+                logger.info(`${this.$name}[${this.state}]: Connection closed.`);
                 switch(this.state) {
                     case eClientState.Init:
                         this.state = eClientState.Null;
@@ -128,13 +130,13 @@ class TdsClient extends CommonObject {
                 }
             })
             conn.on('error', (err) => {
-                logger.error(`${this.name}[${this.state}]: ${err.message}`);
+                logger.error(`${this.$name}[${this.state}]: ${err.message}`);
                 this.state = eClientState.PClosing;
             });
             conn.connect();
         },
         this.execute = (options, callback) => {
-            logger.debug(`${this.name}[${this.state}]: ${tools.inspect(options)}`);
+            logger.debug(`${this.$name}[${this.state}]: ${tools.inspect(options)}`);
             if (this.connection === null) {
                 let msg = `Execute error: connection lost! - ${tools.inspect(options)}`;
                 logger.error(msg);
@@ -145,7 +147,7 @@ class TdsClient extends CommonObject {
             }
             let req = new Request(options.statement, (err, rowCount, rows) => {
                 if (err) {
-                    logger.error(`${this.name}[${this.state}]: ${err.message}`);
+                    logger.error(`${this.$name}[${this.state}]: ${err.message}`);
                     return callback(err);
                 }
                 return callback(null, rowCount);
@@ -159,14 +161,14 @@ class TdsClient extends CommonObject {
                         req.addParameter(key, _convertDataType.call(this, p.type), p.value);
                     });
                 } catch (ex) {
-                    logger.error(`${this.name}[${this.state}]: ${ex.message}`);
+                    logger.error(`${this.$name}[${this.state}]: ${ex.message}`);
                 }
             }
             this.connection.execSql(req);
         }
         this.dispose = (callback) => {
             if (this.state === eClientState.Conn) {
-                logger.info(`${this.name}[${this.state}]: Close connection...`);
+                logger.info(`${this.$name}[${this.state}]: Close connection...`);
                 this.state = eClientState.Closing;
                 this.connection.close();
             }
@@ -189,11 +191,11 @@ class TdsWrapper extends CommonModule {
             return client;
         },
         this.dispose = (callback) => {
-            logger.info(`${this.name}: destroy all clients...`);
+            logger.info(`${this.$name}: destroy all clients...`);
             async.eachLimit(this._clients, 4, (client, next) => {
                 return client.dispose(next);
             }, () => {
-                logger.info(`${this.name}: all clients destroyed.`);
+                logger.info(`${this.$name}: all clients destroyed.`);
                 return callback();
             });
         }
@@ -204,10 +206,11 @@ class TdsWrapper extends CommonModule {
     }
 }
 const tdsWrapper = new TdsWrapper({
-    name: 'TdsClientManager',
-    type: pubdefs.eModuleType.CONN,
+    $name: 'TdsClientManager',
+    $type: sysdefs.eModuleType.CM,
+    //
     mandatory: true,
-    state: pubdefs.eModuleState.ACTIVE
+    state: sysdefs.eModuleState.ACTIVE
 });
 
 module.exports = exports = tdsWrapper;
