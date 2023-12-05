@@ -364,11 +364,11 @@ class Repository extends EventObject {
                 });
             }
             logger.debug(`findOneAndUpdate with params: ${tools.inspect(params)}`);
-            const options = params.options || {
+            const options = Object.assign({
                 upsert: true,
                 setDefaultsOnInsert: true,
                 new: true
-            };
+            }, params.options || {});
             return this._model.findOneAndUpdate(params.filter, params.updates, options, (err, doc) => {
                 if (err) {
                     let msg = `Insert error! - ${err.message}`;
