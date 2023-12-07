@@ -818,7 +818,8 @@ class RepositoryFactory extends EventModule {
 }
 
 module.exports = exports = {
-    _DS_DEFAULT_: 'default',
+    _DS_SYSTEM_ : 'system',
+    _DS_DEFAULT_ : 'default',
     paginationVal: {
         pageSize: {
             type: 'String'
