@@ -74,6 +74,9 @@ exports.isTypeOfDate = function (obj) {
 
 const gPrimitiveTypes = ['undefined', 'boolean', 'number', 'bigint', 'string'];
 exports.isTypeOfPrimitive = function (v) {
+    if (v instanceof ObjectId) {
+        return true;
+    }
     return gPrimitiveTypes.indexOf(typeof v) !== -1;
 }
 

@@ -21,17 +21,30 @@ const tools = require('../utils/tools');
 const {dsFactory} = require('./data-source');
 const {eDataType, eLoadPolicy, initCacheSpec, cacheFactory} = require('./cache');
 
+const _reExclusion = new RegExp(/^\-/g);
 function _packCacheSafeSelect(origSelect, cacheSpec) {
-    if (cacheSpec.allowCache === false || !cacheSpec.select) {
+    if (!origSelect || cacheSpec.allowCache === false || !cacheSpec.select) {
         return origSelect;
     }
-    const selArr = typeof origSelect === 'string'? origSelect.split(' ') : Object.keys(origSelect || {});
+    const origSelKeys = typeof origSelect === 'string'? origSelect.split(' ') : Object.keys(origSelect || {});
+    if (_reExclusion.test(origSelKeys[0])) { // The original select is an exclusion projection, using cacheSpec.select instead
+        return cacheSpec.select;
+    }
     cacheSpec.select.split(' ').forEach(key => {
-        if (selArr.indexOf(key) === -1) {
-            selArr.push(key);
+        if (origSelKeys.indexOf(key) === -1) {
+            origSelKeys.push(key);
         }
-    });
-    return selArr.join(' ');
+    }); 
+    return origSelKeys.join(' ');
+}
+
+function _packCacheSafePopulate(origPopulate, cacheSpec) {
+    if (cacheSpec.allowCache === false || !cacheSpec.populate) {
+        return origPopulate;
+    }
+    const origArr = origPopulate? (tools.isTypeOfArray(origPopulate)? origPopulate : [origPopulate]) : [];
+    const cacheArr = tools.isTypeOfArray(cacheSpec.populate)? cacheSpec.populate : [cacheSpec.populate];
+    return origArr.concat(cacheArr);
 }
 
 /**
@@ -41,10 +54,18 @@ function _packCacheSafeSelect(origSelect, cacheSpec) {
  * @param {function} callback 
  */
 function _uniQuery(query, options, callback) {
-    ['select', 'sort', 'skip', 'limit', 'populate'].forEach(method => {
+    const select = _packCacheSafeSelect(options.select, this.cacheSpec);
+    if (select) {
+        query.select(select)
+    }
+    const populate = _packCacheSafePopulate(options.populate, this.cacheSpec);
+    if (populate) {
+        query.populate(populate);
+    }
+    // 
+    ['sort', 'skip', 'limit'].forEach(method => {
         if (options[method]) {
-            let argv = method === 'select'? _packCacheSafeSelect(options[method], this.cacheSpec) : options[method];            
-            query[method](argv);
+            query[method](options[method]);
         }
     });
     return query.exec((err, result) => {
@@ -99,13 +120,15 @@ function _updateOne(params, callback) {
     }
     logger.debug(`Update: ${this.$name} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`);
     //
-    let query = this._model.findOneAndUpdate(filter, updates, options);
-    ['select', 'populate'].forEach(method => {
-        if (params[method]) {
-            let argv = method === 'select'? _packCacheSafeSelect(params[method], this.cacheSpec) : params[method];
-            query[method](argv);
-        }
-    });
+    const query = this._model.findOneAndUpdate(filter, updates, options);
+    const select = _packCacheSafeSelect(options.select, this.cacheSpec);
+    if (select) {
+        query.select(select)
+    }
+    const populate = _packCacheSafePopulate(options.populate, this.cacheSpec);
+    if (populate) {
+        query.populate(populate);
+    }
     query.exec((err, doc) => {
         if (err) {
             let msg = `Update ${this.$name} error! - ${err.message}`;
@@ -460,7 +483,7 @@ class Repository extends EventObject {
                         message: msg
                     });
                 }
-                let result = {
+                const result = {
                     total: total,
                     pageSize: ps,
                     page: pn
@@ -470,11 +493,18 @@ class Repository extends EventObject {
                     return callback(null, result);
                 }
                 // Assemble query promise
-                let query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
-                ['select', 'sort', 'populate', 'allowDiskUse'].forEach(method => {
+                const query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
+                const select = _packCacheSafeSelect(options.select, this.cacheSpec);
+                if (select) {
+                    query.select(select)
+                }
+                const populate = _packCacheSafePopulate(options.populate, this.cacheSpec);
+                if (populate) {
+                    query.populate(populate);
+                }
+                ['sort', 'allowDiskUse'].forEach(method => {
                     if (options[method]) {
-                        let argv = method === 'select'? _packCacheSafeSelect(options[method], this.cacheSpec) : options[method];
-                        query[method](argv);
+                        query[method](options[method]);
                     }
                 });
                 return query.exec((err, docs) => {
