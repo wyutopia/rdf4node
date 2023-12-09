@@ -17,17 +17,20 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 const _DEFAULT_TTL = sysdefs.eInterval._5_MIN;
 
-const _typeEntity = {
-    dsName: 'String',      // Name of DataSource
-    modelName: 'String',   // Name of DataModel
-    id: 'ObjectId'         // ObjectId of entity
-};
+/**
+ * @typedef { Object } LockEntity
+ * @prop { string } dsName  - The dataSource name
+ * @prop { string } modelName - The model name
+ * @prop { ObjectId } id - the entity id
+ */
 
-const _typeCallOptions = {
-    auto: 'Boolean',       // Clean up flag, default value is false.
-    ttl: 'Number',         // TTL of the locker in mileseconds
-    caller: 'String'
-};
+/**
+ * @typedef { Object } LockOptions
+ * @prop { boolean } auto - Clean up flag, default value is false.
+ * @prop { number } ttl - 
+ * @prop { string } owner - The entity who own the locker
+ */
+
 
 function _packKey (entity) {
     return `${entity.modelName}:${entity.id}`;
@@ -56,6 +59,11 @@ class DistributedEntityLocker extends CommonObject {
         this._persistant = props.persistant !== undefined? props.persistant : false;
         this._locks = {};
         // Implement methods
+        /**
+         * @param { LockEntity } entity
+         * @param { LockOptions } options
+         * @param { function } callback
+         */
         this.lockOne = (entity, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
