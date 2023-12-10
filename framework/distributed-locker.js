@@ -4,6 +4,7 @@
 const async = require('async');
 const path = require('path');
 const EventEmitter = require('events');
+const util = require('util');
 // Framework libs
 const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
@@ -79,6 +80,8 @@ class DistributedEntityLocker extends CommonObject {
             this._locks[key] = _createLock.call(this, options);
             return callback(null, key);
         },
+        this.lockOneAsync = util.promisify(this.lockOne);
+        
         this.unlockOne = (key, callback) => {
             let locker = this._locks[key];
             if (locker.hTimeout) {
@@ -87,6 +90,8 @@ class DistributedEntityLocker extends CommonObject {
             delete this._locks[key];
             return callback(null, key);
         },
+        this.unlockOneAsync = util.promisify(this.unlockOne);
+
         this.lockMany = (entities, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -115,6 +120,8 @@ class DistributedEntityLocker extends CommonObject {
             });
             return callback(null, keys);
         },
+        this.lockManyAsync = util.promisify(this.lockManyAsync);
+
         this.unlockMany = (keys, callback) => {
             keys.forEach(key => {
                 let lock = this._locks[key];
@@ -125,10 +132,12 @@ class DistributedEntityLocker extends CommonObject {
             });
             return callback(null, keys);
         }
+        this.unlockManyAsync = util.promisify(this.unlockMany);
         //
-        this.listPartial = ({pageSize, pageNum, page}, callback) => {
+        this.list = ({pageSize, pageNum, page}, callback) => {
             return callback(null, Object.keys(this._locks));
-        }
+        },
+        this.listAsync = util.promisify(this.listPartial);
     }
 }
 
