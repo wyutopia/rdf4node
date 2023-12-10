@@ -20,16 +20,16 @@ const _DEFAULT_TTL = sysdefs.eInterval._5_MIN;
 
 /**
  * @typedef { Object } LockEntity
- * @prop { string } dsName  - The dataSource name
- * @prop { string } modelName - The model name
  * @prop { ObjectId } id - the entity id
+ * @prop { string } modelName - The model name
+ * @prop { string } dsName  - The dataSource name
  */
 
 /**
  * @typedef { Object } LockOptions
  * @prop { boolean } auto - Clean up flag, default value is false.
- * @prop { number } ttl - 
- * @prop { string } owner - The entity who own the locker
+ * @prop { number } ttl - The locker TTL value
+ * @prop { string } owner - The entity who owns the locker
  */
 
 
@@ -61,6 +61,7 @@ class DistributedEntityLocker extends CommonObject {
         this._locks = {};
         // Implement methods
         /**
+         * Lock single domain entity
          * @param { LockEntity } entity
          * @param { LockOptions } options
          * @param { function } callback
@@ -82,6 +83,10 @@ class DistributedEntityLocker extends CommonObject {
         },
         this.lockOneAsync = util.promisify(this.lockOne);
         
+        /**
+         * Unlock single domain entity 
+         * @param { string } key - The key of a lock
+         */
         this.unlockOne = (key, callback) => {
             let locker = this._locks[key];
             if (locker.hTimeout) {
@@ -92,6 +97,12 @@ class DistributedEntityLocker extends CommonObject {
         },
         this.unlockOneAsync = util.promisify(this.unlockOne);
 
+        /**
+         * Lock multiple domain entities
+         * @param { LockEntity[] } entities - The domain entities array
+         * @param { LockOptions } options
+         * @param { function } callback
+         */
         this.lockMany = (entities, options, callback) => {
             if (typeof options === 'function') {
                 callback = options;
@@ -121,7 +132,12 @@ class DistributedEntityLocker extends CommonObject {
             return callback(null, keys);
         },
         this.lockManyAsync = util.promisify(this.lockManyAsync);
-
+        /**
+         * Unlock multiple domain entities
+         * @param { string[] } keys - The keys of all lock 
+         * @param { function } callback 
+         * @returns 
+         */
         this.unlockMany = (keys, callback) => {
             keys.forEach(key => {
                 let lock = this._locks[key];
