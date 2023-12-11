@@ -131,7 +131,7 @@ class DistributedEntityLocker extends CommonObject {
             });
             return callback(null, keys);
         },
-        this.lockManyAsync = util.promisify(this.lockManyAsync);
+        this.lockManyAsync = util.promisify(this.lockMany);
         /**
          * Unlock multiple domain entities
          * @param { string[] } keys - The keys of all lock 
