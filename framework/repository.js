@@ -121,11 +121,11 @@ function _updateOne(params, callback) {
     logger.debug(`Update: ${this.$name} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`);
     //
     const query = this._model.findOneAndUpdate(filter, updates, options);
-    const select = _packCacheSafeSelect(options.select, this.cacheSpec);
+    const select = _packCacheSafeSelect(params.select, this.cacheSpec);
     if (select) {
         query.select(select)
     }
-    const populate = _packCacheSafePopulate(options.populate, this.cacheSpec);
+    const populate = _packCacheSafePopulate(params.populate, this.cacheSpec);
     if (populate) {
         query.populate(populate);
     }
