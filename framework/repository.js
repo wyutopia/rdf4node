@@ -129,6 +129,9 @@ function _updateOne(params, callback) {
     if (populate) {
         query.populate(populate);
     }
+    if (params.sort) {
+        query.sort(params.sort);
+    }
     query.exec((err, doc) => {
         if (err) {
             let msg = `Update ${this.$name} error! - ${err.message}`;
