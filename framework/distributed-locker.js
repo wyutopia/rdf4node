@@ -153,7 +153,7 @@ class DistributedEntityLocker extends CommonObject {
         this.list = ({pageSize, pageNum, page}, callback) => {
             return callback(null, Object.keys(this._locks));
         },
-        this.listAsync = util.promisify(this.listPartial);
+        this.listAsync = util.promisify(this.list);
     }
 }
 
