@@ -21,13 +21,12 @@ const tools = require('../utils/tools');
 const {dsFactory} = require('./data-source');
 const {eDataType, eLoadPolicy, initCacheSpec, cacheFactory} = require('./cache');
 
-const _reExclusion = new RegExp(/^\-/g);
-function _packCacheSafeSelect(origSelect, cacheSpec) {
-    if (!origSelect || cacheSpec.allowCache === false || !cacheSpec.select) {
+function _packCacheSafeSelect(origSelect, allowCache, cacheSpec) {
+    if (!origSelect || allowCache === false || !cacheSpec.select) {
         return origSelect;
     }
     const origSelKeys = typeof origSelect === 'string'? origSelect.split(' ') : Object.keys(origSelect || {});
-    if (_reExclusion.test(origSelKeys[0])) { // The original select is an exclusion projection, using cacheSpec.select instead
+    if (origSelKeys[0].slice(0, 1) === '-') { // The original select is an exclusion projection, using cacheSpec.select instead
         return cacheSpec.select;
     }
     cacheSpec.select.split(' ').forEach(key => {
@@ -38,8 +37,8 @@ function _packCacheSafeSelect(origSelect, cacheSpec) {
     return origSelKeys.join(' ');
 }
 
-function _packCacheSafePopulate(origPopulate, cacheSpec) {
-    if (cacheSpec.allowCache === false || !cacheSpec.populate) {
+function _packCacheSafePopulate(origPopulate, allowCache, cacheSpec) {
+    if (allowCache === false || !cacheSpec.populate) {
         return origPopulate;
     }
     const origArr = origPopulate? (tools.isTypeOfArray(origPopulate)? origPopulate : [origPopulate]) : [];
@@ -54,11 +53,11 @@ function _packCacheSafePopulate(origPopulate, cacheSpec) {
  * @param {function} callback 
  */
 function _uniQuery(query, options, callback) {
-    const select = _packCacheSafeSelect(options.select, this.cacheSpec);
+    const select = _packCacheSafeSelect(options.select, this.allowCache || false, this.cacheSpec);
     if (select) {
         query.select(select)
     }
-    const populate = _packCacheSafePopulate(options.populate, this.cacheSpec);
+    const populate = _packCacheSafePopulate(options.populate, this.allowCache || false, this.cacheSpec);
     if (populate) {
         query.populate(populate);
     }
@@ -121,11 +120,11 @@ function _updateOne(params, callback) {
     logger.debug(`Update: ${this.$name} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`);
     //
     const query = this._model.findOneAndUpdate(filter, updates, options);
-    const select = _packCacheSafeSelect(params.select, this.cacheSpec);
+    const select = _packCacheSafeSelect(params.select, this.allowCache || false, this.cacheSpec);
     if (select) {
         query.select(select)
     }
-    const populate = _packCacheSafePopulate(params.populate, this.cacheSpec);
+    const populate = _packCacheSafePopulate(params.populate, this.allowCache || false, this.cacheSpec);
     if (populate) {
         query.populate(populate);
     }
@@ -497,11 +496,11 @@ class Repository extends EventObject {
                 }
                 // Assemble query promise
                 const query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
-                const select = _packCacheSafeSelect(options.select, this.cacheSpec);
+                const select = _packCacheSafeSelect(options.select, this.allowCache || false, this.cacheSpec);
                 if (select) {
                     query.select(select)
                 }
-                const populate = _packCacheSafePopulate(options.populate, this.cacheSpec);
+                const populate = _packCacheSafePopulate(options.populate, this.allowCache || false, this.cacheSpec);
                 if (populate) {
                     query.populate(populate);
                 }
