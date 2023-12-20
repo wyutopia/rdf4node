@@ -470,8 +470,8 @@ class Repository extends EventObject {
             }
             //
             let filter = options.filter || {};
-            let ps = parseInt(filter.pageSize || '10');
-            let pn = parseInt(filter.page || '1');
+            let ps = parseInt(options.pageSize || '10');
+            let pn = parseInt(options.page || '1');
 
             logger.debug(`Query ${this.$name} with filter: ${tools.inspect(filter)}`);
             //
