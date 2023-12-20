@@ -263,8 +263,7 @@ function _prepareFindOptions (req) {
     }
     //
     options.filter = args;
-    logger.debug(`${this.$name}: the base find options - ${tools.inspect(options)}`);
-    return callback(null, options);
+    return options;
 }
 /**
  * 

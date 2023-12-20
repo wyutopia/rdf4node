@@ -476,7 +476,7 @@ class Repository extends EventObject {
             logger.debug(`Query ${this.$name} with filter: ${tools.inspect(filter)}`);
             //
             let countMethod = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
-            this._model[countMethod](filter, (err, total) => {
+            this._model[countMethod](filter, (err, count) => {
                 if (err) {
                     let msg = `${countMethod} for ${this.$name} error! - ${err.message}`;
                     logger.error(msg);
@@ -486,11 +486,11 @@ class Repository extends EventObject {
                     });
                 }
                 const result = {
-                    total: total,
+                    total: count,
                     pageSize: ps,
                     page: pn
                 };
-                if (total === 0) {
+                if (count === 0) {
                     result.values = [];
                     return callback(null, result);
                 }
