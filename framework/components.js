@@ -259,7 +259,7 @@ function _prepareFindOptions (req) {
         options.select = this._select;
     }
     if (this._populate) {
-        options.popualte = this._populate;
+        options.populate = this._populate;
     }
     //
     options.filter = args;
