@@ -46,8 +46,8 @@ function _initSelf(options) {
 }
 
 const _ALLOW_CONTENT_TYPE = [
-    "image/jpg", "image/jpeg", "image/png", "image/svg+xml",
-    "text/csv", "text/csv-schema", "text/xml",
+    "image/jpg", "image/jpeg", "image/png", "image/svg+xml", "image/svg",
+    "text/csv", "text/csv-schema", "text/xml", "text/plain",
     "audio/aac", "audio/mpeg", "audio/mp4",
     "video/H263", "video/H264", "video/H265", "video/mp4"
 ];
