@@ -1,19 +1,20 @@
 /**
  * Created by Eric on 2021/09/09
  */
+// The nodejs libs
 const assert = require('assert');
 const crypto = require('crypto');
-const ObjectId = require('mongoose').Types.ObjectId;
-const request = require('request');
 const spawn = require('child_process').spawn;
 const util = require("util");
 const { networkInterfaces } = require("os");
+// The 3rd-party libs
+const { ObjectId } = require('bson');
+const request = require('request');
 const { v4: uuidv4 } = require('uuid');
-// Framework libs
+// The framework libs
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes.js');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
-const { experimental } = require('@grpc/grpc-js');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'tools');
 
 function _noop() {}

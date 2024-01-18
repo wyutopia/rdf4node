@@ -2,12 +2,12 @@
  * Created by Eric on 2023/02/16
  */
 const {
+    pubdefs,
     mongoose: db,
     cache: {eDataType, eLoadPolicy}
-} = require('@icedeer/rdf4node');
+} = require('../applications');
 const Schema = db.Schema;
 const ObjectId = Schema.Types.ObjectId;
-const pubdefs = require('../common/pubdefs');
 
 // Define user schema
 let schema = new Schema({

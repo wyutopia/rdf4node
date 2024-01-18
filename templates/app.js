@@ -9,7 +9,7 @@ const {
     MorganWrapper, httpMonitor, rateLimiter,
     winstonWrapper: { WinstonLogger },
     expressWrapper: express 
-} = require('@icedeer/rdf4node');
+} = require('./applications');
 const httpLogger = MorganWrapper(process.env.SRV_ROLE);
 const logger = WinstonLogger(process.env.SRV_ROLE);
 

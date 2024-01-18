@@ -1,7 +1,7 @@
 /**
  * Created by Eric on 2022/09/20
  */
-const pubdefs = require('../../common/pubdefs');
+const { pubdefs } = require('../../applications');
 const usrCtl = require('../../controllers/users');
 
 module.exports = exports = [

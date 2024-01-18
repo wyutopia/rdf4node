@@ -2,12 +2,11 @@
  * Created by Eric on 2023/02/16
  */
 const {
-    tools, eRetCodes,
+    pubdefs, tools, eRetCodes,
     winstonWrapper: {WinstonLogger},
     components: {ServiceBase}
-} = require('@icedeer/rdf4node');
+} = require('../applications');
 const logger = WinstonLogger(process.env.SRV_ROLE);
-const pubdefs = require('../common/pubdefs');
 const _MODULE_NAME_ = pubdefs.eAppModules.UserSvc;
 const appEvents = require('../common/app-events');
 

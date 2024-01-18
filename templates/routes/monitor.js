@@ -1,7 +1,7 @@
 /**
  * Created by Eric 2021/06/17
  */
- const {monitor} = require('@icedeer/rdf4node');
+ const {monitor} = require('../applications');
 
  module.exports = exports = [
    {

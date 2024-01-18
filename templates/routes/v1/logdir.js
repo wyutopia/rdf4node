@@ -1,8 +1,7 @@
 /**
  * Created by Eric on 2022/09/22
  */
- const {logDir} = require('@icedeer/rdf4node');
- const pubdefs = require("../../common/pubdefs");
+ const {pubdefs, logDir} = require('../../applications');
  
  module.exports = exports = [
      {

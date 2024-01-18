@@ -8,7 +8,7 @@ sysBootstrap(err => {
     const {
         sysConfig: config,
         winstonWrapper: {WinstonLogger}
-    } = require('@icedeer/rdf4node');
+    } = require('../applications');
     require('../common/extensions');
     const logger = WinstonLogger(process.env.SRV_ROLE || 'www');
     let app = require('../app');

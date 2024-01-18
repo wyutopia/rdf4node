@@ -102,4 +102,10 @@ cp -f "${TEMP_DIR}/views/api.ejs" .
 cd ..
 echo "Folder views modified."
 
+# Step 10: Create application entry
+mkdir -p applications && cd applications
+cp -f "${TEMP_DIR}/applications/index.js" .
+cd ..
+echo "Folder applications created."
+
 echo "<<< Congratulations!!! >>>"

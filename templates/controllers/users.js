@@ -2,12 +2,11 @@
  * Created by Eric on 2022/09/20
  */
  const {
-    tools, 
+    pubdefs, tools, 
     winstonWrapper: {WinstonLogger},
     components: { EntityController }
 } = require('@icedeer/rdf4node');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'usr');
-const pubdefs = require('../common/pubdefs');
 const _MODULE_NAME = pubdefs.eAppModules.UserCtl;
 
 // Import model 
