@@ -75,7 +75,7 @@ exports.isTypeOfDate = function (obj) {
 
 const gPrimitiveTypes = ['undefined', 'boolean', 'number', 'bigint', 'string'];
 exports.isTypeOfPrimitive = function (v) {
-    if (v instanceof ObjectId) {
+    if (ObjectId.isValid(v) {
         return true;
     }
     return gPrimitiveTypes.indexOf(typeof v) !== -1;
@@ -478,11 +478,11 @@ exports.addToSet = function (arr, item) {
  * @returns { ObjectId }
  */
 function _purifyObjectId (doc) {
-    if (!doc || doc instanceof ObjectId) {
+    if (!doc) {
         return doc;
     }
-    if (typeof doc === 'string') {
-        return ObjectId(doc);
+    if (ObjectId.isValid(doc)) {
+        return new ObjectId(doc);
     }
     return _purifyObjectId(doc._id);
 }
