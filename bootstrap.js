@@ -1,16 +1,11 @@
 /**
  * Created by Eric on 2023/02/07
+ * Upgraded by Eric on 2024/01/19
  */
-// Step 1: Load bootstrap config
-// Step 2: Init framework components
-// Step 3: Load database schemas
-// Step 4: Build caches
-// Step 5: Start application modules (Controllers, Services, DaemonTasks)
-// Step 6: Prepare system monitoring metrics
-
 // Node libs
 const fs = require('fs');
 const path = require('path');
+const util = require('util');
 // 3rd libs
 const async = require('async');
 const appRoot = require('app-root-path');
@@ -18,6 +13,9 @@ const appRoot = require('app-root-path');
 const sysdefs = require('./include/sysdefs');
 const config = require("./include/config");
 const tools = require('./utils/tools');
+//
+const { Application } = require('./framework/app');
+
 // Create application core instance
 global._$theApp = require('./framework/app');
 // Framework libs
@@ -91,6 +89,12 @@ function _loadDatabaseSchemas(callback) {
     return callback();
 }
 
+async function _loadDatabaseSchemasAsync (dir, options = {}) {
+    const schemaDir = 
+    const schemas = await _readSchemaDirAsync(dir, options);
+
+}
+
 const enabledServices = bsConf.enabledServices || [];
 function _startServices(callback) {
     let serviceDir = path.join(appRoot.path, bsConf.serviceDir);
@@ -125,6 +129,9 @@ function _createEndpoints(callback) { // Only http endpoint is supported current
     return callback();
 }
 
+
+
+
 function _bootstrap(callback) {
     async.series([
         _initFramework,
@@ -137,8 +144,27 @@ function _bootstrap(callback) {
     });
 }
 
+async function _bootstrapAsync() {
+    const theApp = new Application(config.app);
+    // Step 1: Init framework components
+    await theApp.init();
+    // Step 2: Load enabled database schemas
+    await theApp.loadDatabaseSchemas();
+    // Step 3: Start enabled services
+    await theApp.startServices();
+    // Step 4: Open endpoints
+    await theApp.startEndpoints();
+    // Step 5: 
+
+    // Set as global
+    global.theApp = theApp;
+    return 'ok';
+}
+
 // Declaring module exports
 module.exports = exports = {
-    loadDatabaseSchemas: _loadDatabaseSchemas,
-    sysBootstrap: _bootstrap
+    loadDataModel : _loadDataModel,
+    loadDataModelAsync : util.promisify(_loadDataModel),
+    bootstrap: _bootstrap,
+    bootstrapAsync: _bootstrapAsync
 };

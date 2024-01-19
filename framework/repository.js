@@ -862,5 +862,6 @@ module.exports = exports = {
     },
     repoFactory: new RepositoryFactory({
         $name: _MODULE_NAME
-    })
+    }),
+    RepositoryFactory
 }

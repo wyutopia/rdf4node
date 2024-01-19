@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * Created by Eric on 2021/11/10
+ * Updatede by Eric on 2024/01/19
  */
 const assert = require('assert');
 const async = require('async');
@@ -9,6 +10,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 // project libs
+
+
+
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
 const tools = require('../utils/tools');
@@ -96,36 +100,157 @@ function _buildModuleArch() {
 }
 
 const _typeAppConfig = {
-
+    id: os.hostname(),
+    name: 'a9kb',
+    alias: 'a9kb-app',
+    registry: 'a9kb-app',
+    tags: [],
+    //
+    enableMonitor: false,
+    security: {
+        ip: false,
+        encryptKey: '123abcABC',
+        expiresIn: "72h",
+        enableRateLimit: false,
+        enableAuthentication: true,
+        enableAuthorization: false
+    },
+    rateLimit: {
+        options: {
+            windowMs: 60000,
+            max: 60,
+            expireTimeMs: 900000
+        },
+        store: {
+            type: 'mongo',
+            confPath: 'dataSources.default.config'
+        }
+    },
+    defaultDataSource: 'default',
+    allowedModels: null,    // null means all models
+    allowedServices: null   // null means all services
 }
-function _initApp(props) {
 
+function _initApp(props) {
+    Object.keys(_typeAppConfig).forEach(key => {
+        let propKey = '_' + key;
+        if (props[key] === undefined) {
+            this[propKey] = _typeAppConfig[key];
+        } else {
+            this[propKey] = tools.isTypeOfArray(_typeAppConfig[key])? 
+                _typeAppConfig[key].concat(props[key]) : Object.assign(_typeAppConfig[key] || {}, props[key])
+        }
+    })
+}
+
+const _excludeModelFolders = ['.DS_Store', '_templates'];
+function _readModelDirSync(modelDir, loadedModels) {
+    //logger.debug(`====== Scan directory: ${modelDir}`);
+    let entries = fs.readdirSync(modelDir, {
+        withFileTypes: true
+    });
+    entries.forEach(dirent => {
+        let fullPath = path.join(modelDir, dirent.name);
+        if (dirent.isDirectory()) {
+            if (_excludeModelFolders.indexOf(dirent.name) !== -1) { // Ignore excluded folers
+                return null;
+            }
+            return _readModelDirSync.call(this, fullPath, loadedModels);
+        }
+        //
+        try {
+            const modelSpec = require(fullPath);
+            const modelName = modelSpec.modelName;
+            if (this.allowedModels && this.allowedModels.indexOf(modelName) === -1) {
+                return null;
+            }
+            //
+            let cacheConf = config.caches[modelName] || {};
+            // Get allowCache switch
+            let allowCache = ((allowCache, config) => { // cache config has the privilege
+                return config.enabled !== undefined? config.enabled : (allowCache !== undefined? allowCache : false);
+            })(modelSpec.allowCache, cacheConf);
+            // Assemble cacheOptions = cacheSpecProps + cacheEntityProps
+            let cacheSpec = Object.assign({}, modelSpec.cacheSpec, cacheConf.spec);
+            this.repoFactory.registerSchema(modelName, {
+                schema: modelSpec.modelSchema,
+                refs: modelSpec.modelRefs || [],
+                // Cache options
+                allowCache,
+                cacheSpec 
+            });
+            logger.debug(`${modelName} cache settings: ${allowCache} - ${tools.inspect(cacheSpec)}`);
+            loadedModels.push(modelName);
+        } catch (ex) {
+            logger.error(`====== Load database schema from: ${dirent.name} error! - ${ex.message}`);
+        }
+    });
+    return null;
 }
 
 // The application class
-class TheApp extends EventEmitter {
+class Application extends EventEmitter {
     constructor(props) {
         super();
         // Declaring member variables
-        this._id = `${props.registry}_${process.env.DEPLOY === sysdefs.eDeployMode.NATIVE? tools.uuidv4() : os.hostname()}`;
-        this.$name = props.name || this._id;
         _initApp.call(this, props);
-        
-        this._config = Object.assign(config, {pushAlarm: true});
         this._state = sysdefs.eModuleState.INIT;
-        this._modules = {};
-        this._arch = _buildModuleArch();
-        this._isMaster = false;
-        // Implementing member methods
-        this.getName = () => {
-            return this.$name;
+        this._consulClient = null;
+        //
+        this.repoFactory = new RepositoryFactory({$name: 'RepoFactory'})
+        //
+        (() => {
+
+        })();
+    }
+    // Implementing member methods
+    getName () {
+        return this._name;
+    }
+    getId() {
+        return this._id;
+    }
+    setState(s) {
+        this._state = s;
+    }
+    getState() {
+        return this._state;
+    }
+    fetchServices (callback) {
+        return _consulClient.listServices(callback);
+    }
+    //
+    async init() {
+        return false;
+    }
+    /**
+     * 
+     * @returns
+     */
+    async loadDatabaseSchemas() {        
+        try {
+            const modelDir = path.join(appRoot.path, 'models');
+            logger.info(`>>> Setp 2: Load all database schemas from ${modelDir} ... <<<`);
+            const loadedModels = [];
+            _readModelDirSync.call(this, modelDir, loadedModels);
+            logger.info(`>>> Total ${loadedModels.length} database schemas registered. <<<`);
+            return true;
+        } catch (ex) {
+            logger.error(`!!! Load database schemas error! - `, ex);
+            return Promise.reject(ex);
         }
+    }
+    async startServices() {
+        return false;
+    }
+    async startEndpoints() {
+        return false;
+    }
+    //
         this.getInstance = () => {
             return this._id;
         }
-        this.fetchServices = (callback) => {
-            return consulClient.listServices(callback);
-        }
+        this.
         this.fetchServiceNodes = (serviceName, callback) => {
             return consulClient.listServiceNodes(serviceName, callback);
         }
