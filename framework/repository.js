@@ -740,8 +740,8 @@ function _deepGetModelRefs(modelSpecs, key, totalRefs) {
 
 // The repository-factory
 class RepositoryFactory extends EventModule {
-    constructor(props) {
-        super(props);
+    constructor(appCtx, props) {
+        super(appCtx, props);
         //
         this._modelSpecs = {};
         this._repos = {};
@@ -860,8 +860,5 @@ module.exports = exports = {
             type: 'String'
         }
     },
-    repoFactory: new RepositoryFactory({
-        $name: _MODULE_NAME
-    }),
     RepositoryFactory
 }

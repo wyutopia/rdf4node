@@ -191,6 +191,6 @@ class DistributedEntityLocker extends CommonObject {
     listAsync = util.promisify(this.list);
 }
 
-module.exports = new DistributedEntityLocker({
-    $name: _MODULE_NAME
-});
+module.exports = exports = {
+    DistributedEntityLocker
+};

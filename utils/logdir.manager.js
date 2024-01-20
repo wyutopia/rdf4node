@@ -8,11 +8,11 @@ const path = require('path');
 const moment = require('moment');
 
 const eRetCodes = require('../include/retcodes.js');
-const tools = require('./tools');
-const XTask = require('../framework/xtask.js');
-const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const tools = require('./tools.js');
+const { XTask } = require('../framework/xtask.js');
+const { WinstonLogger } = require('../libs/base/winston.wrapper.js');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'logdir');
-const {parseParameters} = require('../framework/ac');
+const { parseParameters } = require('../framework/ac.js');
 let logDir = process.env.LOG_DIR || path.join(appRoot.path, 'logs');
 console.log(`>>>>>> Log directory: ${logDir}`);
 
@@ -24,7 +24,7 @@ function _isExclude(filename) {
 exports.listDir = {
     val: {},
     fn: function (req, res) {
-        _realReadDir(logDir, function(err, files) {
+        _realReadDir(logDir, function (err, files) {
             if (err) {
                 return res.sendRsp(err.code, err.message);
             }
@@ -34,7 +34,7 @@ exports.listDir = {
                 size: 0,
                 manifest: []
             };
-            async.eachLimit(files, 2, function(file, callback) {
+            async.eachLimit(files, 2, function (file, callback) {
                 let fullPathFile = path.join(logDir, file);
                 fs.stat(fullPathFile, (err, stats) => {
                     if (err) {
@@ -51,7 +51,7 @@ exports.listDir = {
                     });
                     return callback();
                 })
-            }, function() {
+            }, function () {
                 logger.info(`Scan result: ${tools.inspect(result)}`);
                 return res.sendSuccess(result);
             });
@@ -84,7 +84,7 @@ function _cleanLogDir(lastModTime, callback) {
         callback = lastModTime;
         lastModTime = new Date(moment().format('YYYY-MM-DD')).valueOf();
     }
-    _realReadDir(logDir, function(err, files) {
+    _realReadDir(logDir, function (err, files) {
         if (err) {
             cleanMutex = false;
             return res.sendRsp(err.code, err.message);
@@ -116,12 +116,15 @@ class ScheduledCleanTask extends XTask {
     }
 }
 
-// second minute hour dayOfMonth month dayOfWeek
-new ScheduledCleanTask({
-    alias: 'WeeklyLogFilesCleaner',
-    startup: 'SCHEDULE',
-    cronExp: '0 0 8 * * 1'
-});
+
+exports.init = function (appCtx) {
+    appCtx.taskManager.create('weeklyCleaner', ScheduledCleanTask, {
+        alias: 'WeeklyLogFilesCleaner',
+        startup: 'SCHEDULE',
+        // second minute hour dayOfMonth month dayOfWeek
+        cronExp: '0 0 8 * * 1'
+    });
+}
 
 exports.removeFiles = {
     val: {},
@@ -186,7 +189,7 @@ function _safeRemoveFiles(files, lastModTime, callback) {
 }
 
 function _realReadDir(dir, callback) {
-    fs.readdir(dir, function(err, files) {
+    fs.readdir(dir, function (err, files) {
         if (err) {
             logger.error(`Read logDir error! - ${err.code} - ${err.message}`);
             return callback(err);

@@ -135,8 +135,8 @@ function _initCacheEntity (ett, props) {
 
 // The cache class
 class Cache extends EventModule {
-    constructor(props) {
-        super(props);
+    constructor(appCtx, props) {
+        super(appCtx, props);
         // Define cache-entity properties
         _initCacheEntity(this, props.cacheProps);
         this._dataRepo = {};
@@ -226,8 +226,8 @@ class Cache extends EventModule {
 
 // The cache factory class
 class CacheFactory extends EventModule {
-    constructor(props) {
-        super(props);
+    constructor(appCtx, props) {
+        super(appCtx, props);
         //
         this._caches = {};
         /**
@@ -255,7 +255,5 @@ module.exports = exports = {
     eDataType: eDataType,
     eLoadPolicy: eLoadPolicy,
     initCacheSpec: _initCacheSpec,
-    cacheFactory: new CacheFactory({
-        $name: _MODULE_NAME
-    })
+    CacheFactory
 };

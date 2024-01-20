@@ -73,8 +73,8 @@ class DataSource extends EventObject {
 
 // The factory class
 class DataSourceFactory extends EventModule {
-    constructor(props) {
-        super(props);
+    constructor(appCtx, props) {
+        super(appCtx, props);
         //
         this._ds = {};
         // Implementing methods
@@ -119,7 +119,6 @@ class DataSourceFactory extends EventModule {
 }
 
 module.exports = exports = {
-    dsFactory: new DataSourceFactory({
-        name: _MODULE_NAME
-    })
+    _DS_DEFAULT : 'default',
+    DataSourceFactory
 };

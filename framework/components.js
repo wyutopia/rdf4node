@@ -116,8 +116,8 @@ function _publishEvents(options, callback) {
 }
 
 class ControllerBase extends EventModule {
-    constructor(props) {
-        super(props);
+    constructor(appCtx, props) {
+        super(appCtx, props);
         // Declaring member variables
         // Implementing member methods
         this._getRepositories = (modelNames, dsName = 'default') => {
@@ -378,8 +378,8 @@ function _findUpdatedKeys (doc, updates, options) {
 
 // The class
 class EntityController extends ControllerBase {
-    constructor(props) {
-        super(props);
+    constructor(appCtx, props) {
+        super(appCtx, props);
         // Init repo properties
         this.modelName = props.modelName || 'test';
         this.modelSchema = props.modelSchema || {};
@@ -964,8 +964,8 @@ class EntityController extends ControllerBase {
 
 // The ServiceBase class
 class ServiceBase extends EventModule {
-    constructor(props) {
-        super(props);
+    constructor(appCtx, props) {
+        super(appCtx, props);
         // Declaring other variables and methods here ...
     }
 };

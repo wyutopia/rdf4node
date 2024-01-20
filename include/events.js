@@ -22,7 +22,10 @@ const _DEFAULT_CHANNEL_ = 'default';
 const _DEFAULT_PUBKEY_ = 'pubEvents';
 const _DEFAULT_DEST_ = 'local';
 
-const sysEvents = {
+const eDomainEvent = {
+    // System
+    SYS_APP_START                  : '_sys.start',
+    SYS_APP_STOP                   : '_sys.stop',
     // Module
     SYS_MODULE_CREATE              : '_module.create',
     SYS_MODULE_INIT                : '_module.init',
@@ -59,8 +62,9 @@ class EventObject extends EventEmitter {
 
 // Declaring the EventModule
 class EventModule extends EventObject {
-    constructor(props) {
+    constructor(appCtx, props) {
         super(props);
+        this._appCtx = appCtx;
         initModule.call(this, props);
         // Save event properties
         this._eventHandlers = props.eventHandlers || {};
@@ -86,19 +90,12 @@ class EventModule extends EventObject {
                 callback = options;
                 options = this._eventOptions;
             }
-            //
-            if (!this._ebus) {
-                return callback({
-                    code: eRetCodes.INTERNAL_SERVER_ERR,
-                    message: 'Initialize EventBus before using!'
-                })
-            }
             if (event.headers === undefined) {
                 event.headers = {
                     source: this.$name
                 }
             }
-            return this._ebus.publish(event, options, err => {
+            return theApp.icp.publish(event, options, err => {
                 if (err) {
                     return callback(err);
                 }
@@ -124,22 +121,18 @@ class EventModule extends EventObject {
         this.on('message', (msg, ackOrNack) => {
             setTimeout(this._msgProc.bind(this, msg, ackOrNack), 1);
         });
-        // Perform initiliazing codes...
+        // Register the module
         (() => {
-            if (this._ebus) {
-                let options = Object.assign({
-                    subEvents: Object.keys(this._eventHandlers)
-                }, this._eventOptions);
-                this._ebus.register(this, options);
-            }
+            let options = Object.assign({
+                subEvents: Object.keys(this._eventHandlers)
+            }, this._eventOptions);
+            this._appCtx.registerModule(this, options);
         })();
     }
 }
 
 // Declaring module exports
 module.exports = exports = {
-    EventObject: EventObject,
-    EventModule: EventModule,
-    eSysEvents: sysEvents,
-    _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEFAULT_DEST_
+    eDomainEvent,  _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEFAULT_DEST_,
+    EventObject, EventModule,
 };

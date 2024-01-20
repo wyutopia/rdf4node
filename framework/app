@@ -3,27 +3,31 @@
  * Created by Eric on 2021/11/10
  * Updatede by Eric on 2024/01/19
  */
+// Node libs
 const assert = require('assert');
+const appRoot = require('app-root-path');
 const async = require('async');
 const EventEmitter = require('events');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 // project libs
-
-
-
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
+const promMonitor = require('../libs/base/prom.monitor');
+const logDirManager = require('../utils/logdir.manager');
+const { eSysEvents: eDomainEvent } = require('../include/events');
 const tools = require('../utils/tools');
 //
-const {app: config} = require('../include/config');
-const consulClient = (config.consul? require('../libs/base/consul.wrapper') : null);
-const {WinstonLogger} = require('../libs/base/winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
-
-let version = null;
-let consulSignIn = false;
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'app');
+//
+const { Registry } = require('./registry');
+const { DataSourceFactory } = require('./data-source');
+const { EventBus, EventLogger } = require('./ebus');
+const { RepositoryFactory } = require('./repository');
+const { CacheFactory } = require('./cache');
+const { EndpointFactory } = require('./endpoint');
 
 function _regService(callback) {
     if (consulClient === null) {
@@ -75,7 +79,7 @@ function _deregService(callback) {
     });
 }
 
-function _raiseStartupAlarm(callback) {
+function _fireStartupAlarm(callback) {
     let options = {
         eventId: sysdefs.eAlarmCode.SERVICE_STARTUP,
         content: 'This is a startup alarm test!'
@@ -83,7 +87,7 @@ function _raiseStartupAlarm(callback) {
     return this.fireAlarm(options, callback);
 }
 
-function _raiseGracefulExitAlarm(callback) {
+function _fireExitAlarm(callback) {
     let options = {
         eventId: sysdefs.eAlarmCode.GRACEFUL_EXIT,
         content: 'This is a graceful-exit alarm test!'
@@ -99,12 +103,22 @@ function _buildModuleArch() {
     return arch;
 }
 
+const eAppState = {
+    INIT     : 0,
+    READY    : 1,
+    ACTIVE   : 2,
+    SUSPEND  : 3
+};
 const _typeAppConfig = {
     id: os.hostname(),
     name: 'a9kb',
     alias: 'a9kb-app',
     registry: 'a9kb-app',
+    version: 'a.b.c',
     tags: [],
+    //
+    arch: _buildModuleArch(),
+    state: eAppState.INIT,
     //
     enableMonitor: false,
     security: {
@@ -126,18 +140,16 @@ const _typeAppConfig = {
             confPath: 'dataSources.default.config'
         }
     },
-    defaultDataSource: 'default',
-    allowedModels: null,    // null means all models
-    allowedServices: null   // null means all services
+    defaultDataSource: 'default'
 }
 
-function _initApp(props) {
+function _initSelf(props) {
     Object.keys(_typeAppConfig).forEach(key => {
         let propKey = '_' + key;
         if (props[key] === undefined) {
             this[propKey] = _typeAppConfig[key];
         } else {
-            this[propKey] = tools.isTypeOfArray(_typeAppConfig[key])? 
+            this[propKey] = tools.isTypeOfArray(_typeAppConfig[key]) ?
                 _typeAppConfig[key].concat(props[key]) : Object.assign(_typeAppConfig[key] || {}, props[key])
         }
     })
@@ -168,7 +180,7 @@ function _readModelDirSync(modelDir, loadedModels) {
             let cacheConf = config.caches[modelName] || {};
             // Get allowCache switch
             let allowCache = ((allowCache, config) => { // cache config has the privilege
-                return config.enabled !== undefined? config.enabled : (allowCache !== undefined? allowCache : false);
+                return config.enabled !== undefined ? config.enabled : (allowCache !== undefined ? allowCache : false);
             })(modelSpec.allowCache, cacheConf);
             // Assemble cacheOptions = cacheSpecProps + cacheEntityProps
             let cacheSpec = Object.assign({}, modelSpec.cacheSpec, cacheConf.spec);
@@ -177,7 +189,7 @@ function _readModelDirSync(modelDir, loadedModels) {
                 refs: modelSpec.modelRefs || [],
                 // Cache options
                 allowCache,
-                cacheSpec 
+                cacheSpec
             });
             logger.debug(`${modelName} cache settings: ${allowCache} - ${tools.inspect(cacheSpec)}`);
             loadedModels.push(modelName);
@@ -193,18 +205,25 @@ class Application extends EventEmitter {
     constructor(props) {
         super();
         // Declaring member variables
-        _initApp.call(this, props);
-        this._state = sysdefs.eModuleState.INIT;
-        this._consulClient = null;
+        _initSelf.call(this, props);
         //
-        this.repoFactory = new RepositoryFactory({$name: 'RepoFactory'})
-        //
-        (() => {
-
-        })();
+        this.registry = new Registry(this, {$name: sysdefs.eFrameworkModules.REGISTRY});
+        this.ebus = new EventBus(this, {$name: sysdefs.eFrameworkModules.EBUS});;
+        this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
+        this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
+        this.cacheFactory = new CacheFactory(this, {$name: sysdefs.eFrameworkModules.CACHE});
+        this.distLocker = new DistributedEntityLocker(this);
+        this.epFactory = new EndpointFactory(this);
+    }
+    getVersion() {
+        if (this._version === null) {
+            const pkgJson = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8'));
+            this._version = pkgJson.version;
+        }
+        return this._version;
     }
     // Implementing member methods
-    getName () {
+    getName() {
         return this._name;
     }
     getId() {
@@ -216,20 +235,57 @@ class Application extends EventEmitter {
     getState() {
         return this._state;
     }
-    fetchServices (callback) {
+    fetchServices(callback) {
         return _consulClient.listServices(callback);
     }
     //
-    async init() {
-        return false;
-    }
     /**
      * 
+     * @param { Object } config - The framework config
+     * @param { Object? } config.registry
+     * @param { Object? } config.dataSources
+     * @param { Object? } config.eventBus
+     * @returns 
+     */
+    async initFramework(config) {
+        if (this._state !== eAppState.INIT) {
+            return Promise.reject({
+                code: eRetCodes.INTERNAL_SERVER_ERR,
+                message: 'Framework components already initialized.'
+            });
+        }
+        promMonitor.init(this);
+        logDirManager.init(this);
+
+        if (config.registry) {
+            this.registry.init(config.registry);
+        }
+        if (config.dataSources) {
+            this.dsFactory.init(config.dataSources);
+        }
+        if (config.eventBus) {
+            this.ebus.init(config.eventBus);
+        }
+        if (config.endpoints) {
+            this.epFactory.init(config.endpoints);
+        }
+        //TODO: Add other framework components here ...
+        this._state = eAppState.READY;
+        return true;
+    }
+    /**
+     * @param { Object } options
+     * @param { string? } options.modelDir - The 
+     * @param { string[]?} options.excludeModels - The exclude model names 
+     * @param { string[]?} options.includeModels - The included model names
      * @returns
      */
-    async loadDatabaseSchemas() {        
+    async loadDataModels(options) {
+        const modelDir = path.join(appRoot.path, options.modelDir || 'models');
+        if (options.excludeModels !== undefined) {
+            this._excludeModels = options.excludeModels;
+        }
         try {
-            const modelDir = path.join(appRoot.path, 'models');
             logger.info(`>>> Setp 2: Load all database schemas from ${modelDir} ... <<<`);
             const loadedModels = [];
             _readModelDirSync.call(this, modelDir, loadedModels);
@@ -241,223 +297,172 @@ class Application extends EventEmitter {
         }
     }
     async startServices() {
-        return false;
+        return true;
     }
     async startEndpoints() {
-        return false;
+        return true;
     }
     //
-        this.getInstance = () => {
-            return this._id;
+    // Fire alarm
+    async fireAlarm(args, options) {
+        if (typeof options === 'function') {
+            callback = options;
+            options = {};
         }
-        this.
-        this.fetchServiceNodes = (serviceName, callback) => {
-            return consulClient.listServiceNodes(serviceName, callback);
+        return false;
+        // if (process.env.NODE_ENV !== 'production' && !options.alwaysSend) {
+        //     logger.debug(`Ignore fire alarm on development env.`);
+        //     return callback();
+        // }
+        // if (!apmConf) {
+        //     logger.warn(`APM server not configed!`);
+        //     return callback();
+        // }
+        // let req = {
+        //     url: `${apmConf.baseUrl}/v1/alarm/raise`,
+        //     method: 'POST',
+        //     json: true,
+        //     body: {
+        //         service: args.service || this.getServiceAlias(),
+        //         instance: this._id,
+        //         eventId: args.eventId,
+        //         content: args.content
+        //     }
+        // };
+        // logger.debug(`Alarm options: ${tools.inspect(req)}`);
+        // req.bodyParser = tools.defaultBodyParser;
+        // tools.invokeHttpRequest(req, (err, body) => {
+        //     if (err) {
+        //         return callback(err);
+        //     }
+        //     return callback(null, body);
+        // });
+    }
+    /**
+     *
+     * @param mod
+     */
+    registerModule(mod, events) {
+        logger.info(`New module registry: ${mod.$name} - ${mod.mandatory} - ${mod.state}`);
+        if (this._modules[mod.$name] !== undefined) {
+            logger.error(`>>>>>> Conflict! ${mod.name} already exists.`)
+        } else {
+            this._modules[mod.$name] = mod;
+            // Add to clean up chain
+            let layer = mod.type || sysdefs.eModuleType.OBJ;
+            this._arch[layer].push(mod);
         }
-        this.getRegistry = () => {
-            return appConf.registry;
+    }
+    updateModuleState(name, s) {
+        assert(name !== undefined);
+        assert(sysdefs.isValidModuleState(s));
+        if (this._modules[name] !== undefined) {
+            this._modules[name].state = s;
+            logger.info(name, s);
+        } else {
+            logger.error(`Unrecognized module name: ${name}`);
         }
-        this.setState = (s) => {
-            this._state = s;
-        }
-        // Fire alarm
-        this.fireAlarm = (args, options, callback) => {
-            if (typeof options === 'function') {
-                callback = options;
-                options = {};
-            }
-            return callback();
-            // if (process.env.NODE_ENV !== 'production' && !options.alwaysSend) {
-            //     logger.debug(`Ignore fire alarm on development env.`);
-            //     return callback();
-            // }
-            // if (!apmConf) {
-            //     logger.warn(`APM server not configed!`);
-            //     return callback();
-            // }
-            // let req = {
-            //     url: `${apmConf.baseUrl}/v1/alarm/raise`,
-            //     method: 'POST',
-            //     json: true,
-            //     body: {
-            //         service: args.service || this.getServiceAlias(),
-            //         instance: this._id,
-            //         eventId: args.eventId,
-            //         content: args.content
-            //     }
-            // };
-            // logger.debug(`Alarm options: ${tools.inspect(req)}`);
-            // req.bodyParser = tools.defaultBodyParser;
-            // tools.invokeHttpRequest(req, (err, body) => {
-            //     if (err) {
-            //         return callback(err);
-            //     }
-            //     return callback(null, body);
-            // });
-        }
-        /**
-         *
-         * @param mod
-         */
-        this.regModule = (mod) => {
-            logger.info(`New module registry: ${mod.$name} - ${mod.mandatory} - ${mod.state}`);
-            if (this._modules[mod.$name] !== undefined) {
-                logger.error(`>>>>>> Conflict! ${mod.name} already exists.`)
-            } else {
-                this._modules[mod.$name] = mod;
-                // Add to clean up chain
-                let layer = mod.type || sysdefs.eModuleType.OBJ;
-                this._arch[layer].push(mod);
-            }
-        }
-        this.setModuleState = (name, s) => {
-            assert(name !== undefined);
-            assert(sysdefs.isValidModuleState(s));
-            if (this._modules[name] !== undefined) {
-                this._modules[name].state = s;
-                logger.info(name, s);
-            } else {
-                logger.error(`Unrecognized module name: ${name}`);
-            }
-        }
-        this.getModuleState = (name) => {
-            return this._modules[name]? this._modules[name].state : undefined;
-        }
-        this.isActive = () => {
-            let active = true;
-            let keys = Object.keys(this._modules);
-            for (let i = 0; i < keys.length; i++) {
-                let key = keys[i];
-                if (this._modules[key].mandatory === true && this._modules[key].state !== sysdefs.eModuleState.ACTIVE) {
-                    active = false;
-                    break;
-                }
-            }
-            return active;
-        }
-        this.gracefulExit = () => {
-            logger.info('>>>>>> Perform system clean-up before exit <<<<<<');
-            _raiseGracefulExitAlarm.call(this, () => {
-                logger.info(`>>>>>> Stop all modules ...`);
-                let layers = Object.keys(this._arch);
-                async.eachSeries(layers, (layer, callback) => {
-                    logger.info(`>>>>>>>> ${layer}: Clean up modules ...`);
-                    async.eachLimit(this._arch[layer], 4, (m, next) => {
-                        if (typeof m.dispose !== 'function') {
-                            return process.nextTick(next);
-                        }
-                        return m.dispose(next);
-                    }, () => {
-                        logger.info(`>>>>>>>> ${layer}: all modules disposed.`);
-                        return callback();
-                    });
-                }, () => {
-                    logger.info('>>>>>> All modules disposed.');
-                    _deregService.call(this, () => {
-                        return process.exit(0);
-                    });
-                });
-            });
-        }
-        this.isActive = () => {
-            return this._state === sysdefs.eModuleState.ACTIVE;
-        }
-        this.setInnerToken = (token) => {
-            this._prevToken = this._innerToken;
-            this._innerToken = token;
-        }
-        this.getAuthConfig = () => {
-            return this._config.auth;
-        }
-        this.setConfigAsync = (args, callback) =>{
-            if (args.token !== Buffer.from(config.accToken, 'base64').toString()) {
-                logger.error('Invalid secret!');
-                return callback({
-                    code: eRetCodes.FORBIDDEN,
-                    message: 'Invalid secret!'
-                });
-            }
-            let conf = sysdefs.extractValidConfig(args);
-            this._config = Object.assign(this._config, conf);
-            return callback(null, this._config);
-        }
-        this.setDebugLevel = (args, callback) => {
-            if (['info', 'debug', 'error'].indexOf(args.level) === -1) {
-                return callback({
-                    code: eRetCodes.BAD_REQUEST,
-                    message: 'Invalid level!'
-                })
-            }
-            return logger.setRotateFileLevel(args.level, callback);
-        }
-        /**
-         * Get configuration data
-         * @returns {*}
-         * @param path
-         * @param callback
-         */
-        this.getConfigAsync = (path, callback) => {
-            let val = undefined;
-            try {
-                let keys = path.split('.');
-                let i = 0;
-                val = this._config[keys[i++]];
-                while (i < keys.length) {
-                    val = val[keys[i++]];
-                }
-                return callback(null, val);
-            } catch (ex) {
-                return callback(ex);
+    }
+    getModuleState(name) {
+        return this._modules[name] ? this._modules[name].state : undefined;
+    }
+    isActive() {
+        let active = true;
+        let keys = Object.keys(this._modules);
+        for (let i = 0; i < keys.length; i++) {
+            let key = keys[i];
+            if (this._modules[key].mandatory === true && this._modules[key].state !== sysdefs.eModuleState.ACTIVE) {
+                active = false;
+                break;
             }
         }
-        this.getConfig = (path) => {
-            try {
-                let keys = path.split('.');
-                let i = 0;
-                let val = this._config[keys[i++]];
-                while (val !== undefined && i < keys.length) {
-                    val = val[keys[i++]];
-                }
-                return val;
-            } catch (err) {
-                logger.error(__file, __line, path, err.code, err.message);
-            }
+        return active;
+    }
+    isMaster = () => {
+        return (process.env.NODE_ENV === 'production' && this._isMaster === true);
+    }
+    updateInnerToken(token) {
+        this._prevToken = this._innerToken;
+        this._innerToken = token;
+    }
+    getAuthConfig() {
+        return this._security;
+    }
+    setDebugLevel(args, callback) {
+        if (['info', 'debug', 'error'].indexOf(args.level) === -1) {
+            return callback({
+                code: eRetCodes.BAD_REQUEST,
+                message: 'Invalid level!'
+            })
         }
-        this.getSysConfig = (req, res) => {
-            if (req.query.token !== Buffer.from(config.accToken, 'base64').toString()) {
-                return res.sendRsp(eRetCodes.FORBIDDEN, 'Access denied!');
-            }
-            return res.sendSuccess(this._config);
-        }
-        this.getVersion = (req, res) => {
-            if (version === null) {
-                version = JSON.parse(fs.readFileSync(path.join(__dirname + '/../conf/version.json')).toString());
-            }
-            return res.sendSuccess(version);
-        }
-        this.isMaster = () => {
-            return (process.env.NODE_ENV === 'production' && this._isMaster === true);
-        }
-        (() => {
-            let beginTime = new Date();
-            logger.info('>>>>>> System initializing <<<<<<');
-            async.parallel({
-                regService: _regService.bind(this),
-                fireStartupAlarm: _raiseStartupAlarm.bind(this)
-            }, () => {
-                logger.info(`>>>>>> System startup in ${new Date().valueOf() - beginTime.valueOf()}ms`);
-                this._state = sysdefs.eModuleState.ACTIVE;
+        return logger.setRotateFileLevel(args.level, callback);
+    }
+
+    async startServices() {
+        let serviceDir = path.join(appRoot.path, bsConf.serviceDir);
+        logger.info(`++++++ Step 3: Load all services module from ${serviceDir} ++++++`);
+        let allServices = [];
+        let entries = fs.readdirSync(serviceDir, {
+            withFileTypes: true
+        });
+        entries.forEach( dirent => {
+            if (dirent.isDirectory() || enabledServices.indexOf(dirent.name) === -1) {
                 return null;
+            }
+            let filePath = path.join(serviceDir, dirent.name);
+            try {
+                let svc = require(filePath);
+                let svcName = registry.register(svc);
+                allServices.push(svcName);
+            } catch (ex) {
+                logger.error(`Load service: ${dirent.name} error! - ${ex.message}`);
+            }
+        });
+        logger.debug(`>>> All available services: ${tools.inspect(allServices)}`);
+    }
+
+    async createEndpoints() {
+        return 'todo';
+    }
+    async start() {
+        if (this._state === _eState.INIT) {
+            logger.error('!!! Initializing first.');
+            return false;
+        }
+        //Register to the centered regsitry
+        //fire app startup alarm
+        //Change state to ACTIVE
+        return true;
+    }
+    // Handle graceful Exit
+    async gracefulExit() {
+        logger.info('>>> Perform system clean-up before exit... <<<');
+        //await _fireExitAlarm();
+        //
+        logger.info(`>>>>>> Stop all modules ...`);
+
+        let layers = Object.keys(this._arch);
+        async.eachSeries(layers, (layer, callback) => {
+            logger.info(`>>>>>>>> ${layer}: Clean up modules ...`);
+            async.eachLimit(this._arch[layer], 4, (m, next) => {
+                if (typeof m.dispose !== 'function') {
+                    return process.nextTick(next);
+                }
+                return m.dispose(next);
+            }, () => {
+                logger.info(`>>>>>>>> ${layer}: all modules disposed.`);
+                return callback();
             });
-        })();
+        }, () => {
+            logger.info('>>>>>> All modules disposed.');
+            _deregService.call(this, () => {
+                return
+            })
+        })
     }
 }
 
-let theApp = new TheApp(config);
-process.on('SIGINT', () => {
-    logger.info('>>>>>> On SIGINT <<<<<<');
-    theApp.setState(sysdefs.eModuleState.STOP_PENDING);
-    theApp.gracefulExit();
-});
-
-module.exports = exports = theApp;
+// Define module
+module.exports = exports = {
+    Application
+};

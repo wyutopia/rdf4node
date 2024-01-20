@@ -14,7 +14,7 @@
  const {WinstonLogger} = require('../base/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'mysql2');
  
- const mntService = require('../base/prom.wrapper');
+ const mntService = require('../base/prom.monitor');
  
  const MODULE_NAME = 'MYSQL_CM';  //
  /*********************************************
@@ -307,9 +307,9 @@ class MySqlConnectionPool extends EventEmitter{
 
 // The class
 class MysqlWrapper extends EventModule {
-    constructor(props) {
+    constructor(appCtx, props) {
         logger.info(`Create MySqlWrapper with props: ${tools.inspect(props)}`);
-        super(props);
+        super(appCtx, props);
         //
         this._pools = {};
         this._config = props.config || {};

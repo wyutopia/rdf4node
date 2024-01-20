@@ -11,7 +11,7 @@ const theApp = require('./app');
 const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
 const { EventObject, EventModule } = require('../include/events');
-const mntService = require('../libs/base/prom.wrapper');
+const mntService = require('../libs/base/prom.monitor');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'xtask');
 
@@ -25,9 +25,9 @@ const eMetricNames = {
 };
 
 //
-class XTaskManager extends EventModule {
-    constructor(props) {
-        super(props)
+class TaskFactory extends EventModule {
+    constructor(appCtx, props) {
+        super(appCtx, props)
         //
         this._tasks = {};
         this._metricCollector = mntService.regMetrics({
@@ -37,37 +37,40 @@ class XTaskManager extends EventModule {
                 type: sysdefs.eMetricType.Gauge
             }]
         });
+    }
+    //
+    create (name, fn, options) {
+        const t = this._tasks[name];
+        if (t !== undefined) {
+            logger.error(`${this.$name}: Task ${name} already exists!`);
+            return null;
+        }
+        if (fn instanceof XTask) {
+            this._tasks[name] = new fn(options);
+            return this._tasks[name];
+        }
+        // Do nothing
+        return null;
+    }
+    register(task) {
+        this._tasks[task._id] = task;
         //
-        this.register = (task) => {
-            this._tasks[task._id] = task;
-            //
-            this._metricCollector[eMetricNames.activeTasks].inc(1);
-        },
-            this.dispose = (callback) => {
-                logger.info(`${this.$name}: Stop all backgroud tasks ...`);
-                async.eachLimit(Object.keys(this._tasks), 3, (key, next) => {
-                    let task = this._tasks[key];
-                    if (typeof task.dispose === 'function') {
-                        return task.dispose(next);
-                    }
-                    return process.nextTick(next);
-                }, () => {
-                    logger.info(`${this.$name}: All backgroud tasks stopped.`);
-                    return callback();
-                });
+        this._metricCollector[eMetricNames.activeTasks].inc(1);
+    }
+    dispose(callback) {
+        logger.info(`${this.$name}: Stop all backgroud tasks ...`);
+        async.eachLimit(Object.keys(this._tasks), 3, (key, next) => {
+            let task = this._tasks[key];
+            if (typeof task.dispose === 'function') {
+                return task.dispose(next);
             }
-        //
-        (() => {
-            theApp.regModule(this);
-        })();
+            return process.nextTick(next);
+        }, () => {
+            logger.info(`${this.$name}: All backgroud tasks stopped.`);
+            return callback();
+        });
     }
 }
-const taskMng = new XTaskManager({
-    $name: _MODULE_NAME,
-    mandatory: true,
-    state: sysdefs.eModuleState.ACTIVE,
-    type: sysdefs.eModuleType.TASK
-});
 
 // The interval task wrapper
 class XTask extends EventObject {
@@ -198,4 +201,6 @@ class XTask extends EventObject {
 }
 
 // Define module
-module.exports = exports = XTask;
+module.exports = exports = {
+    TaskFactory, XTask
+};

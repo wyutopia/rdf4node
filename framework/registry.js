@@ -9,9 +9,10 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 // The class
 class Registry extends CommonObject {
-    constructor(props) {
-        super(props);
+    constructor(appCtx) {
+        super({$name: _MODULE_NAME});
         //
+        this.ebus = appCtx.ebus;
         this._modules = {};
         //
         this.register = (moduleRef) => {
@@ -36,6 +37,6 @@ class Registry extends CommonObject {
 }
 
 // Declaring module exports
-module.exports = exports = new Registry({
-    $name: _MODULE_NAME
-});
+module.exports = exports = {
+    Registry
+};
