@@ -2,7 +2,7 @@
  * The authentication and authorization module
  */
 const jsonwebtoken = require('jsonwebtoken');
-const {Types: {ObjectId}} = require('mongoose');
+const { ObjectId } = require('bson');
 //
 const eRetCodes = require('../include/retcodes');
 const tools = require('../utils/tools');
@@ -10,8 +10,8 @@ const {CommonModule} = require('../include/base');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE);
 //
-const sysConf = require('../include/config');
-const config = sysConf.security || {};
+const {app: appConf} = require('../include/config');
+const config = appConf.security || {};
 const ENCRYPT_KEY = config.encryptKey || 'abcd1234';
 const EXPIRES_IN = config.expiresIn || '72h';
 const DEFAULT_OPTIONS = config.signOptions || {

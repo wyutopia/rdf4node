@@ -9,8 +9,6 @@ const _rootDir = path.join(appRoot.path, 'routes');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
 const { accessCtl } = require('./ac');
-const tools = require('../utils/tools');
-const { app: appConf, security: secConf } = require('../include/config');
 
 /**
  * Middleware to Support CORS
@@ -18,12 +16,22 @@ const { app: appConf, security: secConf } = require('../include/config');
 const _ALLOW_HEADERS_BASE = [
     'Content-Type', 'Content-Length', 'Authorization', 'Accept', 'X-Requested-With', 'ActiveGroup', 'ActiveTenant', 'AuthToken'
 ];
-const _allowHeaders = secConf.allowHeaders ? _ALLOW_HEADERS_BASE.concat(secConf.allowHeaders) : _ALLOW_HEADERS_BASE;
-function _setCORS(router) {
+function _mergeAllowHeaders(allowHeaders) {
+    return allowHeaders? _ALLOW_HEADERS_BASE.concat(allowHeaders) : _ALLOW_HEADERS_BASE;
+}
+/**
+ * Setup CORS
+ * @param {*} router 
+ * @param { Object } options 
+ * @param { string? } options.allowOrigin - 
+ * @param { string[]? } options.allowHeaders - 
+ * @param { string? } options.allowMethods - 
+ */
+function _setCORS(router, options) {
     router.all('*', (req, res, next) => {
-        res.setHeader('Access-Control-Allow-Origin', secConf.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
-        res.setHeader('Access-Control-Allow-Headers', _allowHeaders.join(', '));
-        res.setHeader('Access-Control-Allow-Methods', secConf.allowMethods || 'POST, GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Origin', options.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
+        res.setHeader('Access-Control-Allow-Headers', _mergeAllowHeaders(options.allowHeaders).join(', '));
+        res.setHeader('Access-Control-Allow-Methods', options.allowMethods || 'POST, GET, OPTIONS');
         if (req.method === 'OPTIONS') {
             return res.sendStatus(200);
         }
@@ -31,11 +39,16 @@ function _setCORS(router) {
     });
 }
 
-function _addHomepage(router) {
+/**
+ * Setup homepage
+ * @param {*} router 
+ * @param {*} options 
+ */
+function _addHomepage(router, options) {
     /* GET home page. */
     router.get('/', (req, res, next) => {
         //TODO: Replace title with your own project name
-        res.render('index', { title: appConf.alias || 'the rappid-dev-framework!' });
+        res.render('index', { title: options.name || 'the rappid-dev-framework!' });
     });
 }
 
@@ -186,7 +199,7 @@ function _addAppRoutes(router) {
     }
 }
 
-function initRouter(router) {
+function initRouter(router, options) {
     _setCORS(router);
     _addHomepage(router);
     _addAppRoutes(router);

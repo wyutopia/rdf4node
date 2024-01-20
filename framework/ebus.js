@@ -245,10 +245,7 @@ const _typeRegisterOptions = {
 // Define the EventBus class
 class EventBus extends EventModule {
     constructor(appCtx, props) {
-        super(props);
-        //
-        this._appCtx = appCtx;
-        _initEventBus.call(this, props);
+        super(appCtx, props);
         //
         this._registries = {};
         this._subscribers = {};
@@ -262,7 +259,8 @@ class EventBus extends EventModule {
             logger.error(`Client#${clientId} end.`);
         });
     }
-    init () {
+    init (props) {
+        _initEventBus.call(this, props);
         this._rascalFactory = new RascalFactory(this._appCtx, {
             $name: _MODULE_NAME,
             $type: sysdefs.eModuleType.CM,

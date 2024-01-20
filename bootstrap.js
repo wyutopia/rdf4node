@@ -42,7 +42,7 @@ async function bootstrap() {
     });
     const result = {};
     try {
-        // Step 1: Init framework components
+        logger.info('====== Step 1: Init framework components ======');
         result.framework = await theApp.initFramework({
             registry: config.registry,
             eventBus: config.eventBus,
@@ -50,16 +50,19 @@ async function bootstrap() {
             caches: config.caches,
             endpoints: config.endpoints
         });
-        // Step 2: Load enabled database schemas
+        //
+        logger.info('====== Step 2: Load enabled database models ======');
         result.dataModels = await theApp.loadDataModel(config.dataModel || {});
-        // Step 4: Start enabled services
+        //
+        logger.info('====== Step 3: Start enabled services ======');
         result.services = await theApp.startServices(config.services);
-        // Step 5: Open endpoints
+        
+        logger.info('====== Step 4: Create endpoints ======');
         result.endpoints = await theApp.createEndpoints(config.endpoints);
-        // Step 6: 
+        // Step 5: 
         result.start = await theApp.start();
     } catch (ex) {
-        logger.error(`!!! `)
+        logger.error('!!! Bootstrap error! - ', ex);
     }
     return result;
 }

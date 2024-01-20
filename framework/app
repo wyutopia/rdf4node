@@ -14,13 +14,11 @@ const os = require('os');
 // project libs
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
-const promMonitor = require('../libs/base/prom.monitor');
-const logDirManager = require('../utils/logdir.manager');
 const { eSysEvents: eDomainEvent } = require('../include/events');
 const tools = require('../utils/tools');
 //
-const { WinstonLogger } = require('../libs/base/winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'app');
+const promMonitor = require('../libs/base/prom.monitor');
+const logDirManager = require('../utils/logdir.manager');
 //
 const { Registry } = require('./registry');
 const { DataSourceFactory } = require('./data-source');
@@ -28,7 +26,11 @@ const { EventBus, EventLogger } = require('./ebus');
 const { RepositoryFactory } = require('./repository');
 const { CacheFactory } = require('./cache');
 const { EndpointFactory } = require('./endpoint');
-
+const { DistributedEntityLocker } = require('./distributed-locker');
+//
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'app');
+//
 function _regService(callback) {
     if (consulClient === null) {
         logger.warn(`>>>>>> Consul not configged! -ignore register service.`);
@@ -58,7 +60,7 @@ function _regService(callback) {
 }
 
 function _deregService(callback) {
-    if (consulClient === null) {
+    if (!this.consulClient) {
         logger.warn(`>>>>>> Consul not configged! - ignore de-register service.`);
         return callback();
     }
@@ -150,7 +152,7 @@ function _initSelf(props) {
             this[propKey] = _typeAppConfig[key];
         } else {
             this[propKey] = tools.isTypeOfArray(_typeAppConfig[key]) ?
-                _typeAppConfig[key].concat(props[key]) : Object.assign(_typeAppConfig[key] || {}, props[key])
+                _typeAppConfig[key].concat(props[key]) : Object.assign({}, _typeAppConfig[key] || {}, props[key])
         }
     })
 }
@@ -206,14 +208,15 @@ class Application extends EventEmitter {
         super();
         // Declaring member variables
         _initSelf.call(this, props);
+        this._modules = {};
         //
+        this.ebus = new EventBus(this, {$name: sysdefs.eFrameworkModules.EBUS});
         this.registry = new Registry(this, {$name: sysdefs.eFrameworkModules.REGISTRY});
-        this.ebus = new EventBus(this, {$name: sysdefs.eFrameworkModules.EBUS});;
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.cacheFactory = new CacheFactory(this, {$name: sysdefs.eFrameworkModules.CACHE});
-        this.distLocker = new DistributedEntityLocker(this);
-        this.epFactory = new EndpointFactory(this);
+        this.distLocker = new DistributedEntityLocker({$name: sysdefs.eFrameworkModules.DLOCKER});
+        this.epFactory = new EndpointFactory(this, {$name: sysdefs.eFrameworkModules.ENDPOINT});
     }
     getVersion() {
         if (this._version === null) {
@@ -227,6 +230,9 @@ class Application extends EventEmitter {
         return this._name;
     }
     getId() {
+        return this._id;
+    }
+    getInstance() {
         return this._id;
     }
     setState(s) {
