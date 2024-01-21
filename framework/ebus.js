@@ -73,10 +73,6 @@ class EventLogger extends EventObject {
         this.consume = this.con;
     }
 }
-global._$eventLogger = new EventLogger({
-    $name: sysdefs.eFrameworkModules.EVTLOGGER
-});
-
 
 const _typeEventBusProps = {
     lo: true,         // Indicate local-loop. default is true: all events consumed localy.
@@ -112,7 +108,9 @@ function _initEventBus(props) {
         }
     });
     //
-    this._eventLogger = global._$eventLogger;
+    this._eventLogger = new EventLogger({
+        $name: sysdefs.eFrameworkModules.EVTLOGGER
+    });
 }
 
 /**
