@@ -238,7 +238,7 @@ class CacheFactory extends EventModule {
          */
         this.getCache = (name, cacheProps) => {
             if (this._caches[name] === undefined) {
-                this._caches[name] = new Cache({
+                this._caches[name] = new Cache(this._appCtx, {
                     $name: `${name}@${cacheProps.server || _CACHE_DEFAULT}`,
                     cacheProps
                 });

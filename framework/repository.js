@@ -18,8 +18,7 @@ const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 //
-const {dsFactory} = require('./data-source');
-const {eDataType, eLoadPolicy, initCacheSpec, cacheFactory} = require('./cache');
+const {eDataType, eLoadPolicy, initCacheSpec} = require('./cache');
 
 function _packCacheSafeSelect(origSelect, allowCache, cacheSpec) {
     if (!origSelect || allowCache === false || !cacheSpec.select) {
@@ -280,8 +279,9 @@ function _buildQueryFilter(data, cacheSpec) {
 
 // The repository class
 class Repository extends EventObject {
-    constructor(props) {
+    constructor(appCtx, props) {
         super(props);
+        this._appCtx = appCtx;
         // Set model property and declaring member variable
         this.modelName = props.modelName || 'User';
         this.modelSchema = props.modelSchema || {};
@@ -702,12 +702,12 @@ class Repository extends EventObject {
         };
         // Initialize data model and cache
         (() => {
-            let ds = dsFactory.getDataSource(this.dsName);
+            let ds = this._appCtx.getDataSource(this.dsName);
             if (ds) {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
             if (this.allowCache === true) {
-                this._cache = cacheFactory.getCache(this.modelName, this.cacheSpec);
+                this._cache = this._appCtx.getCache(this.modelName, this.cacheSpec);
             }
         })();
     }
@@ -784,7 +784,7 @@ class RepositoryFactory extends EventModule {
                 let spec = this._modelSpecs[name];
                 let key = `${name}@${dsName}`;
                 if (spec !== undefined && this._repos[key] === undefined) {
-                    this._repos[key] = new Repository({
+                    this._repos[key] = new Repository(this._appCtx, {
                         $name: key,
                         // model spec
                         modelName: name,

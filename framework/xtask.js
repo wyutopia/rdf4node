@@ -188,7 +188,6 @@ class XTask extends EventObject {
         }
         // Register task
         (() => {
-            taskMng.register(this);
             if (!this._isAbstract) {
                 if (this.startDelayMs) {
                     setTimeout(this._bootstrap.bind(this), this.startDelayMs);

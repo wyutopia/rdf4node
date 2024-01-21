@@ -95,7 +95,7 @@ class EventModule extends EventObject {
                     source: this.$name
                 }
             }
-            return theApp.icp.publish(event, options, err => {
+            return this._appCtx.ebus.publish(event, options, err => {
                 if (err) {
                     return callback(err);
                 }

@@ -142,13 +142,8 @@ const _typeAppConfig = {
 
 function _initSelf(props) {
     Object.keys(_typeAppConfig).forEach(key => {
-        let propKey = '_' + key;
-        if (props[key] === undefined) {
-            this[propKey] = _typeAppConfig[key];
-        } else {
-            this[propKey] = tools.isTypeOfArray(_typeAppConfig[key]) ?
-                _typeAppConfig[key].concat(props[key]) : Object.assign({}, _typeAppConfig[key] || {}, props[key])
-        }
+        const propKey = '_' + key;
+        this[propKey] = props[key] !== undefined? props[key] : _typeAppConfig[key];
     })
 }
 
@@ -222,9 +217,11 @@ class Application extends EventEmitter {
     }
     // Implementing member methods
     getName() {
+        logger.debug(`>>> The application name: ${this._name}`);
         return this._name;
     }
     getId() {
+        logger.debug(`>>> The application id: ${this._id}`);
         return this._id;
     }
     getInstance() {
@@ -238,6 +235,12 @@ class Application extends EventEmitter {
     }
     fetchServices(callback) {
         return _consulClient.listServices(callback);
+    }
+    getDataSource(...args) {
+        return this.dsFactory.getDataSource(...args);
+    }
+    getCache(...args) {
+        return this.cacheFactory.getCache(...args);
     }
     //
     /**

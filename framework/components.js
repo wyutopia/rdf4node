@@ -13,8 +13,9 @@ const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'comp');
 const tools = require('../utils/tools');
 //
-const {repoFactory, paginationVal, _DS_DEFAULT_} = require('./repository');
+const {paginationVal, _DS_DEFAULT_} = require('./repository');
 const {_DEFAULT_PUBKEY_, _DEFAULT_CHANNEL_} = require('./ebus');
+const repoFactory = theApp.repoFactory;
 
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase

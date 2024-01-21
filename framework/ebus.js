@@ -259,15 +259,35 @@ class EventBus extends EventModule {
             logger.error(`Client#${clientId} end.`);
         });
     }
-    init (props) {
-        _initEventBus.call(this, props);
+    init (config) {
+        _initEventBus.call(this, config);
+        if (config.engine !== sysdefs.eEventBusEngine.RabbitMQ) {
+            return null;
+        }
+        // Step 1: Create rascalFactory
         this._rascalFactory = new RascalFactory(this._appCtx, {
             $name: _MODULE_NAME,
             $type: sysdefs.eModuleType.CM,
             mandatory: true,
             state: sysdefs.eModuleState.ACTIVE
         });
+        // Step 2: Create rascal client
+        let mqConf = config[config.engine] || {};
+        //
+        let vhost = mqConf.vhost;
+        let connection = mqConf.connection;
+        Object.keys(mqConf.channels).forEach(chn => {
+            let clientId = `${chn}@${config.engine}`;
+            let options = {
+                vhost: vhost,
+                connection: connection,
+                params: mqConf.channels[chn]
+            }
+            this._clients[clientId] = this._rascalFactory.getClient(clientId, options);
+        });
+        logger.info(`${this.$name}: rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
     }
+
     // Implementing methods
     /**
      * 
@@ -357,26 +377,6 @@ class EventBus extends EventModule {
             }
             return _extMqPub.call(this, event, options, callback);
         });
-    }
-    // Initializing the rabbitmq clients channels
-    init(config) {
-        if (config.engine !== sysdefs.eEventBusEngine.RabbitMQ) {
-            return null;
-        }
-        let mqConf = config[config.engine] || {};
-        //
-        let vhost = mqConf.vhost;
-        let connection = mqConf.connection;
-        Object.keys(mqConf.channels).forEach(chn => {
-            let clientId = `${chn}@${config.engine}`;
-            let options = {
-                vhost: vhost,
-                connection: connection,
-                params: mqConf.channels[chn]
-            }
-            this._clients[clientId] = rascalWrapper.getClient(clientId, options);
-        });
-        logger.info(`${this.$name}: rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
     }
 }
 

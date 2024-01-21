@@ -20,6 +20,7 @@ const { RateLimit } = require('../libs/base/ratelimit.wrapper');
 const MorganWrapper = require('../libs/base/morgan.wrapper');
 const httpLogger = MorganWrapper(process.env.SRV_ROLE);
 const routeHelper = require('./router');
+const { _DS_DEFAULT_ } = require('./repository');
 
 //const gRpc = require('../libs/common/grpc.wrapper');
 //const net = require('../libs/common/net.wrapper');
@@ -88,14 +89,25 @@ class HttpEndpoint extends Endpoint {
         app.use(express.urlencoded({ extended: false }));
         app.use(cookieParser());
         app.use(express.static(path.join(__dirname, 'public')));
-        // The rateLimit
+        // Step 3: Set rateLimit on demand
         if (this._config.enableRateLimit && this._config.rateLimit) {
             app.use(RateLimit(this._config.rateLimit));
             logger.info('>>>>>> Rate limitation enabled. <<<<<<');
         } else {
             logger.info('>>>>>> Rate limitation disabled. <<<<<<');
         }
-        // Step 3: Setup routes
+        // Step 4: Setup dataSource middleware
+        const dsName = process.env.DS_DEFAULT || _DS_DEFAULT_;
+        app.use((req, res, next) => {
+            req.dataSource = {
+                dsName: dsName
+            };
+            if (req.headers.datasource === undefined) {
+                req.headers.datasource = dsName;
+            }
+            return next();
+        })
+        // Step 5: Setup routes
         routeHelper.initRouter(router, this._config);
         app.use('/', router);
         // The 404 and forware to error handler
