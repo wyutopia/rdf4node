@@ -27,6 +27,7 @@ const { RepositoryFactory } = require('./repository');
 const { CacheFactory } = require('./cache');
 const { EndpointFactory } = require('./endpoint');
 const { DistributedEntityLocker } = require('./distributed-locker');
+const { TaskFactory } = require('./xtask');
 //
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'app');
@@ -105,12 +106,6 @@ function _buildModuleArch() {
     return arch;
 }
 
-const eAppState = {
-    INIT     : 0,
-    READY    : 1,
-    ACTIVE   : 2,
-    SUSPEND  : 3
-};
 const _typeAppConfig = {
     id: os.hostname(),
     name: 'a9kb',
@@ -120,7 +115,7 @@ const _typeAppConfig = {
     tags: [],
     //
     arch: _buildModuleArch(),
-    state: eAppState.INIT,
+    state: sysdefs.eModuleState.INIT,
     //
     enableMonitor: false,
     security: {
@@ -211,6 +206,7 @@ class Application extends EventEmitter {
         this._modules = {};
         //
         this.ebus = new EventBus(this, {$name: sysdefs.eFrameworkModules.EBUS});
+        this.taskFactory = new TaskFactory(this, {$name: sysdefs.eFrameworkModules.XTASK});
         this.registry = new Registry(this, {$name: sysdefs.eFrameworkModules.REGISTRY});
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
@@ -254,7 +250,7 @@ class Application extends EventEmitter {
      * @returns 
      */
     async initFramework(config) {
-        if (this._state !== eAppState.INIT) {
+        if (this._state !== sysdefs.eModuleState.INIT) {
             return Promise.reject({
                 code: eRetCodes.INTERNAL_SERVER_ERR,
                 message: 'Framework components already initialized.'
@@ -276,7 +272,7 @@ class Application extends EventEmitter {
             this.epFactory.init(config.endpoints);
         }
         //TODO: Add other framework components here ...
-        this._state = eAppState.READY;
+        this._state = sysdefs.eModuleState.READY;
         return true;
     }
     /**
@@ -287,6 +283,7 @@ class Application extends EventEmitter {
      * @returns
      */
     async loadDataModels(options) {
+        console.log('... loadDataModels with options: ', options);
         const modelDir = path.join(appRoot.path, options.modelDir || 'models');
         if (options.excludeModels !== undefined) {
             this._excludeModels = options.excludeModels;
@@ -306,7 +303,7 @@ class Application extends EventEmitter {
         return true;
     }
     async startEndpoints() {
-        return true;
+        return await this.epFactory.startAll();
     }
     //
     // Fire alarm

@@ -7,10 +7,11 @@ const mongoose = require('mongoose');
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.DATASOURCE;
 const {EventModule, EventObject} = require('../include/events');
-const sysConf = require('../include/config');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
+
+const _DS_DEFAULT = 'default';
 
 function _initMongoConnection(config) {
     const options = {
@@ -77,44 +78,41 @@ class DataSourceFactory extends EventModule {
         super(appCtx, props);
         //
         this._ds = {};
-        // Implementing methods
-        this.getEntries = () => {
-            return Object.entries(this._ds);
+    }
+    getEntries () {
+        return Object.entries(this._ds);
+    }
+    getDataSource (name) {
+        return this._ds[name];
+    };
+    _msgProc (msg, ackOrNack) {
+        //TODO: Handler message
+        if (typeof ackOrNack === 'function') {
+            return ackOrNack(true);
         }
-        this.getDataSource = (name) => {
-            return this._ds[name];
-        };
-        this._msgProc = (msg, ackOrNack) => {
-            //TODO: Handler message
-            if (typeof ackOrNack === 'function') {
-                return ackOrNack(true);
+    }
+    init(config) {
+        Object.keys(config).forEach(dsName => {
+            if (config[dsName].enabled === true) {
+                this._ds[dsName] = new DataSource({
+                    name: dsName,
+                    //
+                    dbType: config[dsName].type,
+                    conf: config[dsName].config
+                });
+            } else {
+                logger.info(`DataSource: ${dsName} is disabled!`);
             }
-        };
-        // The init codes
-        (() => {
-            let dsConf = sysConf.dataSources || {};
-            Object.keys(dsConf).forEach(dsName => {
-                if (dsConf[dsName].enabled === true) {
-                    this._ds[dsName] = new DataSource({
-                        name: dsName,
-                        //
-                        dbType: dsConf[dsName].type,
-                        conf: dsConf[dsName].config
-                    });
-                } else {
-                    logger.info(`DataSource: ${dsName} is disabled!`);
-                }
-            });
-            //
-            if (this._ds['default'] === undefined) {
-                logger.error(`>>> Set default data-source to in-memory storage! <<<`);
-                this._ds['default'] = new DataSource({
-                    name: 'default',
-                    dbType: sysdefs.eDbType.NATIVE,
-                    conf: {}
-                })
-            }
-        })();
+        });
+        //
+        if (this._ds[_DS_DEFAULT] === undefined) {
+            logger.error(`>>> Set default data-source to in-memory storage! <<<`);
+            this._ds[_DS_DEFAULT] = new DataSource({
+                name: _DS_DEFAULT,
+                dbType: sysdefs.eDbType.NATIVE,
+                conf: {}
+            })
+        }
     }
 }
 

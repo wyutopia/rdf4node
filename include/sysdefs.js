@@ -60,12 +60,14 @@ const eFrameworkModules = {
     CACHE           : '_cache_',
     ENDPOINT        : '_endpoint_',
     ROUTER          : '_router_',
-    DLOCKER         : '_distlocker_'
+    DLOCKER         : '_distlocker_',
+    XTASK           : '_xtask_'
 };
 exports.eFrameworkModules = eFrameworkModules;
 
 const eModuleState = {
     INIT         : 'init',
+    READY        : 'ready',
     ACTIVE       : 'active',
     SUSPEND      : 'suspend',
     STOP_PENDING : 'pending'

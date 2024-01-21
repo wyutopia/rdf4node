@@ -2,13 +2,16 @@
  * Created by Eric on 2023/02/15
  * Updated by Eric on 2024/01/20
  */
-const util = require('util');
-const http = require('http');
-//
 const appRoot = require('app-root-path');
+const http = require('http');
+const util = require('util');
+const path = require('path');
+//
 const cookieParser = require('cookie-parser');
 const { EventModule } = require('../include/events');
-const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.ENDPOINT;
+const { eFrameworkModules, eModuleState } = require('../include/sysdefs');
+const _MODULE_NAME = eFrameworkModules.ENDPOINT;
+const tools = require('../utils/tools');
 // The endpoint kinds
 const express = require('../libs/base/express.wrapper');
 const MorganWrapper = require('../libs/base/morgan.wrapper');
@@ -41,7 +44,10 @@ function normalizePort(val) {
 class Endpoint extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props);
-        //
+        // Define the public member variables
+        this._server = null;
+        this._config = null;
+        this._state = eModuleState.INIT;
     }
     dispose(callback) {
         return process.nextTick(callback);
@@ -50,12 +56,25 @@ class Endpoint extends EventModule {
 }
 
 class HttpEndpoint extends Endpoint {
-    constructor(name) {
-        super(name);
+    constructor(appCtx, props) {
+        super(appCtx, props);
         //
         this._app = express();
     }
     init(options) {
+        if (this._state !== eModuleState.INIT) {
+            logger.error(`${this.$name}: Already initialized!`);
+            return null;
+        }
+        this._config = options;
+        this._state = eModuleState.READY;
+    }
+    async start() {
+        if (this._state !== eModuleState.READY) {
+            logger.error(`${this.$name}: endpoint not ready!`);
+            return false;
+        }
+        const options = this._config;
         // Step 1: Setup view engine
         this._app.set('views', options.viewPath || path.join(appRoot.path, 'views'));
         this._app.set('view engine', options.engine || 'ejs');
@@ -66,7 +85,7 @@ class HttpEndpoint extends Endpoint {
         this._app.use(cookieParser());
         this._app.use(express.static(path.join(__dirname, 'public')));
         // The rateLimit
-        if (config.rateLimit) {
+        if (options.rateLimit) {
             logger.info('>>>>>> TODO: Enable rate-limit... <<<<<<');
             //app.use(rateLimiter);
             //logger.info('>>>>>> Rate limitation enabled. <<<<<<');
@@ -95,11 +114,6 @@ class HttpEndpoint extends Endpoint {
             res.status(err.status || 500);
             res.render('error');
         });
-        //
-        const port = normalizePort();
-
-    }
-    start(options) {
         const port = normalizePort(options.port || process.env.PORT || '3000');
         this._app.set('port', port);
         this._server = http.createServer(this._app);
@@ -108,11 +122,11 @@ class HttpEndpoint extends Endpoint {
             if (error.syscall !== 'listen') {
                 throw error;
             }
-    
+
             let bind = typeof port === 'string'
                 ? 'Pipe ' + port
                 : 'Port ' + port;
-    
+
             // handle specific listen errors with friendly messages
             switch (error.code) {
                 case 'EACCES':
@@ -136,7 +150,9 @@ class HttpEndpoint extends Endpoint {
                 ? 'pipe ' + addr
                 : 'port ' + addr.port;
             logger.info('Listening on ' + bind);
-        })
+        });
+        this._state = eModuleState.ACTIVE;
+        return true;
     }
     getInstance() {
         return this._app;
@@ -169,18 +185,17 @@ class EndpointFactory extends EventModule {
      * @param { string? } options.routePath - The route root path
      */
     init(config) {
-        const arr = tools.isTypeofArray(config)? config : [config];
+        const arr = tools.isTypeOfArray(config) ? config : [config];
         arr.forEach(item => {
-            const ep = new HttpEndpoint(item.name);
+            const ep = new HttpEndpoint(this._appCtx, { $name: item.name });
             this._endpoints[item.name] = ep;
             //
             ep.init(item.options);
-            ep.start();
         })
     }
     get(name) {
         const ep = this._endpoints[name];
-        return ep? ep.getInstance() : ep;
+        return ep ? ep.getInstance() : ep;
     }
     start(name) {
 
@@ -188,8 +203,12 @@ class EndpointFactory extends EventModule {
     stop(name) {
 
     }
-    startAll() {
-
+    async startAll() {
+        const promises = [];
+        Object.values(this._endpoints).forEach(ep => {
+            promises.push(ep.start);
+        })
+        return await promises.all();
     }
     dispose(callback) {
         return process.nextTick(callback);

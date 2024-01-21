@@ -118,7 +118,7 @@ class ScheduledCleanTask extends XTask {
 
 
 exports.init = function (appCtx) {
-    appCtx.taskManager.create('weeklyCleaner', ScheduledCleanTask, {
+    appCtx.taskFactory.create('weeklyCleaner', ScheduledCleanTask, {
         alias: 'WeeklyLogFilesCleaner',
         startup: 'SCHEDULE',
         // second minute hour dayOfMonth month dayOfWeek
