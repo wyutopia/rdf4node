@@ -187,7 +187,7 @@ class EndpointFactory extends EventModule {
     init(config) {
         const arr = tools.isTypeOfArray(config) ? config : [config];
         arr.forEach(item => {
-            const ep = new HttpEndpoint(this._appCtx, { $name: item.name });
+            const ep = new HttpEndpoint(this._appCtx, { $name: `ep-${item.name}` });
             this._endpoints[item.name] = ep;
             //
             ep.init(item.options);
@@ -208,7 +208,7 @@ class EndpointFactory extends EventModule {
         Object.values(this._endpoints).forEach(ep => {
             promises.push(ep.start);
         })
-        return await promises.all();
+        return await Promise.all(promises);
     }
     dispose(callback) {
         return process.nextTick(callback);

@@ -152,32 +152,32 @@ function _initSelf(props) {
     })
 }
 
-const _excludeModelFolders = ['.DS_Store', '_templates'];
-function _readModelDirSync(modelDir, loadedModels) {
+const _excludeModelPaths = ['.DS_Store', '_templates'];
+function _readModelDirSync(modelDir, loadedModels, options) {
     //logger.debug(`====== Scan directory: ${modelDir}`);
     let entries = fs.readdirSync(modelDir, {
         withFileTypes: true
     });
     entries.forEach(dirent => {
+        if (options.excludeModelPaths.indexOf(dirent.name) !== -1) { // Ignore excluded paths
+            return null;
+        }
         let fullPath = path.join(modelDir, dirent.name);
-        if (dirent.isDirectory()) {
-            if (_excludeModelFolders.indexOf(dirent.name) !== -1) { // Ignore excluded folers
-                return null;
-            }
-            return _readModelDirSync.call(this, fullPath, loadedModels);
+        if (dirent.isDirectory()) { // Recursive directory
+            return _readModelDirSync.call(this, fullPath, loadedModels, options);
         }
         //
         try {
             const modelSpec = require(fullPath);
             const modelName = modelSpec.modelName;
-            if (this.allowedModels && this.allowedModels.indexOf(modelName) === -1) {
+            if (options.includeModels && options.includeModels.indexOf(modelName) === -1) {
                 return null;
             }
             //
-            let cacheConf = config.caches[modelName] || {};
+            let cacheConf = options.caches[modelName] || {};
             // Get allowCache switch
-            let allowCache = ((allowCache, config) => { // cache config has the privilege
-                return config.enabled !== undefined ? config.enabled : (allowCache !== undefined ? allowCache : false);
+            let allowCache = ((allowCache, cfg) => { // cache config has the privilege
+                return cfg.enabled !== undefined ? cfg.enabled : (allowCache !== undefined ? allowCache : false);
             })(modelSpec.allowCache, cacheConf);
             // Assemble cacheOptions = cacheSpecProps + cacheEntityProps
             let cacheSpec = Object.assign({}, modelSpec.cacheSpec, cacheConf.spec);
@@ -194,7 +194,6 @@ function _readModelDirSync(modelDir, loadedModels) {
             logger.error(`====== Load database schema from: ${dirent.name} error! - ${ex.message}`);
         }
     });
-    return null;
 }
 
 // The application class
@@ -277,28 +276,22 @@ class Application extends EventEmitter {
     }
     /**
      * @param { Object } options
+     * @param { string[]?} options.excludeModelPaths - The exclude model paths
      * @param { string? } options.modelDir - The 
      * @param { string[]?} options.excludeModels - The exclude model names 
      * @param { string[]?} options.includeModels - The included model names
      * @returns
      */
-    async loadDataModels(options) {
-        console.log('... loadDataModels with options: ', options);
+    loadDataModels(options) {
+        options.excludeModelPaths = _excludeModelPaths.concat(options.excludeModelPaths);
+        logger.info('>>>>>> loadDataModels with options: ', tools.inspect(options));
+        //
         const modelDir = path.join(appRoot.path, options.modelDir || 'models');
-        if (options.excludeModels !== undefined) {
-            this._excludeModels = options.excludeModels;
-        }
-        try {
-            logger.info(`>>> Setp 2: Load all database schemas from ${modelDir} ... <<<`);
-            const loadedModels = [];
-            _readModelDirSync.call(this, modelDir, loadedModels);
-            logger.info(`>>> Total ${loadedModels.length} database schemas registered. <<<`);
-            return true;
-        } catch (ex) {
-            logger.error(`!!! Load database schemas error! - `, ex);
-            return Promise.reject(ex);
-        }
+        const loadedModels = [];
+        _readModelDirSync.call(this, modelDir, loadedModels, options);
+        logger.info(`>>> Total ${loadedModels.length} database schemas registered. <<<`);
     }
+
     async startServices() {
         return true;
     }
@@ -401,37 +394,40 @@ class Application extends EventEmitter {
         return logger.setRotateFileLevel(args.level, callback);
     }
 
-    async startServices() {
-        let serviceDir = path.join(appRoot.path, bsConf.serviceDir);
+    loadServices(options) {
+        let serviceDir = path.join(appRoot.path, options.serviceDir || 'services');
         logger.info(`++++++ Step 3: Load all services module from ${serviceDir} ++++++`);
         let allServices = [];
         let entries = fs.readdirSync(serviceDir, {
             withFileTypes: true
         });
         entries.forEach( dirent => {
-            if (dirent.isDirectory() || enabledServices.indexOf(dirent.name) === -1) {
+            if (dirent.isDirectory()  // Recursive not support currently
+                || (options.enabledServices && options.enabledServices.indexOf(dirent.name) === -1)) {  
                 return null;
             }
             let filePath = path.join(serviceDir, dirent.name);
             try {
                 let svc = require(filePath);
-                let svcName = registry.register(svc);
+                let svcName = this.registry.register(svc);
                 allServices.push(svcName);
             } catch (ex) {
                 logger.error(`Load service: ${dirent.name} error! - ${ex.message}`);
             }
         });
         logger.debug(`>>> All available services: ${tools.inspect(allServices)}`);
+        return allServices;
     }
 
     async createEndpoints() {
         return 'todo';
     }
     async start() {
-        if (this._state === _eState.INIT) {
+        if (this._state !== sysdefs.eModuleState.READY) {
             logger.error('!!! Initializing first.');
             return false;
         }
+        this.epFactory.startAll();
         //Register to the centered regsitry
         //fire app startup alarm
         //Change state to ACTIVE

@@ -52,14 +52,12 @@ async function bootstrap() {
         });
         //
         logger.info('====== Step 2: Load enabled database models ======');
-        result.dataModels = await theApp.loadDataModel(config.dataModel || {});
+        result.dataModels = theApp.loadDataModels(config.dataModel || {});
         //
         logger.info('====== Step 3: Start enabled services ======');
-        result.services = await theApp.startServices(config.services);
+        result.services = theApp.loadServices(config.services);
         
-        logger.info('====== Step 4: Create endpoints ======');
-        result.endpoints = await theApp.createEndpoints(config.endpoints);
-        // Step 5: 
+        // Start the applcatioin
         result.start = await theApp.start();
     } catch (ex) {
         logger.error('!!! Bootstrap error! - ', ex);
