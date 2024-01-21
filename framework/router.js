@@ -200,9 +200,9 @@ function _addAppRoutes(router) {
 }
 
 function initRouter(router, options) {
-    _setCORS(router);
-    _addHomepage(router);
-    _addAppRoutes(router);
+    _setCORS(router, options);
+    _addHomepage(router, options);
+    _addAppRoutes(router, options);
 }
 
 // Declaring module exports

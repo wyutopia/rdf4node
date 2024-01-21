@@ -427,7 +427,7 @@ class Application extends EventEmitter {
             logger.error('!!! Initializing first.');
             return false;
         }
-        this.epFactory.startAll();
+        await this.epFactory.startAll();
         //Register to the centered regsitry
         //fire app startup alarm
         //Change state to ACTIVE

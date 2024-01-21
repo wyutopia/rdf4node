@@ -14,6 +14,7 @@ const _MODULE_NAME = eFrameworkModules.ENDPOINT;
 const tools = require('../utils/tools');
 // The endpoint kinds
 const express = require('../libs/base/express.wrapper');
+const router = express.Router();
 const MorganWrapper = require('../libs/base/morgan.wrapper');
 const httpLogger = MorganWrapper(process.env.SRV_ROLE);
 const routeHelper = require('./router');
@@ -66,12 +67,15 @@ class HttpEndpoint extends Endpoint {
             logger.error(`${this.$name}: Already initialized!`);
             return null;
         }
+        if (options.routePath === undefined) {
+            options.routePath = path.join(appRoot.path, 'routes');
+        }
         this._config = options;
         this._state = eModuleState.READY;
     }
     async start() {
         if (this._state !== eModuleState.READY) {
-            logger.error(`${this.$name}: endpoint not ready!`);
+            logger.error(`${this.$name}: endpoint is not ready!`);
             return false;
         }
         const options = this._config;
@@ -93,8 +97,7 @@ class HttpEndpoint extends Endpoint {
             logger.info('>>>>>> Rate limitation disabled. <<<<<<');
         }
         // Step 3: Setup routes
-        const router = require('express').Router();
-        routeHelper.initRouter(router, options.routePath || path.join(appRoot.path, 'routes'));
+        routeHelper.initRouter(router, options);
         this._app.use('/', router);
         // The 404 and forware to error handler
         this._app.use(function (req, res, next) {
@@ -206,7 +209,7 @@ class EndpointFactory extends EventModule {
     async startAll() {
         const promises = [];
         Object.values(this._endpoints).forEach(ep => {
-            promises.push(ep.start);
+            promises.push(ep.start());
         })
         return await Promise.all(promises);
     }
