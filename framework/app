@@ -251,7 +251,7 @@ class Application extends EventEmitter {
      * @param { Object? } config.eventBus
      * @returns 
      */
-    async initFramework(config) {
+    async initFramework(config, extensions) {
         if (this._state !== sysdefs.eModuleState.INIT) {
             return Promise.reject({
                 code: eRetCodes.INTERNAL_SERVER_ERR,
@@ -268,10 +268,10 @@ class Application extends EventEmitter {
             this.dsFactory.init(config.dataSources);
         }
         if (config.eventBus) {
-            this.ebus.init(config.eventBus);
+            this.ebus.init(config.eventBus, extensions.eventBus || {});
         }
         if (config.endpoints) {
-            this.epFactory.init(config.endpoints);
+            this.epFactory.init(config.endpoints, extensions.endpoints || {});
         }
         //TODO: Add other framework components here ...
         this._state = sysdefs.eModuleState.READY;

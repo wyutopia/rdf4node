@@ -33,8 +33,9 @@ const { RascalFactory } = require('../libs/common/rascal.wrapper');
 
 // Define the eventLogger instance
 class EventLogger extends EventObject {
-    constructor(props) {
+    constructor(appCtx, props) {
         super(props);
+        this._appCtx = appCtx;
         initObject.call(this, props);
         // Implenting member methods
         this._execPersistent = (options, callback) => {
@@ -106,10 +107,6 @@ function _initEventBus(props) {
         } else {
             this[propKey] = props[key] !== undefined ? props[key] : _typeEventBusProps[key];
         }
-    });
-    //
-    this._eventLogger = new EventLogger({
-        $name: sysdefs.eFrameworkModules.EVTLOGGER
     });
 }
 
@@ -257,8 +254,14 @@ class EventBus extends EventModule {
             logger.error(`Client#${clientId} end.`);
         });
     }
-    init (config) {
+    init(config, options) {
         _initEventBus.call(this, config);
+        // Create eventLogger
+        const fn = typeof options.fnEventLogger === 'function' ? options.fnEventLogger : EventLogger;
+        this._eventLogger = new fn(this._appCtx, {
+            $name: sysdefs.eFrameworkModules.EVTLOGGER
+        });
+        // >>>  Create rabbitmq if necessary <<<
         if (config.engine !== sysdefs.eEventBusEngine.RabbitMQ) {
             return null;
         }
@@ -343,11 +346,11 @@ class EventBus extends EventModule {
         return null;
     };
 
-    pause (moduleName, callback) {
+    pause(moduleName, callback) {
         // TODO: Stop publish and consume events
     };
 
-    resume (moduleName) {
+    resume(moduleName) {
         // TODO: Resume publish and consume events
     };
     /**

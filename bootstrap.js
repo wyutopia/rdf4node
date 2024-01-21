@@ -28,7 +28,7 @@ const { Application } = require('./framework/app');
 //     return callback();
 // }
 
-async function bootstrap() {
+async function bootstrap(extensions) {
     const beginTime = new Date();
     logger.info('>>> Application startup ... <<<');
     // Step 1: Create app context instance
@@ -49,7 +49,7 @@ async function bootstrap() {
             dataSources: config.dataSources,
             caches: config.caches,
             endpoints: config.endpoints
-        });
+        }, extensions);
         //
         logger.info('====== Step 2: Load enabled database models ======');
         result.dataModels = theApp.loadDataModels(config.dataModel || {});

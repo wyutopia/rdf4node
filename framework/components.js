@@ -15,8 +15,6 @@ const tools = require('../utils/tools');
 //
 const {paginationVal, _DS_DEFAULT_} = require('./repository');
 const {_DEFAULT_PUBKEY_, _DEFAULT_CHANNEL_} = require('./ebus');
-const repoFactory = theApp.repoFactory;
-
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
 
@@ -125,7 +123,7 @@ class ControllerBase extends EventModule {
             assert(Array.isArray(modelNames));
             let results = {};
             modelNames.forEach(modelName => {
-                results[modelName] = repoFactory.getRepo(modelName, dsName);
+                results[modelName] = this._appCtx.repoFactory.getRepo(modelName, dsName);
             });
             return results;
         };
@@ -407,7 +405,7 @@ class EntityController extends ControllerBase {
             if (this._entityRepos[dsName] !== undefined) {
                 return callback(null, this._entityRepos[dsName]);
             }
-            let repo = repoFactory.getRepo(this.modelName, dsName);
+            let repo = this._appCtx.repoFactory.getRepo(this.modelName, dsName);
             if (!repo) {
                 let msg = `Repository not exists! - ${this.modelName} - ${dsName}`;
                 logger.error(msg);
@@ -430,7 +428,7 @@ class EntityController extends ControllerBase {
             if (repo !== undefined) {
                 return repo;
             }
-            repo = repoFactory.getRepo(this.modelName, dsName);
+            repo = this._appCtx.repoFactory.getRepo(this.modelName, dsName);
             if (repo) {
                 this._entityRepos[dsName] = repo;
             }
