@@ -272,7 +272,7 @@ class Application extends EventEmitter {
         }
         //TODO: Add other framework components here ...
         this._state = sysdefs.eModuleState.READY;
-        return true;
+        return 'ok';
     }
     /**
      * @param { Object } options
@@ -289,15 +289,35 @@ class Application extends EventEmitter {
         const modelDir = path.join(appRoot.path, options.modelDir || 'models');
         const loadedModels = [];
         _readModelDirSync.call(this, modelDir, loadedModels, options);
-        logger.info(`>>> Total ${loadedModels.length} database schemas registered. <<<`);
+        logger.info(`>>>>>> Total ${loadedModels.length} database schemas registered. <<<<<<`);
+        return loadedModels.length;
     }
 
-    async startServices() {
-        return true;
+    loadServices(options) {
+        let serviceDir = path.join(appRoot.path, options.serviceDir || 'services');
+        logger.info(`>>>>>> Load all services module from ${serviceDir} ...`);
+        let allServices = [];
+        let entries = fs.readdirSync(serviceDir, {
+            withFileTypes: true
+        });
+        entries.forEach( dirent => {
+            if (dirent.isDirectory()  // Recursive not support currently
+                || (options.enabledServices && options.enabledServices.indexOf(dirent.name) === -1)) {  
+                return null;
+            }
+            let filePath = path.join(serviceDir, dirent.name);
+            try {
+                let svc = require(filePath);
+                let svcName = this.registry.register(svc);
+                allServices.push(svcName);
+            } catch (ex) {
+                logger.error(`!!! Load service: ${dirent.name} error! - ${ex.message}`);
+            }
+        });
+        logger.debug(`>>> All available services: ${tools.inspect(allServices)}`);
+        return allServices;
     }
-    async startEndpoints() {
-        return await this.epFactory.startAll();
-    }
+
     //
     // Fire alarm
     async fireAlarm(args, options) {
@@ -392,31 +412,6 @@ class Application extends EventEmitter {
             })
         }
         return logger.setRotateFileLevel(args.level, callback);
-    }
-
-    loadServices(options) {
-        let serviceDir = path.join(appRoot.path, options.serviceDir || 'services');
-        logger.info(`++++++ Step 3: Load all services module from ${serviceDir} ++++++`);
-        let allServices = [];
-        let entries = fs.readdirSync(serviceDir, {
-            withFileTypes: true
-        });
-        entries.forEach( dirent => {
-            if (dirent.isDirectory()  // Recursive not support currently
-                || (options.enabledServices && options.enabledServices.indexOf(dirent.name) === -1)) {  
-                return null;
-            }
-            let filePath = path.join(serviceDir, dirent.name);
-            try {
-                let svc = require(filePath);
-                let svcName = this.registry.register(svc);
-                allServices.push(svcName);
-            } catch (ex) {
-                logger.error(`Load service: ${dirent.name} error! - ${ex.message}`);
-            }
-        });
-        logger.debug(`>>> All available services: ${tools.inspect(allServices)}`);
-        return allServices;
     }
 
     async createEndpoints() {

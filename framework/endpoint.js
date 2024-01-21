@@ -8,6 +8,7 @@ const util = require('util');
 const path = require('path');
 //
 const cookieParser = require('cookie-parser');
+const createError = require('http-errors');
 const { EventModule } = require('../include/events');
 const { eFrameworkModules, eModuleState } = require('../include/sysdefs');
 const _MODULE_NAME = eFrameworkModules.ENDPOINT;
@@ -15,6 +16,7 @@ const tools = require('../utils/tools');
 // The endpoint kinds
 const express = require('../libs/base/express.wrapper');
 const router = express.Router();
+const { RateLimit } = require('../libs/base/ratelimit.wrapper');
 const MorganWrapper = require('../libs/base/morgan.wrapper');
 const httpLogger = MorganWrapper(process.env.SRV_ROLE);
 const routeHelper = require('./router');
@@ -27,18 +29,15 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 function normalizePort(val) {
     let port = parseInt(val, 10);
-
     if (isNaN(port)) {
         // named pipe
         return val;
     }
-
     if (port >= 0) {
         // port number
         return port;
     }
-
-    return false;
+    return 3000;
 }
 
 // The class
@@ -60,7 +59,6 @@ class HttpEndpoint extends Endpoint {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
-        this._app = express();
     }
     init(options) {
         if (this._state !== eModuleState.INIT) {
@@ -71,6 +69,8 @@ class HttpEndpoint extends Endpoint {
             options.routePath = path.join(appRoot.path, 'routes');
         }
         this._config = options;
+        this._port = normalizePort(options.port || process.env.PORT || '3000');
+        // Update state
         this._state = eModuleState.READY;
     }
     async start() {
@@ -78,32 +78,31 @@ class HttpEndpoint extends Endpoint {
             logger.error(`${this.$name}: endpoint is not ready!`);
             return false;
         }
-        const options = this._config;
+        const app = express();
         // Step 1: Setup view engine
-        this._app.set('views', options.viewPath || path.join(appRoot.path, 'views'));
-        this._app.set('view engine', options.engine || 'ejs');
+        app.set('views', this._config.viewPath || path.join(appRoot.path, 'views'));
+        app.set('view engine', this._config.engine || 'ejs');
         // Step 2: Setup middlewares
-        this._app.use(httpLogger);
-        this._app.use(express.json({ limit: options.payloadLimit || '50mb' }));
-        this._app.use(express.urlencoded({ extended: false }));
-        this._app.use(cookieParser());
-        this._app.use(express.static(path.join(__dirname, 'public')));
+        app.use(httpLogger);
+        app.use(express.json({ limit: this._config.payloadLimit || '50mb' }));
+        app.use(express.urlencoded({ extended: false }));
+        app.use(cookieParser());
+        app.use(express.static(path.join(__dirname, 'public')));
         // The rateLimit
-        if (options.rateLimit) {
-            logger.info('>>>>>> TODO: Enable rate-limit... <<<<<<');
-            //app.use(rateLimiter);
-            //logger.info('>>>>>> Rate limitation enabled. <<<<<<');
+        if (this._config.enableRateLimit && this._config.rateLimit) {
+            app.use(RateLimit(this._config.rateLimit));
+            logger.info('>>>>>> Rate limitation enabled. <<<<<<');
         } else {
             logger.info('>>>>>> Rate limitation disabled. <<<<<<');
         }
         // Step 3: Setup routes
-        routeHelper.initRouter(router, options);
-        this._app.use('/', router);
+        routeHelper.initRouter(router, this._config);
+        app.use('/', router);
         // The 404 and forware to error handler
-        this._app.use(function (req, res, next) {
+        app.use(function (req, res, next) {
             next(createError(404));
         })
-        this._app.use(function (err, req, res, next) {
+        app.use(function (err, req, res, next) {
             // set locals, only providing error in development
             logger.error(err, err.stack);
             res.locals.message = err.message;
@@ -117,18 +116,16 @@ class HttpEndpoint extends Endpoint {
             res.status(err.status || 500);
             res.render('error');
         });
-        const port = normalizePort(options.port || process.env.PORT || '3000');
-        this._app.set('port', port);
-        this._server = http.createServer(this._app);
-        this._server.listen(port);
+        app.set('port', this._port);
+        this._server = http.createServer(app);
+        this._server.listen(this._port);
         this._server.on('error', () => {
             if (error.syscall !== 'listen') {
                 throw error;
             }
-
-            let bind = typeof port === 'string'
-                ? 'Pipe ' + port
-                : 'Port ' + port;
+            let bind = typeof this._port === 'string'
+                ? 'Pipe ' + this._port
+                : 'Port ' + this._port;
 
             // handle specific listen errors with friendly messages
             switch (error.code) {
@@ -158,7 +155,7 @@ class HttpEndpoint extends Endpoint {
         return true;
     }
     getInstance() {
-        return this._app;
+        return this._server;
     }
 }
 
