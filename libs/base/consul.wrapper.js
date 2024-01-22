@@ -5,12 +5,9 @@
  * res (http.IncomingMessage, optional): HTTP response object with additional body property. This might
  *   not exist when err is set. The body property can be a decoded object, string, or Buffer.
  */
-const async = require('async');
 const Consul = require('consul');
 //
-const { consul: config } = require('../../include/config');
 const eRetCodes = require('../../include/retcodes');
-const pubdefs = require('../../include/sysdefs');
 const tools = require('../../utils/tools');
 const { WinstonLogger } = require('./winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'consul');
@@ -20,105 +17,62 @@ const connErr = {
     code: eRetCodes.METHOD_NOT_ALLOWED,
     message: 'Consul not connected!'
 };
-// Create consul client
-let consul = null;
-try {
-    consul = new Consul({
-        host: config.host,    // String: agent address
-        port: config.port     // Integer: agent port
-    });
-} catch (ex) {
-    logger.info(`Create consul client error! - ${ex.message}`);
-};
 
 /**
  * consul.catalog.service  methods
  */
 // List services
-exports.listServices = function (callback) {
-    if (consul === null) {
-        return callback(connErr);
-    }
-    consul.catalog.service.list().then(result => {
-        logger.debug(`List services: ${tools.inspect(result)}`);
-        return callback(null, result);
-    }).catch(err => {
-        logger.error(`list services error! - ${err.code}#${err.message}`);
-        return callback(err);
-    });
-}
+// exports.listServices = function (callback) {
+//     if (consul === null) {
+//         return callback(connErr);
+//     }
+//     consul.catalog.service.list().then(result => {
+//         logger.debug(`List services: ${tools.inspect(result)}`);
+//         return callback(null, result);
+//     }).catch(err => {
+//         logger.error(`list services error! - ${err.code}#${err.message}`);
+//         return callback(err);
+//     });
+// }
 
 // List nodes of service
-exports.listServiceNodes = function (serviceName, callback) {
-    if (consul === null) {
-        return callback(connErr);
-    }
-    consul.catalog.service.nodes(serviceName).then(result => {
-        logger.debug(`List service nodes: ${tools.inspect(result)}`);
-        return callback(null, result);
-    }).catch(err => {
-        logger.error(`list nodes of service error! - ${err.code}#${err.message}`);
-        return callback(err);
-    });
-}
+// exports.listServiceNodes = function (serviceName, callback) {
+//     if (consul === null) {
+//         return callback(connErr);
+//     }
+//     consul.catalog.service.nodes(serviceName).then(result => {
+//         logger.debug(`List service nodes: ${tools.inspect(result)}`);
+//         return callback(null, result);
+//     }).catch(err => {
+//         logger.error(`list nodes of service error! - ${err.code}#${err.message}`);
+//         return callback(err);
+//     });
+// }
 
-// Register
-exports.regService = function (options, callback) {
-    logger.info(`Register service: ${tools.inspect(options)}`);
-    if (consul === null) {
-        return callback(connErr);
-    }
-    consul.agent.service.register(options).then(() => {
-        return callback(null);
-    }).catch(err => {
-        logger.error(`Register service error! - ${err.code}#${err.message}`);
-        return callback(err);
-    });
-}
 
-// Deregister
-exports.deregService = function (options, callback) {
-    logger.info(`De-register service: ${tools.inspect(options)}`);
-    if (consul === null) {
-        return callback(connErr);
-    }
-    if (options.id === undefined) {
-        return callback({
-            code: eRetCodes.OP_FAILED,
-            message: 'Unrecognized service ID'
-        });
-    }
-    consul.agent.service.deregister(options).then((data, result) => {
-        logger.info(`De-register service succeed.`);
-        return callback(null, data, result);
-    }).catch( err => {
-        logger.error(`De-register service error! - ${err.code}#${err.message}`);
-        return callback(err);
-    });
-}
 
 // Maintenance
-exports.maintainService = function (options, callback) {
-    if (consul === null) {
-        return callback(connErr);
-    }
-    if (options.id === undefined) {
-        return callback({
-            code: eRetCodes.OP_FAILED,
-            message: 'Unrecognized service ID'
-        });
-    }
-    if (options.reason === undefined) {
-        options.reason = 'Manual set';
-    }
-    consul.agent.service.maintenance(options).then((data, result) => {
-        logger.info('service.maintenacne: ', data, result);
-        return callback(null, data, result);
-    }).catch(err => {
-        logger.error('service.maintenance: ', err.code, err.message);
-        return callback(err);
-    });
-};
+// exports.maintainService = function (options, callback) {
+//     if (consul === null) {
+//         return callback(connErr);
+//     }
+//     if (options.id === undefined) {
+//         return callback({
+//             code: eRetCodes.OP_FAILED,
+//             message: 'Unrecognized service ID'
+//         });
+//     }
+//     if (options.reason === undefined) {
+//         options.reason = 'Manual set';
+//     }
+//     consul.agent.service.maintenance(options).then((data, result) => {
+//         logger.info('service.maintenacne: ', data, result);
+//         return callback(null, data, result);
+//     }).catch(err => {
+//         logger.error('service.maintenance: ', err.code, err.message);
+//         return callback(err);
+//     });
+// };
 
 /**
  * consul.acl
@@ -146,17 +100,68 @@ exports.maintainService = function (options, callback) {
 //consul.agent.check.list(onCallback.bind(null, 'agent.check.list'));
 
 
-/**
- * consul kv
- */
-exports.setKv = function (key, val, callback) {
-    return consul.kv.set(key, val, callback);
-};
-
-exports.getKv = function (key, callback) {
-    let options = {
-        key: key,
-        raw: true
+class ConsulClient {
+    constructor(props) {
+        this._consul = null;
+        //
+        (() => {
+            try {
+                this._consul = new Consul({
+                    host: props.host,    // String: agent address
+                    port: props.port     // Integer: agent port
+                });
+            } catch (ex) {
+                logger.info(`Create consul client error! - ${ex.message}`);
+            };
+        })();
     }
-    return consul.kv.get(options, callback);
-};
+    // Register
+    async regService(options) {
+        logger.info(`Register service: ${tools.inspect(options)}`);
+        if (!this._consul) {
+            return 0;
+        }
+        try {
+            return await this._consul.agent.service.register(options);
+        } catch (ex) {
+            logger.error(`Register to consul error! - ${ex}`)
+            return 0;
+        }
+    }
+    // Deregister
+    async deregService(options) {
+        logger.info(`De-register service: ${tools.inspect(options)}`);
+        if (!this._consul) {
+            return 0;
+        }
+        if (options.id === undefined) {
+            logger.error(`De-register service with unrecognized service id!`);
+            return 0;
+        }
+        try {
+            const { data, result } = await this._consul.agent.service.deregister(options);
+            logger.info(`De-register service succeed.`);
+            return result;
+        } catch (err) {
+            logger.error(`De-register service error! - ${err}`);
+            return 0;
+        }
+    }
+    // consul kv
+    async setKv(key, val) {
+        return this._consul.kv.set(key, val);
+    }
+    async getKv(key) {
+        let options = {
+            key: key,
+            raw: true
+        }
+        return await this._consul.kv.get(options);
+    }
+}
+
+
+// Define module
+module.exports = exports = {
+    ConsulClient
+}

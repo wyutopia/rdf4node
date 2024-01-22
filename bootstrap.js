@@ -11,6 +11,7 @@ const appRoot = require('app-root-path');
 // Common definitions and utilities
 const sysdefs = require('./include/sysdefs');
 const config = require("./include/config");
+const tools = require('./utils/tools');
 // Create logger
 const { WinstonLogger } = require('./libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
@@ -35,8 +36,13 @@ async function bootstrap(extensions) {
     process.on('SIGINT', async () => {
         logger.info('>>> On SIGINT <<<');
         theApp.setState(sysdefs.eModuleState.STOP_PENDING);
-        const code = await theApp.gracefulExit()
-        process.exit(code);
+        try {
+            const code = await theApp.gracefulExit();
+            return process.exit(code);
+        } catch (ex) {
+            logger.error(`>>> Exit error! - ${tools.inspect(ex)}`);
+            process.exit(1);
+        }        
     });
     const result = {};
     try {
@@ -58,7 +64,7 @@ async function bootstrap(extensions) {
         // Start the applcatioin
         result.start = await theApp.start();
     } catch (ex) {
-        logger.error('!!! Bootstrap error! - ', ex);
+        logger.error(`!!! Bootstrap error! - ${tools.inspect(ex)}`);
     }
     return result;
 }

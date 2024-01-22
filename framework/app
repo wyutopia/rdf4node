@@ -20,6 +20,10 @@ const tools = require('../utils/tools');
 const promMonitor = require('../libs/base/prom.monitor');
 const logDirManager = require('../utils/logdir.manager');
 //
+const { ConsulClient } = require('../libs/base/consul.wrapper');
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'app');
+// The framework components
 const { Registry } = require('./registry');
 const { DataSourceFactory } = require('./data-source');
 const { EventBus } = require('./ebus');
@@ -28,58 +32,56 @@ const { CacheFactory } = require('./cache');
 const { EndpointFactory } = require('./endpoint');
 const { DistributedEntityLocker } = require('./distributed-locker');
 const { TaskFactory } = require('./xtask');
+
 //
-const { WinstonLogger } = require('../libs/base/winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'app');
-//
-function _regService(callback) {
-    if (consulClient === null) {
+async function _regService() {
+    if (!this._consulClient) {
         logger.warn(`>>>>>> Consul not configged! -ignore register service.`);
-        return callback();
+        return 0;
     }
     let localIp = tools.getLocalIp()[0];
-    let port = process.env.PORT || appConf.port || 3000;
-    consulClient.regService({
-        name: appConf.registry,
-        id: this._id,
-        tags: appConf.tags,
-        address: localIp,
-        port: parseInt(port, 10),
-        check: {
-            http: `http://${localIp}:${port}/monitor/health`,
-            interval: '15s'
-        }
-    }, (err) => {
-        if (err) {
-            logger.error('Register to consul error!');
-        } else {
-            logger.info('Register to consul succeed.');
-            consulSignIn = true;
-        }
-        return callback();
-    });
+    let port = this._port || process.env.PORT || '3000';
+    try {
+        await this._consulClient.regService({
+            name: this._alias,
+            id: this._id,
+            tags: this._tags,
+            address: localIp,
+            port: parseInt(port, 10),
+            check: {
+                http: `http://${localIp}:${port}/monitor/health`,
+                interval: '15s'
+            }
+        });
+        logger.info('Register to consul succeed.');
+        this._consulSignIn = true;
+        return 1;
+    } catch (ex) {
+        logger.error(`Register to consul error! - ${tools.inspect(ex)}`);
+        return 0;
+    }
 }
 
-function _deregService(callback) {
-    if (!this.consulClient) {
-        logger.warn(`>>>>>> Consul not configged! - ignore de-register service.`);
-        return callback();
+async function _deregService() {
+    if (!this._consulClient) {
+        logger.warn(`!!! Consul not configged! - ignore de-registration.`);
+        return 0;
     }
     logger.info('Try to de-register from consul...');
-    if (!consulSignIn) {
+    if (!this._consulSignIn) {
         logger.error('Not registered!');
-        return callback();
+        return 0;
     }
-    consulClient.deregService({
-        id: this._id
-    }, (err) => {
-        if (err) {
-            logger.error('De-register from consul failed.');
-        } else {
-            logger.info('De-register from consul succeed.');
-        }
-        return callback();
-    });
+    try {
+        const result = await this._consulClient.deregService({
+            id: this._id
+        });
+        logger.info('De-register from consul succeed.');
+        return result;
+    } catch (ex) {
+        logger.error('De-register from consul failed.');
+        return 0;
+    }
 }
 
 function _fireStartupAlarm(callback) {
@@ -90,12 +92,14 @@ function _fireStartupAlarm(callback) {
     return this.fireAlarm(options, callback);
 }
 
-function _fireExitAlarm(callback) {
-    let options = {
-        eventId: sysdefs.eAlarmCode.GRACEFUL_EXIT,
-        content: 'This is a graceful-exit alarm test!'
-    }
-    return this.fireAlarm(options, callback);
+async function _fireExitAlarm() {
+    // let options = {
+    //     eventId: sysdefs.eAlarmCode.GRACEFUL_EXIT,
+    //     content: 'This is a graceful-exit alarm test!'
+    // }
+    // return this.fireAlarm(options, callback);
+    logger.info(`[${this.$name}]: TODO - fire exit alarm ...`)
+    return 0;
 }
 
 function _buildModuleArch() {
@@ -110,7 +114,6 @@ const _typeAppConfig = {
     id: os.hostname(),
     name: 'a9kb',
     alias: 'a9kb-app',
-    registry: 'a9kb-app',
     version: 'a.b.c',
     tags: [],
     //
@@ -125,17 +128,6 @@ const _typeAppConfig = {
         enableRateLimit: false,
         enableAuthentication: true,
         enableAuthorization: false
-    },
-    rateLimit: {
-        options: {
-            windowMs: 60000,
-            max: 60,
-            expireTimeMs: 900000
-        },
-        store: {
-            type: 'mongo',
-            confPath: 'dataSources.default.config'
-        }
     },
     defaultDataSource: 'default'
 }
@@ -196,11 +188,14 @@ class Application extends EventEmitter {
     constructor(props) {
         super();
         // Declaring member variables
-        _initSelf.call(this, props);
         this._modules = {};
+        this._consulClient = null;
+        _initSelf.call(this, props);
+        if (props.consul) { // Consul configured
+            this._consulClient = new ConsulClient(props.consul);
+        }
         //
-        this.ebus = new EventBus(this, {$name: sysdefs.eFrameworkModules.EBUS});    // ebus should be the first member!!!
-        //
+        this.ebus = new EventBus(this, {$name: sysdefs.eFrameworkModules.EBUS});    // ebus should be the first framework component!!!
         this.taskFactory = new TaskFactory(this, {$name: sysdefs.eFrameworkModules.XTASK});
         this.registry = new Registry(this, {$name: sysdefs.eFrameworkModules.REGISTRY});
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
@@ -428,8 +423,9 @@ class Application extends EventEmitter {
     async start() {
         if (this._state !== sysdefs.eModuleState.READY) {
             logger.error('!!! Initializing first.');
-            return false;
+            return 0;
         }
+        await _regService.call(this);
         await this.epFactory.startAll();
         //Register to the centered regsitry
         //fire app startup alarm
@@ -439,28 +435,24 @@ class Application extends EventEmitter {
     // Handle graceful Exit
     async gracefulExit() {
         logger.info('>>> Perform system clean-up before exit... <<<');
-        //await _fireExitAlarm();
+        await _fireExitAlarm.call(this);
         //
         logger.info(`>>>>>> Stop all modules ...`);
+        const promises = [];
 
         let layers = Object.keys(this._arch);
-        async.eachSeries(layers, (layer, callback) => {
-            logger.info(`>>>>>>>> ${layer}: Clean up modules ...`);
-            async.eachLimit(this._arch[layer], 4, (m, next) => {
-                if (typeof m.dispose !== 'function') {
-                    return process.nextTick(next);
+        Object.keys(this._arch).forEach( layer => {
+            logger.info(`>>>>>> ${layer}: Clean up modules ...`);
+            this._arch[layer].forEach(m => {
+                if (typeof m.disposeAsync === 'function') {
+                    promises.push(m.disposeAsync());
                 }
-                return m.dispose(next);
-            }, () => {
-                logger.info(`>>>>>>>> ${layer}: all modules disposed.`);
-                return callback();
             });
-        }, () => {
-            logger.info('>>>>>> All modules disposed.');
-            _deregService.call(this, () => {
-                return
-            })
-        })
+        });
+        const result = await Promise.all(promises);
+        logger.info(`>>>>>> All modules disposed. results: ${tools.inspect(result)}`);
+        await _deregService.call(this);
+        return 0
     }
 }
 
