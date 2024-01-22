@@ -45,7 +45,7 @@ class TaskFactory extends EventModule {
             logger.error(`${this.$name}: Task ${name} already exists!`);
             return null;
         }
-        if (fn instanceof XTask) {
+        if (typeof fn === 'function') {
             options.managed = true;
             this._tasks[name] = new fn(options);
             return this._tasks[name];
