@@ -50,10 +50,10 @@ async function bootstrap(extensions) {
         }, extensions);
         //
         logger.info('====== Step 2: Load enabled database models ======');
-        result.dataModels = theApp.loadDataModels(config.dataModel || {});
+        result.dataModels = theApp.loadDataModels(config.dataModels || {});
         //
         logger.info('====== Step 3: Start enabled services ======');
-        result.services = theApp.loadServices(config.services);
+        result.services = theApp.loadServices(config.services || {});
         
         // Start the applcatioin
         result.start = await theApp.start();
