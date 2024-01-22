@@ -56,18 +56,25 @@ class TaskFactory extends EventModule {
         //
         this._metricCollector[eMetricNames.activeTasks].inc(1);
     }
-    dispose(callback) {
-        logger.info(`${this.$name}: Stop all backgroud tasks ...`);
-        async.eachLimit(Object.keys(this._tasks), 3, (key, next) => {
-            let task = this._tasks[key];
+    async dispose () {
+        const taskNames = Object.keys(this._tasks);
+        logger.info(`${this.$name}: Stop ${taskNames.length} backgroud tasks ...`);
+        //
+        const promises = [];
+        taskNames.forEach(key => {
+            const task = this._tasks[key];
             if (typeof task.dispose === 'function') {
-                return task.dispose(next);
+                promises.push(task.dispose());
             }
-            return process.nextTick(next);
-        }, () => {
+        })
+        try {
+            const results = await Promise.all(promises);
             logger.info(`${this.$name}: All backgroud tasks stopped.`);
-            return callback();
-        });
+            return results;
+        } catch (ex) {
+            logger.error(`${this.$name}: Stop tasks error! - ${tools.inspect(ex)}`);
+            return 0;
+        }
     }
 }
 
@@ -130,12 +137,15 @@ class XTask extends EventObject {
                 });
             });
         }
-        this.dispose = (callback) => {
-            this._run = false;
-            return setTimeout(() => {
-                logger.info(`${this.alias}: >>>>> Backend task <<<<< stopped.`);
-                return callback();
-            }, 200);
+        this.dispose = () => {
+            return new Promise((resolve) => {
+                this._run = false;
+                setTimeout(() => {
+                    logger.info(`${this.alias}: >>>>> Backend task <<<<< stopped.`);
+                    this.stop();
+                    return resolve();
+                }, 200);
+            });
         }
         this.start = (itv) => {
             if (itv !== undefined) {

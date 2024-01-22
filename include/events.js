@@ -75,8 +75,6 @@ class EventModule extends EventObject {
             channel: eventConf.channel || props.channel || _DEFAULT_CHANNEL_,
             pubKey: eventConf.pubKey || props.pubKey || _DEFAULT_PUBKEY_
         };
-        // Auto wire ebus instance
-        this._ebus = props.ebus || global._$ebus || null;
         /**
          * 
          * @param { Object } event 

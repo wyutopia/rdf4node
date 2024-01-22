@@ -50,7 +50,9 @@ async function _regService() {
             port: parseInt(port, 10),
             check: {
                 http: `http://${localIp}:${port}/monitor/health`,
-                interval: '15s'
+                interval: '60s',
+                timeout: '2s',
+                status: 'passing'
             }
         });
         logger.info('Register to consul succeed.');
@@ -358,7 +360,7 @@ class Application extends EventEmitter {
      * @param mod
      */
     registerModule(mod, options) {
-        logger.info(`New module registry: ${mod.$name} - ${tools.inspect(options)}`);
+        logger.info(`New module registry: ${mod.$name} - ${tools.inspect(options)} - ${typeof mod.disposeAsync}`);
         if (this._modules[mod.$name] !== undefined) {
             logger.error(`>>>>>> Conflict! ${mod.name} already exists.`)
         } else {
@@ -404,7 +406,7 @@ class Application extends EventEmitter {
         this._prevToken = this._innerToken;
         this._innerToken = token;
     }
-    getAuthConfig() {
+    getSecurity() {
         return this._security;
     }
     setDebugLevel(args, callback) {
@@ -439,8 +441,6 @@ class Application extends EventEmitter {
         //
         logger.info(`>>>>>> Stop all modules ...`);
         const promises = [];
-
-        let layers = Object.keys(this._arch);
         Object.keys(this._arch).forEach( layer => {
             logger.info(`>>>>>> ${layer}: Clean up modules ...`);
             this._arch[layer].forEach(m => {
