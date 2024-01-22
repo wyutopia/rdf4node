@@ -39,12 +39,14 @@ class TaskFactory extends EventModule {
     }
     //
     create (name, fn, options) {
+        logger.debug(`>>> Create new background task: ${name}`);
         const t = this._tasks[name];
         if (t !== undefined) {
             logger.error(`${this.$name}: Task ${name} already exists!`);
             return null;
         }
         if (fn instanceof XTask) {
+            options.managed = true;
             this._tasks[name] = new fn(options);
             return this._tasks[name];
         }
@@ -143,7 +145,7 @@ class XTask extends EventObject {
                 setTimeout(() => {
                     logger.info(`${this.alias}: >>>>> Backend task <<<<< stopped.`);
                     this.stop();
-                    return resolve();
+                    return resolve(`${this.alias} diposed.`);
                 }, 200);
             });
         }

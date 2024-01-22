@@ -139,9 +139,9 @@ class ConsulClient {
             return 0;
         }
         try {
-            const { data, result } = await this._consul.agent.service.deregister(options);
+            await this._consul.agent.service.deregister(options);
             logger.info(`De-register service succeed.`);
-            return result;
+            return 'console de-registered.';
         } catch (err) {
             logger.error(`De-register service error! - ${err}`);
             return 0;

@@ -55,11 +55,11 @@ async function _regService() {
                 status: 'passing'
             }
         });
-        logger.info('Register to consul succeed.');
+        logger.info(`${this._name}: Register to consul succeed.`);
         this._consulSignIn = true;
         return 1;
     } catch (ex) {
-        logger.error(`Register to consul error! - ${tools.inspect(ex)}`);
+        logger.error(`${this._name}: Register to consul error! - ${tools.inspect(ex)}`);
         return 0;
     }
 }
@@ -78,10 +78,10 @@ async function _deregService() {
         const result = await this._consulClient.deregService({
             id: this._id
         });
-        logger.info('De-register from consul succeed.');
+        logger.info(`${this._name}: De-register from consul succeed.`);
         return result;
     } catch (ex) {
-        logger.error('De-register from consul failed.');
+        logger.error(`${this._name}: De-register from consul failed.`);
         return 0;
     }
 }
@@ -100,7 +100,7 @@ async function _fireExitAlarm() {
     //     content: 'This is a graceful-exit alarm test!'
     // }
     // return this.fireAlarm(options, callback);
-    logger.info(`[${this.$name}]: TODO - fire exit alarm ...`)
+    logger.info(`[${this._name}]: TODO - fire exit alarm ...`)
     return 0;
 }
 
@@ -192,6 +192,7 @@ class Application extends EventEmitter {
         // Declaring member variables
         this._modules = {};
         this._consulClient = null;
+        this._consulSignIn = false;
         _initSelf.call(this, props);
         if (props.consul) { // Consul configured
             this._consulClient = new ConsulClient(props.consul);

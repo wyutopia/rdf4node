@@ -171,7 +171,7 @@ class HttpEndpoint extends Endpoint {
     async dispose() {
         if (this._server) {
             this._server.close();
-            return 'ok'
+            return `${this.$name} closed`;
         }
         return 0;
     }
@@ -232,7 +232,7 @@ class EndpointFactory extends EventModule {
         return await Promise.all(promises);
     }
     async dispose() {
-        logger.info(`${this.$name}: dispose all endpoints ...`);
+        logger.info(`Dispose all endpoints ...`);
         const promises = [];
         Object.keys(this._endpoints).forEach(key => {
             const ep = this._endpoints[key];
@@ -242,10 +242,10 @@ class EndpointFactory extends EventModule {
         })
         try {
             const results = await Promise.all(promises);
-            logger.info(`${this.$name}: ${tools.inspect(results)}`);
+            logger.info(`Dispose results: ${tools.inspect(results)}`);
             return results;
         } catch (ex) {
-            logger.error(`${this.$name}: dispose error! - ${tools.inspect(ex)}`);
+            logger.error(`Dispose error! - ${tools.inspect(ex)}`);
             return ex;
         }
     }
