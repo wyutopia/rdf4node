@@ -4,8 +4,8 @@
 const fs = require('fs');
 const path = require('path');
 const appRoot = require('app-root-path');
-const _rootDir = path.join(appRoot.path, 'routes');
 // Framework
+const tools = require('../utils/tools');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
 const { accessCtl } = require('./ac');
@@ -131,9 +131,10 @@ function _readRouteFileSync(specs, routePath, filename) {
     }
 }
 
+let _rootDir = '';
 function _readRouteDirSync(specs, routePath) {
     let routeDir = path.join(_rootDir, routePath);
-    logger.debug(`Processing current directory: ${routeDir}`);
+    logger.debug(`>>> Read routes from dir: ${routeDir}`);
 
     let entries = fs.readdirSync(routeDir, _READDIR_OPTIONS);
     entries.forEach(dirent => {
@@ -200,8 +201,11 @@ function _addAppRoutes(router) {
 }
 
 function initRouter(router, options) {
+    logger.info(`>>> Init router with options: ${tools.inspect(options)}`);
     _setCORS(router, options);
     _addHomepage(router, options);
+    //
+    _rootDir = path.join(appRoot.path, options.routePath || 'routes');
     _addAppRoutes(router, options);
 }
 

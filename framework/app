@@ -69,11 +69,11 @@ async function _deregService() {
         logger.warn(`!!! Consul not configged! - ignore de-registration.`);
         return 0;
     }
-    logger.info('Try to de-register from consul...');
     if (!this._consulSignIn) {
         logger.error('Not registered!');
         return 0;
     }
+    logger.info('Try to de-register from consul...');
     try {
         const result = await this._consulClient.deregService({
             id: this._id
@@ -285,7 +285,7 @@ class Application extends EventEmitter {
      * @returns
      */
     loadDataModels(options) {
-        options.excludeModelPaths = _excludeModelPaths.concat(options.excludeModelPaths);
+        options.excludeModelPaths = _excludeModelPaths.concat(options.excludeModelPaths || []);
         logger.info('>>>>>> loadDataModels with options: ', tools.inspect(options));
         //
         const modelDir = path.join(appRoot.path, options.modelDir || 'models');

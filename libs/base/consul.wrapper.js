@@ -119,33 +119,20 @@ class ConsulClient {
     async regService(options) {
         logger.info(`Register service: ${tools.inspect(options)}`);
         if (!this._consul) {
-            return 0;
+            return Promise.reject('Consul not configured!');
         }
-        try {
-            return await this._consul.agent.service.register(options);
-        } catch (ex) {
-            logger.error(`Register to consul error! - ${ex}`)
-            return 0;
-        }
+        await this._consul.agent.service.register(options);
     }
     // Deregister
     async deregService(options) {
         logger.info(`De-register service: ${tools.inspect(options)}`);
         if (!this._consul) {
-            return 0;
+            return  Promise.reject('No Consul registration!');
         }
         if (options.id === undefined) {
-            logger.error(`De-register service with unrecognized service id!`);
-            return 0;
+            return Promise.reject('Service id not provided!');
         }
-        try {
-            await this._consul.agent.service.deregister(options);
-            logger.info(`De-register service succeed.`);
-            return 'console de-registered.';
-        } catch (err) {
-            logger.error(`De-register service error! - ${err}`);
-            return 0;
-        }
+        await this._consul.agent.service.deregister(options);
     }
     // consul kv
     async setKv(key, val) {

@@ -103,7 +103,7 @@ function _initEventBus(props) {
     Object.keys(_typeEventBusProps).forEach(key => {
         let propKey = `_${key}`;
         if (key === 'triggerEvents') {
-            this[propKey] = _parseTriggerEvents(props[key]);
+            this[propKey] = _parseTriggerEvents(props[key] || []);
         } else {
             this[propKey] = props[key] !== undefined ? props[key] : _typeEventBusProps[key];
         }
