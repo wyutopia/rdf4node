@@ -131,7 +131,7 @@ class HttpEndpoint extends Endpoint {
         app.set('port', this._port);
         this._server = http.createServer(app);
         this._server.listen(this._port);
-        this._server.on('error', () => {
+        this._server.on('error', (error) => {
             if (error.syscall !== 'listen') {
                 throw error;
             }
