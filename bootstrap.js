@@ -18,16 +18,14 @@ const logger = WinstonLogger(process.env.SRV_ROLE || 'bootstrap');
 // Framework components
 const { Application } = require('./framework/app');
 
-// function _initFramework(callback) {
-//     logger.info('++++++ Stage 1: Initializing framwork ++++++');
-//     // Step 1: Create event-bus 
-//     global._$ebus = new EventBus(Object.assign({
-//         $name: sysdefs.eFrameworkModules.EBUS
-//     }, config.eventBus));
-//     // Step 2: Create timer
-//     return callback();
-// }
-
+/**
+ * 
+ * @param { Object } extensions - The customized overrides and extensions
+ * @param { Object? } extensions.registry
+ * @param { Object? } extensions.eventBus
+ * @param { Object? } extensions.endpoints
+ * @returns 
+ */
 async function bootstrap(extensions) {
     const beginTime = new Date();
     logger.info('>>> Application startup ... <<<');

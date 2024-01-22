@@ -22,7 +22,7 @@ const logDirManager = require('../utils/logdir.manager');
 //
 const { Registry } = require('./registry');
 const { DataSourceFactory } = require('./data-source');
-const { EventBus, EventLogger } = require('./ebus');
+const { EventBus } = require('./ebus');
 const { RepositoryFactory } = require('./repository');
 const { CacheFactory } = require('./cache');
 const { EndpointFactory } = require('./endpoint');
@@ -363,7 +363,7 @@ class Application extends EventEmitter {
      * @param mod
      */
     registerModule(mod, options) {
-        logger.info(`New module registry: ${mod.$name} - ${mod.mandatory} - ${mod.state}`);
+        logger.info(`New module registry: ${mod.$name} - ${tools.inspect(options)}`);
         if (this._modules[mod.$name] !== undefined) {
             logger.error(`>>>>>> Conflict! ${mod.name} already exists.`)
         } else {
@@ -372,8 +372,8 @@ class Application extends EventEmitter {
             let layer = mod.type || sysdefs.eModuleType.OBJ;
             this._arch[layer].push(mod);
             // Subscribe events
-            if (this._ebus && options.subEvents && options.subEvents.length > 0) {
-                this._ebus.register(mod, options);
+            if (this.ebus && options.subEvents && options.subEvents.length > 0) {
+                this.ebus.register(mod, options);
             }
         }
     }

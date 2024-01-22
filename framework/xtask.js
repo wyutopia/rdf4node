@@ -7,9 +7,9 @@ const async = require('async');
 const schedule = require('node-schedule');
 // 
 const Types = require('../include/types');
-const theApp = require('./app');
 const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
+const _MODULE_NAME = sysdefs.eFrameworkModules.XTASK;
 const { EventObject, EventModule } = require('../include/events');
 const mntService = require('../libs/base/prom.monitor');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
@@ -18,7 +18,6 @@ const logger = WinstonLogger(process.env.SRV_ROLE || 'xtask');
 // the cron format:
 // second minute hour dayOfMonth month dayOfWeek
 
-const _MODULE_NAME = "TASKS_MNG";
 
 const eMetricNames = {
     activeTasks: 'active_tasks'

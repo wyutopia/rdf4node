@@ -310,7 +310,7 @@ class EventBus extends EventModule {
             return null;
         }
         let moduleName = moduleRef.$name;
-        //logger.debug(`Register ${moduleName} with options - ${tools.inspect(options)}`);
+        //logger.debug(`${this.$name}: Register ${moduleName} with options - ${tools.inspect(options)}`);
         if (this._registries[moduleName] === undefined) {
             this._registries[moduleName] = {
                 name: moduleName,
