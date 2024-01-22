@@ -199,7 +199,8 @@ class Application extends EventEmitter {
         _initSelf.call(this, props);
         this._modules = {};
         //
-        this.ebus = new EventBus(this, {$name: sysdefs.eFrameworkModules.EBUS});
+        this.ebus = new EventBus(this, {$name: sysdefs.eFrameworkModules.EBUS});    // ebus should be the first member!!!
+        //
         this.taskFactory = new TaskFactory(this, {$name: sysdefs.eFrameworkModules.XTASK});
         this.registry = new Registry(this, {$name: sysdefs.eFrameworkModules.REGISTRY});
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
@@ -361,7 +362,7 @@ class Application extends EventEmitter {
      *
      * @param mod
      */
-    registerModule(mod, events) {
+    registerModule(mod, options) {
         logger.info(`New module registry: ${mod.$name} - ${mod.mandatory} - ${mod.state}`);
         if (this._modules[mod.$name] !== undefined) {
             logger.error(`>>>>>> Conflict! ${mod.name} already exists.`)
@@ -370,6 +371,10 @@ class Application extends EventEmitter {
             // Add to clean up chain
             let layer = mod.type || sysdefs.eModuleType.OBJ;
             this._arch[layer].push(mod);
+            // Subscribe events
+            if (this._ebus && options.subEvents && options.subEvents.length > 0) {
+                this._ebus.register(mod, options);
+            }
         }
     }
     updateModuleState(name, s) {

@@ -237,6 +237,14 @@ const _typeRegisterOptions = {
     pubKey: 'pubEvent'
 };
 
+/**
+ * @typedef RegisterOptions
+ * @prop { string[] } subEvents - The 
+ * @prop { string } engine 
+ * @prop { string } channel
+ * @prop { string } pubKey
+ */
+
 // Define the EventBus class
 class EventBus extends EventModule {
     constructor(appCtx, props) {
@@ -293,15 +301,10 @@ class EventBus extends EventModule {
     /**
      * 
      * @param {instanceof EventModule} moduleRef 
-     * @param {_typeRegisterOptions} options 
+     * @param { RegisterOptions } options 
      * @returns 
      */
     register(moduleRef, options) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
-        //
         if (!(moduleRef instanceof EventModule)) {
             logger.error(`Error: should be EventModule!`);
             return null;
@@ -316,8 +319,8 @@ class EventBus extends EventModule {
             }
         }
         // Update subscriptions
-        let sumEvents = Object.values(eSysEvents).concat(options.subEvents || []);
-        sumEvents.forEach(code => {
+        //let sumEvents = Object.values(eSysEvents).concat(options.subEvents || []);
+        options.subEvents.forEach(code => {
             if (this._subscribers[code] === undefined) {
                 this._subscribers[code] = [];
             }
