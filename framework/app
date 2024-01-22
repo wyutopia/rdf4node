@@ -444,8 +444,8 @@ class Application extends EventEmitter {
         Object.keys(this._arch).forEach( layer => {
             logger.info(`>>>>>> ${layer}: Clean up modules ...`);
             this._arch[layer].forEach(m => {
-                if (typeof m.disposeAsync === 'function') {
-                    promises.push(m.disposeAsync());
+                if (typeof m.dispose === 'function') {
+                    promises.push(m.dispose());
                 }
             });
         });

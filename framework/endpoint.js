@@ -50,10 +50,9 @@ class Endpoint extends EventModule {
         this._config = null;
         this._state = eModuleState.INIT;
     }
-    dispose(callback) {
-        return process.nextTick(callback);
+    async dispose() {
+        return 'ok';
     }
-    disposeAsync = util.promisify(this.dispose)
 }
 
 class HttpEndpoint extends Endpoint {
@@ -169,6 +168,13 @@ class HttpEndpoint extends Endpoint {
     getInstance() {
         return this._server;
     }
+    async dispose() {
+        if (this._server) {
+            this._server.close();
+            return 'ok'
+        }
+        return 0;
+    }
 }
 
 class gRPCEndpoint extends Endpoint {
@@ -199,7 +205,10 @@ class EndpointFactory extends EventModule {
     init(config) {
         const arr = tools.isTypeOfArray(config) ? config : [config];
         arr.forEach(item => {
-            const ep = new HttpEndpoint(this._appCtx, { $name: `ep-${item.name}` });
+            const ep = new HttpEndpoint(this._appCtx, { 
+                $name: `ep-${item.name}`,
+                managed: true
+            });
             this._endpoints[item.name] = ep;
             //
             ep.init(item.options);
@@ -222,10 +231,24 @@ class EndpointFactory extends EventModule {
         })
         return await Promise.all(promises);
     }
-    dispose(callback) {
-        return process.nextTick(callback);
+    async dispose() {
+        logger.info(`${this.$name}: dispose all endpoints ...`);
+        const promises = [];
+        Object.keys(this._endpoints).forEach(key => {
+            const ep = this._endpoints[key];
+            if (typeof ep.dispose === 'function') {
+                promises.push(ep.dispose());
+            }
+        })
+        try {
+            const results = await Promise.all(promises);
+            logger.info(`${this.$name}: ${tools.inspect(results)}`);
+            return results;
+        } catch (ex) {
+            logger.error(`${this.$name}: dispose error! - ${tools.inspect(ex)}`);
+            return ex;
+        }
     }
-    disposeAsync = util.promisify(this.dispose);
 }
 
 // Declaring module exports

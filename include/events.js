@@ -121,10 +121,12 @@ class EventModule extends EventObject {
         });
         // Register the module
         (() => {
-            let options = Object.assign({
-                subEvents: Object.keys(this._eventHandlers)
-            }, this._eventOptions);
-            this._appCtx.registerModule(this, options);
+            if (!props.managed) {
+                let options = Object.assign({
+                    subEvents: Object.keys(this._eventHandlers)
+                }, this._eventOptions);
+                this._appCtx.registerModule(this, options);
+            }
         })();
     }
 }
