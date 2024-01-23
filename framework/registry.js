@@ -3,6 +3,7 @@
  */
 const assert = require('assert');
 const util = require('util');
+const tools = require('../utils/tools');
 const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REGISTRY;
 const { CommonObject } = require('../include/base');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
