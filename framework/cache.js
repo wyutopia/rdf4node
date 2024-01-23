@@ -88,28 +88,7 @@ const _sampleCacheSpec = {
     valueKeys: 'user project group tenant role'
 };
 
-const _defaultCacheSpec = {
-    dataType: eDataType.Kv,
-    loadPolicy: eLoadPolicy.SetAfterFound,
-    keyName: '_id',
-    keyNameTemplate: null,
-    populate: null,
-    select: null,
-    valueKeys: null,
-}
 
-/**
- * 
- * @param {Types.CacheSpecOptions} options 
- * @returns 
- */
-function _initCacheSpec(options) {
-    let spec = {};
-    Object.keys(_defaultCacheSpec).forEach(key => {
-        spec[key] = options[key] !== undefined ? options[key] : _defaultCacheSpec[key];
-    });
-    return spec;
-}
 
 const _defaultCacheProps = {
     logLevel: 'error',
@@ -224,15 +203,34 @@ class Cache extends EventModule {
     }
 }
 
+const _typeCacheProps = {
+    engine: sysdefs.eCacheEngine.Native,
+    shareConnection: false,
+    shareDatabase: false
+}
 // The cache factory class
 class CacheFactory extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
         this._caches = {};
+        this._redisFactory = null;
+        this._state = sysdefs.eModuleState.INIT;
     }
     init(config) {
-        
+        Object.keys(_typeCacheProps).forEach (key => {
+            const propKey = '_' + key;
+            this[propKey] = config[key] !== undefined? config[key] : _typeCacheProps[key];
+        });
+        if (this._engine === sysdefs.eCacheEngine.Redis) {
+            const redisConf = config[this._engine];
+            if (redisConf !== undefined) {
+                this._redisFactory = new RedisFactory(this, redisConf);
+            }
+            this._state = sysdefs.eModuleState.READY;
+        } else {
+            this._state = sysdefs.eModuleState.ACTIVE;
+        }
     }
     /**
      * 
@@ -250,6 +248,30 @@ class CacheFactory extends EventModule {
         }
         return this._caches[name];
     }
+}
+
+
+const _defaultCacheSpec = {
+    dataType: eDataType.Kv,
+    loadPolicy: eLoadPolicy.SetAfterFound,
+    keyName: '_id',
+    keyNameTemplate: null,
+    populate: null,
+    select: null,
+    valueKeys: null,
+}
+
+/**
+ * 
+ * @param {Types.CacheSpecOptions} options 
+ * @returns 
+ */
+function _initCacheSpec(options) {
+    let spec = {};
+    Object.keys(_defaultCacheSpec).forEach(key => {
+        spec[key] = options[key] !== undefined ? options[key] : _defaultCacheSpec[key];
+    });
+    return spec;
 }
 
 // Declaring cache singleton and set module exports

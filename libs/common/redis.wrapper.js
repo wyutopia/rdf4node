@@ -177,16 +177,15 @@ class RedisClient extends EventObject {
         }
         return func.apply(this._client, args);
     }
-    dispose (callback) {
+    async dispose () {
         if (this.isConnected()) {
             logger.info(`${this.$name}[${this.state}]: disconnecting...`);
             this.state = eClientState.Closing;
             this._client.disconnect();
             this._client = null;
         }
-        return process.nextTick(callback);
+        return `${this.$name} disposed.`;
     }
-    disposeAsync = util.promisify(this.dispose)
 }
 
 const gClientSpecOptions = {
@@ -270,9 +269,9 @@ class RedisFactory extends EventModule {
         }
         return this._clients[clientId];
     }
-    dispose(callback) {
+    async dispose() {
         this.state = sysdefs.eModuleState.STOP_PENDING;
-        logger.info(`${this.$name}: Closing all client connections ...`);
+        logger.info(`Closing all client connections ...`);
         let keys = Object.keys(this._clients);
         async.eachLimit(keys, 3, (key, next) => {
             let client = this._clients[key];
@@ -285,7 +284,6 @@ class RedisFactory extends EventModule {
             return callback();
         });
     }
-    disposeAsync = util.promisify(this.dispose)
 }
 
 // const _props = Object.assign({
