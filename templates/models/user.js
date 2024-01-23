@@ -5,7 +5,7 @@ const {
     pubdefs,
     mongoose: db,
     cache: {eDataType, eLoadPolicy}
-} = require('../applications');
+} = require('../app');
 const Schema = db.Schema;
 const ObjectId = Schema.Types.ObjectId;
 

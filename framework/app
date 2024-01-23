@@ -293,7 +293,7 @@ class Application extends EventEmitter {
         options.excludeModelPaths = _excludeModelPaths.concat(options.excludeModelPaths || []);
         logger.info('>>>>>> loadDataModels with options: ', tools.inspect(options));
         //
-        const modelDir = path.join(appRoot.path, options.modelDir || 'models');
+        const modelDir = path.join(appRoot.path, options.modelPath || 'models');
         const loadedModels = [];
         _readModelDirSync.call(this, modelDir, loadedModels, options);
         logger.info(`>>>>>> Total ${loadedModels.length} database schemas registered. <<<<<<`);
@@ -301,7 +301,7 @@ class Application extends EventEmitter {
     }
 
     loadServices(options) {
-        let serviceDir = path.join(appRoot.path, options.serviceDir || 'services');
+        let serviceDir = path.join(appRoot.path, options.servicePath || 'services');
         logger.info(`>>>>>> Load all services module from ${serviceDir} ...`);
         let allServices = [];
         let entries = fs.readdirSync(serviceDir, {

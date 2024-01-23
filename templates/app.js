@@ -46,3 +46,5 @@ exports._DS_DEFAULT_ = require('@icedeer/rdf4node/framework/repository')._DS_DEF
 exports.cache = require('@icedeer/rdf4node/framework/cache');
 exports.XTask = require('@icedeer/rdf4node/framework/xtask').XTask;
 exports.EventLogger = require('@icedeer/rdf4node/framework/ebus').EventLogger;
+//
+exports.bootstrap = require('@icedeer/rdf4node/bootstrap').bootstrap;

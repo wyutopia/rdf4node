@@ -5,22 +5,22 @@ if [ $OS_NAME == "Darwin" ]; then
     BACK_FILE=".bak"
 fi
 echo "Current os: $OS_NAME, Back file: $BACK_FILE"
-PROJ_ROOT_DIR=$(pwd)
-PROJ_NAME=$(basename ${PROJ_ROOT_DIR})
-TEMP_DIR=${PROJ_ROOT_DIR}/node_modules/@icedeer/rdf4node/templates
+PRJ_ROOT_DIR=$(pwd)
+PRJ_NAME=$(basename ${PRJ_ROOT_DIR})
+TEMP_DIR=${PRJ_ROOT_DIR}/node_modules/@icedeer/rdf4node/templates
 
 echo "<<< Initializing project >>>"
 # Step 1: Modify app root 
 cp "${TEMP_DIR}/build/Dockerfile" .
-sed -i $BACK_FILE "s/\=rdf4node/\=${PROJ_NAME}/g" Dockerfile
+sed -i $BACK_FILE "s/\=rdf4node/\=${PRJ_NAME}/g" Dockerfile
 
 cp "${TEMP_DIR}/build/.dockerignore" .
 cp "${TEMP_DIR}/build/standalone.json" .
-sed -i $BACK_FILE "s/rdf4node/${PROJ_NAME}/g" standalone.json
+sed -i $BACK_FILE "s/rdf4node/${PRJ_NAME}/g" standalone.json
 
 # Modify app.js
 cp -f "${TEMP_DIR}/app.js" .
-sed -i $BACK_FILE "s/rdf4node-app/${PROJ_NAME}-app/g" app.js
+sed -i $BACK_FILE "s/rdf4node-app/${PRJ_NAME}-app/g" app.js
 
 rm -f *.bak
 echo "Project root modified."
@@ -28,10 +28,10 @@ echo "Project root modified."
 # Step 2: Upgrade bin folder
 cd bin
 cp "${TEMP_DIR}/build/docker-dist" .
-sed -i $BACK_FILE "s/rdf4node/${PROJ_NAME}/g" docker-dist
+sed -i $BACK_FILE "s/rdf4node/${PRJ_NAME}/g" docker-dist
 
 cp "${TEMP_DIR}/bin/www" .
-sed -i $BACK_FILE "s/rdf4node:/${PROJ_NAME}:/g" www
+sed -i $BACK_FILE "s/rdf4node:/${PRJ_NAME}:/g" www
 
 rm -f *.bak
 cd ..
@@ -49,14 +49,10 @@ echo "Folder common created."
 # Step 4: Add conf folder
 mkdir -p conf
 cd conf
-cp "${TEMP_DIR}/conf/bootstrap.js" .
-cp "${TEMP_DIR}/conf/conf-dev.json" .
-sed -i $BACK_FILE "s/rdf4node/${PROJ_NAME}/g" conf-dev.json
-
-cp ./conf-dev.json ./conf-pro.json
-cp "${TEMP_DIR}/conf/config.json.template" ./conf-pro.json.template
+cp "${TEMP_DIR}/conf/conf.template.js" .
+cp "${TEMP_DIR}/conf/app.dev.js" .
 cp "${TEMP_DIR}/conf/version.json" ./version.json
-sed -i $BACK_FILE "s/rdf4node/${PROJ_NAME}/g" version.json
+sed -i $BACK_FILE "s/rdf4node/${PRJ_NAME}/g" version.json
 
 rm -f *.bak
 cd ..
@@ -103,9 +99,11 @@ cd ..
 echo "Folder views modified."
 
 # Step 10: Create application entry
-mkdir -p applications && cd applications
-cp -f "${TEMP_DIR}/applications/index.js" .
-cd ..
+mkdir -p applications
 echo "Folder applications created."
 
+echo "Install mongoose@6 redis rascal ali-oss libs ..."
+npm install mongoose@6 redis rascal ali-oss --save --no-audit
+
 echo "<<< Congratulations!!! >>>"
+echo "Please run command to start: node bin/www"

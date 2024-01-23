@@ -12,7 +12,7 @@ const tools = require('../utils/tools');
 
 let config = {};
 try {
-    const srvRole = process.env.SRV_ROLE || 'core';
+    const srvRole = process.env.SRV_ROLE || 'app';
     const nodeEnv = process.env.NODE_ENV ? process.env.NODE_ENV.slice(0, 3) : 'dev';
     const cnfFileName = `${srvRole}.${nodeEnv}.js`;
     const cnfFilePath = process.env.CFG_FILE || path.join(appRoot.path, 'conf', cnfFileName);
