@@ -61,7 +61,8 @@ const eFrameworkModules = {
     ENDPOINT        : '_endpoint_',
     ROUTER          : '_router_',
     DLOCKER         : '_distlocker_',
-    XTASK           : '_xtask_'
+    XTASK           : '_xtask_',
+    UPLOAD          : '_upload_'
 };
 exports.eFrameworkModules = eFrameworkModules;
 

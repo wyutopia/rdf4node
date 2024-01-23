@@ -9,20 +9,16 @@ const appRoot = require('app-root-path');
 const moment = require('moment');
 const multer = require('multer');
 //
-const sysdefs = require('../../include/sysdefs');
-const { CommonObject } = require('../../include/base');
-const { upload: uploadConf } = require('../../include/config');
-const tools = require('../../utils/tools');
-const {WinstonLogger} = require("../base/winston.wrapper");
+const sysdefs = require('../include/sysdefs');
+const { CommonObject } = require('../include/base');
+const tools = require('../utils/tools');
+const {WinstonLogger} = require("../libs/base/winston.wrapper");
 const logger = WinstonLogger(process.env.SRV_ROLE || 'uploads');
-//
-const _DEFAULT_DIR = process.env.UPLOAD_DIR || path.join(appRoot.path, 'public/uploads/');
-logger.info(`>>>>>> The default upload dir: ${_DEFAULT_DIR}`);
-
 //
 function _initSelf(options) {
     // Config hostPath
-    this._hostPath = options.hostPath || _DEFAULT_DIR;
+    this._hostPath = process.env.UPLOAD_DIR || path.join(appRoot.path, options.hostPath || 'public/uploads/');
+    logger.info(`>>>>>> The default upload dir: ${this._hostPath}`);
     // Config 3rd-party oss engine
     this._engine = options.engine || sysdefs.eOSSEngine.Native;
     this._engineConf = options[this._engine];
@@ -85,66 +81,73 @@ function _genSignature(options) {
 class UploadHelper extends CommonObject {
     constructor(props) {
         super(props);
-        _initSelf.call(this, props.config);
-        logger.info(`>>>>>> UploadHelper created with configuration: ${tools.inspect(props.config)}`);
         // Define member variables
         this._uploads = {};
-        // Implementing methods
-        this.getUpload = (absDir, options) => {
-            let destDir = absDir || _DEFAULT_DIR;
-            let key = tools.md5Sign(destDir);
-            if (this._uploads[key] === undefined) {
-                this._uploads[key] = multer({dest: destDir});
-            }
-            return this._uploads[key];
-        };
-        this.getSignature = (options) => {
-            if (this._engine === sysdefs.eOSSEngine.AliOSS) {
-                return _genSignature.call(this, options || {});
-            }
-            logger.error(`${this.$name}: The OSSEngine shoud be alioss!`);
-            return {};
-        };
+        this._state = sysdefs.eModuleState.INIT;
+    }
+    // Implementing methods
+    init(config) {
+        if (this._state !== sysdefs.eModuleState.INIT) {
+            logger.error('Already initialized.');
+            return 0;
+        }
+        logger.info(`>>> Init with with config: ${tools.inspect(config)}`);
+        _initSelf.call(this, config);
+        this_state = sysdefs.eModuleState.READY;
+        return 1;
+    }
+    getUpload (absDir, options) {
+        let destDir = absDir || this._hostPath;
+        let key = tools.md5Sign(destDir);
+        if (this._uploads[key] === undefined) {
+            this._uploads[key] = multer({dest: destDir});
+        }
+        return this._uploads[key];
+    }
+    getSignature (options) {
+        if (this._engine === sysdefs.eOSSEngine.AliOSS) {
+            return _genSignature.call(this, options || {});
+        }
+        logger.error(`${this.$name}: The OSSEngine shoud be alioss!`);
+        return {};
+    };
         /**
          * 
          * @param {string} name 
          * @param {string} acl (private/public-read/public-read-write)
          * @param {*} callback 
          * @returns 
-         */
-        this.setObjectAcl = (name, acl, callback) => {
-            return callback();
-        };
-        this.getSignatureUrl = (name, options) => {
-            return this._engine === sysdefs.eOSSEngine.AliOSS? this._alioss.signatureUrl(name, options) : name;
-        };
-        this.getObjectUrl = (name, options) => {
-            return path.join(this._baseUrlPattern, name);
-        };
-        this.deleteOneAsync = async (url, options) => {
-            const objName = url.replace(this._baseUrlPattern, '').split('?')[0];
-            const result = await this._alioss.delete(objName);
-            logger.debug(`Delete object: ${objName} result: ${tools.inspect(result)}`);
-            return result;
-        };
-        this.deleteMultiAsync = async (urls, options) => {
-            const names = [];
-            urls.forEach(url => {
-                names.push(url.replace(this._baseUrlPattern, '').split('?')[0]);
-            })
-            const result = await this._alioss.deleteMulti(names);
-            logger.debug(`Delete multiple objects: ${tools.inspect(names)} result: ${tools.inspect(result)}`);
-            return result;
-        };
-        this.getOSSClient = () => {
-            return this._alioss;
-        };
-    };
+         */            
+    setObjectAcl(name, acl, callback) {
+        return callback();
+    }    
+    getSignatureUrl(name, options) {
+        return this._engine === sysdefs.eOSSEngine.AliOSS? this._alioss.signatureUrl(name, options) : name;
+    }    
+    getObjectUrl(name, options) {
+        return path.join(this._baseUrlPattern, name);
+    }    
+    async deleteOneAsync(url, options) {
+        const objName = url.replace(this._baseUrlPattern, '').split('?')[0];
+        const result = await this._alioss.delete(objName);
+        logger.debug(`Delete object: ${objName} result: ${tools.inspect(result)}`);
+        return result;
+    }    
+    async deleteMultiAsync(urls, options) {
+        const names = [];
+        urls.forEach(url => {
+            names.push(url.replace(this._baseUrlPattern, '').split('?')[0]);
+        })
+        const result = await this._alioss.deleteMulti(names);
+        logger.debug(`Delete multiple objects: ${tools.inspect(names)} result: ${tools.inspect(result)}`);
+        return result;
+    }
+    getOSSClient() {
+        return this._alioss;
+    }
 };
 
 // Define 
-module.exports = exports = new UploadHelper({
-    $name: '_UploadHelper_',
-    //
-    config: uploadConf || {}
-});
+module.exports = exports = {
+    UploadHelper
+};

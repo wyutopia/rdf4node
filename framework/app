@@ -32,6 +32,7 @@ const { CacheFactory } = require('./cache');
 const { EndpointFactory } = require('./endpoint');
 const { DistributedEntityLocker } = require('./distributed-locker');
 const { TaskFactory } = require('./xtask');
+const { UploadHelper } = require('./upload');
 
 //
 async function _regService() {
@@ -199,11 +200,12 @@ class Application extends EventEmitter {
         }
         //
         this.ebus = new EventBus(this, {$name: sysdefs.eFrameworkModules.EBUS});    // ebus should be the first framework component!!!
-        this.taskFactory = new TaskFactory(this, {$name: sysdefs.eFrameworkModules.XTASK});
+        this.upload = new UploadHelper(this, {$name: sysdefs.eFrameworkModules.UPLOAD});
         this.registry = new Registry(this, {$name: sysdefs.eFrameworkModules.REGISTRY});
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.cacheFactory = new CacheFactory(this, {$name: sysdefs.eFrameworkModules.CACHE});
+        this.taskFactory = new TaskFactory(this, {$name: sysdefs.eFrameworkModules.XTASK});
         this.distLocker = new DistributedEntityLocker({$name: sysdefs.eFrameworkModules.DLOCKER});
         this.epFactory = new EndpointFactory(this, {$name: sysdefs.eFrameworkModules.ENDPOINT});
     }
@@ -262,6 +264,9 @@ class Application extends EventEmitter {
 
         if (config.registry) {
             this.registry.init(config.registry);
+        }
+        if (config.upload) {
+            this.upload.init(config.upload);
         }
         if (config.dataSources) {
             this.dsFactory.init(config.dataSources);
