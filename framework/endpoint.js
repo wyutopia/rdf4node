@@ -65,9 +65,6 @@ class HttpEndpoint extends Endpoint {
             logger.error(`${this.$name}: Already initialized!`);
             return null;
         }
-        if (options.routePath === undefined) {
-            options.routePath = path.join(appRoot.path, 'routes');
-        }
         this._config = options;
         this._port = normalizePort(options.port || process.env.PORT || '3000');
         // Update state

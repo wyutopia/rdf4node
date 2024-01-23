@@ -96,8 +96,8 @@ function _calibrateValidator(validator, scope, modifications) {
     }
 }
 
-function _readRouteFileSync(specs, routePath, filename) {
-    let filePath = path.join(_rootDir, routePath, filename);
+function _readRouteFileSync(specs, rootDir, routePath, filename) {
+    let filePath = path.join(rootDir, routePath, filename);
     try {
         const routeObj = require(filePath);
         //
@@ -131,9 +131,8 @@ function _readRouteFileSync(specs, routePath, filename) {
     }
 }
 
-let _rootDir = '';
-function _readRouteDirSync(specs, routePath) {
-    let routeDir = path.join(_rootDir, routePath);
+function _readRouteDirSync(specs, rootDir, routePath) {
+    let routeDir = path.join(rootDir, routePath);
     logger.debug(`>>> Read routes from dir: ${routeDir}`);
 
     let entries = fs.readdirSync(routeDir, _READDIR_OPTIONS);
@@ -142,9 +141,9 @@ function _readRouteDirSync(specs, routePath) {
             return null;
         }
         if (dirent.isDirectory()) {
-            _readRouteDirSync(specs, path.join(routePath, dirent.name));
+            _readRouteDirSync(specs, rootDir, path.join(routePath, dirent.name));
         } else {
-            _readRouteFileSync(specs, routePath, dirent.name);
+            _readRouteFileSync(specs, rootDir, routePath, dirent.name);
         }
     });
 }
@@ -187,9 +186,10 @@ function _setRoutes(router, routeSpecs) {
     }
 }
 
-function _addAppRoutes(router) {
+
+function _addAppRoutes(router, routeDir) {
     let routeSpecs = [];
-    _readRouteDirSync(routeSpecs, '');
+    _readRouteDirSync(routeSpecs, routeDir, '');
     _setRoutes(router, routeSpecs);
     //
     /* GET api document page on non-production env. */
@@ -205,8 +205,7 @@ function initRouter(router, options) {
     _setCORS(router, options);
     _addHomepage(router, options);
     //
-    _rootDir = path.join(appRoot.path, options.routePath || 'routes');
-    _addAppRoutes(router, options);
+    _addAppRoutes(router, path.join(appRoot.path, options.routePath || 'routes'));
 }
 
 // Declaring module exports
