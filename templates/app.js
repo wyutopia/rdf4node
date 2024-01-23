@@ -31,6 +31,7 @@ exports.sysConfig = config;
 exports.allConfig = config;
 
 // base libs
+exports.expressWrapper = require('@icedeer/rdf4node/libs/base/express.wrapper');
 exports.WinstonLogger = require('@icedeer/rdf4node/libs/base/winston.wrapper').WinstonLogger;
 exports.monitor = require('@icedeer/rdf4node/libs/base/prom.monitor');
 

@@ -48,7 +48,7 @@ function _addHomepage(router, options) {
     /* GET home page. */
     router.get('/', (req, res, next) => {
         //TODO: Replace title with your own project name
-        res.render('index', { title: options.name || 'the rappid-dev-framework!' });
+        res.render('index', { title: theApp.getName() || 'the rappid-dev-framework!' });
     });
 }
 
