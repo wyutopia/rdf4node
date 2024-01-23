@@ -7,41 +7,41 @@ const appRoot = require('app-root-path');
 const Types = require('../include/types');
 const sysdefs = require('../include/sysdefs')
 const eRetCodes = require('../include/retcodes');
-const {EventModule, EventObject, sysEvents} = require('../include/events');
+const { EventModule, EventObject, sysEvents } = require('../include/events');
 const sysConf = require('../include/config');
 const _MODULE_NAME = sysdefs.eFrameworkModules.CACHE;
-const {WinstonLogger} =  require('../libs/base/winston.wrapper');
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 const redisWrapper = require('../libs/common/redis.wrapper');
 
 const _CACHE_DEFAULT = 'default';
 const eDataType = {
-    Kv              : 'kv',
-    List            : 'ls',
-    Set             : 'set',
-    Map             : 'map'
+    Kv: 'kv',
+    List: 'ls',
+    Set: 'set',
+    Map: 'map'
 };
 
 const eLoadPolicy = {
-    Bootstrap      : 'bootstrap',
-    SetAfterFound  : 'setAfterFound'
+    Bootstrap: 'bootstrap',
+    SetAfterFound: 'setAfterFound'
 };
 
 
-function _setValue (key, val, options, callback) {
+function _setValue(key, val, options, callback) {
     if (typeof options === 'function') {
         callback = options;
         options = {};
     }
-    let realKey = this._prefix? `${this._prefix}:${key}` : key;
+    let realKey = this._prefix ? `${this._prefix}:${key}` : key;
     this._dataRepo[realKey] = val;
     // TODO: Start timer if necessary
     return callback(null, 1);
 }
 
-function _unsetValue (key, callback) {
-    let realKey = this._prefix? `${this._prefix}:${key}` : key;
+function _unsetValue(key, callback) {
+    let realKey = this._prefix ? `${this._prefix}:${key}` : key;
     if (this._dataRepo[realKey] === undefined) {
         return callback(null, 0);
     }
@@ -50,13 +50,13 @@ function _unsetValue (key, callback) {
     return callback(null, 1);
 }
 
-function _getvalue (key, callback) {
-    let realKey = this._prefix? `${this._prefix}:${key}` : key;
+function _getvalue(key, callback) {
+    let realKey = this._prefix ? `${this._prefix}:${key}` : key;
     return callback(null, this._dataRepo[realKey]);
 }
 
 const _fakeClient = {
-    execute: function(method, ...args) {
+    execute: function (method, ...args) {
         let callback = args[args.length - 1];
         return callback({
             code: eRetCodes.BAD_REQUEST,
@@ -78,11 +78,11 @@ const _sampleCacheSpec = {
     keyName: '_id',
     keyNameTemplate: 'user:project:group:tenant',
     populate: [
-      {
-        path: 'role',
-        select: 'name permissions',
-        populate: { path: 'permissions', select: 'resource operations' }
-      }
+        {
+            path: 'role',
+            select: 'name permissions',
+            populate: { path: 'permissions', select: 'resource operations' }
+        }
     ],
     select: 'user project group tenant role',
     valueKeys: 'user project group tenant role'
@@ -103,10 +103,10 @@ const _defaultCacheSpec = {
  * @param {Types.CacheSpecOptions} options 
  * @returns 
  */
-function _initCacheSpec (options) {
+function _initCacheSpec(options) {
     let spec = {};
-    Object.keys(_defaultCacheSpec).forEach( key => {
-        spec[key] = options[key] !== undefined? options[key] : _defaultCacheSpec[key];
+    Object.keys(_defaultCacheSpec).forEach(key => {
+        spec[key] = options[key] !== undefined ? options[key] : _defaultCacheSpec[key];
     });
     return spec;
 }
@@ -117,7 +117,7 @@ const _defaultCacheProps = {
     server: 'default',
     database: 0,
     prefix: null,                       // No default key prefix
-    ttl: 0, 
+    ttl: 0,
     json: true,
 }
 
@@ -126,10 +126,10 @@ const _defaultCacheProps = {
  * @param {Object} ett 
  * @param {Types.CacheProperties} props 
  */
-function _initCacheEntity (ett, props) {
-    Object.keys(_defaultCacheProps).forEach( key => {
+function _initCacheEntity(ett, props) {
+    Object.keys(_defaultCacheProps).forEach(key => {
         let propKey = `_${key}`;
-        ett[propKey] = props[key] !== undefined? props[key] : _defaultCacheProps[key];
+        ett[propKey] = props[key] !== undefined ? props[key] : _defaultCacheProps[key];
     });
 }
 
@@ -159,7 +159,7 @@ class Cache extends EventModule {
             if (this._engine === sysdefs.eCacheEngine.Native) {
                 return _setValue.call(this, key, val, options, callback);
             }
-            return this._client.execute('set', key, this._json? JSON.stringify(val) : val, callback);
+            return this._client.execute('set', key, this._json ? JSON.stringify(val) : val, callback);
         };
         this.get = (key, callback) => {
             if (this._engine === sysdefs.eCacheEngine.Native) {
@@ -169,7 +169,7 @@ class Cache extends EventModule {
                 if (err) {
                     return callback(err);
                 }
-                return callback(null, this._json? JSON.parse(result) : result);
+                return callback(null, this._json ? JSON.parse(result) : result);
             });
         };
         this.unset = (key, callback) => {
@@ -230,24 +230,27 @@ class CacheFactory extends EventModule {
         super(appCtx, props);
         //
         this._caches = {};
-        /**
-         * 
-         * @param {string} name 
-         * @param {Types.CacheProperties} cacheProps 
-         * @returns 
-         */
-        this.getCache = (name, cacheProps) => {
-            if (this._caches[name] === undefined) {
-                this._caches[name] = new Cache(this._appCtx, {
-                    $name: `${name}@${cacheProps.server || _CACHE_DEFAULT}`,
-                    cacheProps
-                });
-                logger.info(`Cache ${name} : ${tools.inspect(cacheProps)} created.`);
-            }
-            return this._caches[name];
-        };
     }
-};
+    init(config) {
+        
+    }
+    /**
+     * 
+     * @param {string} name 
+     * @param {Types.CacheProperties} cacheProps 
+     * @returns 
+     */
+    getCache(name, cacheProps) {
+        if (this._caches[name] === undefined) {
+            this._caches[name] = new Cache(this._appCtx, {
+                $name: `${name}@${cacheProps.server || _CACHE_DEFAULT}`,
+                cacheProps
+            });
+            logger.info(`Cache ${name} : ${tools.inspect(cacheProps)} created.`);
+        }
+        return this._caches[name];
+    }
+}
 
 // Declaring cache singleton and set module exports
 module.exports = exports = {

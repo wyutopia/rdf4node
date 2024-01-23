@@ -149,7 +149,7 @@ function _readModelDirSync(modelDir, loadedModels, options) {
         withFileTypes: true
     });
     entries.forEach(dirent => {
-        if (options.excludeModelPaths.indexOf(dirent.name) !== -1) { // Ignore excluded paths
+        if (options.excludePaths.indexOf(dirent.name) !== -1) { // Ignore excluded paths
             return null;
         }
         let fullPath = path.join(modelDir, dirent.name);
@@ -262,6 +262,9 @@ class Application extends EventEmitter {
         promMonitor.init(this);
         logDirManager.init(this);
 
+        if (config.eventBus) {
+            this.ebus.init(config.eventBus, extensions.eventBus || {});
+        }
         if (config.registry) {
             this.registry.init(config.registry);
         }
@@ -271,8 +274,8 @@ class Application extends EventEmitter {
         if (config.dataSources) {
             this.dsFactory.init(config.dataSources);
         }
-        if (config.eventBus) {
-            this.ebus.init(config.eventBus, extensions.eventBus || {});
+        if (config.cache) {
+            this.cacheFactory.init(config.cache);
         }
         if (config.endpoints) {
             this.epFactory.init(config.endpoints, extensions.endpoints || {});
@@ -283,14 +286,14 @@ class Application extends EventEmitter {
     }
     /**
      * @param { Object } options
-     * @param { string[]?} options.excludeModelPaths - The exclude model paths
-     * @param { string? } options.modelDir - The 
+     * @param { string[]?} options.excludePaths - The exclude model paths
+     * @param { string? } options.modelPath - The 
      * @param { string[]?} options.excludeModels - The exclude model names 
      * @param { string[]?} options.includeModels - The included model names
      * @returns
      */
     loadDataModels(options) {
-        options.excludeModelPaths = _excludeModelPaths.concat(options.excludeModelPaths || []);
+        options.excludePaths = _excludeModelPaths.concat(options.excludePaths || []);
         logger.info('>>>>>> loadDataModels with options: ', tools.inspect(options));
         //
         const modelDir = path.join(appRoot.path, options.modelPath || 'models');
