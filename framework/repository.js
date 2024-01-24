@@ -711,7 +711,7 @@ class Repository extends EventObject {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
             if (this.allowCache === true) {
-                this._cache = this.cacheFactory.getCache(this.modelName, this.cacheSpec);
+                this._cache = this.cacheFactory.getCache(this.modelName, this.cacheSpec.props);
             }
         })();
     }

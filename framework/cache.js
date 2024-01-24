@@ -244,7 +244,7 @@ class CacheFactory extends EventModule {
                 $name: `${name}@${cacheProps.server || _CACHE_DEFAULT}`,
                 cacheProps
             });
-            logger.info(`Cache ${name} : ${tools.inspect(cacheProps)} created.`);
+            logger.info(`Create new CacheEntity <${name}> with client config: ${tools.inspect(cacheProps)}.`);
         }
         return this._caches[name];
     }
@@ -259,6 +259,8 @@ const _defaultCacheSpec = {
     populate: null,
     select: null,
     valueKeys: null,
+    // The cache entity properties holder
+    props: null
 }
 
 /**

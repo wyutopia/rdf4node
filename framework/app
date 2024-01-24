@@ -166,7 +166,7 @@ function _readModelDirSync(modelDir, loadedModels, options) {
             if (options.includeModels && options.includeModels.indexOf(modelName) === -1) {
                 return null;
             }
-            const cacheOptions = _mergeCacheOptions(modelSpec.cacheOptions || {}, options.cacheSpecs[modelName] || {});
+            const cacheOptions = _mergeCacheOptions(modelSpec.cacheOptions || {}, options.cacheOptions[modelName] || {});
             this.repoFactory.registerModel(modelName, {
                 schema: modelSpec.modelSchema,
                 refs: modelSpec.modelRefs || [],
@@ -186,6 +186,7 @@ function _mergeCacheOptions (resident, config) {
     options.enabled = config.enabled || resident.enabled || false;
     if (options.enabled) {
         options.spec = Object.assign({}, resident.spec || {}, config.spec || {});
+        options.props = Object.assign({}, resident.props || {}, config.props || {});
     }
     return options;
 }

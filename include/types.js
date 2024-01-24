@@ -50,7 +50,8 @@
  * @prop {string[]} refs - The referenced model name array
  * @prop {Object} cacheOptions
  * @prop {boolean} cacheOptions.enabled - Enable or disable cache
- * @prop {CacheSpecOptions?} cacheOptions.spec - The cache spec
+ * @prop {CacheSpecOptions} cacheOptions.spec - The cache spec
+ * @prop {CacheProperties} cacheOptions.props - The cache entity properties
  */
 
 /**
