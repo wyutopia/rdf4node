@@ -31,7 +31,9 @@ class RascalManager extends EventModule {
             delete this._clients[name];
         });
     }
-
+    init(config) {
+        
+    }
     // Implementing member methods
     /**
      * 
