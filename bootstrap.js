@@ -52,7 +52,9 @@ async function bootstrap(extensions) {
             eventBus: config.eventBus,
             dataSources: config.dataSources,
             caches: config.caches,
-            endpoints: config.endpoints
+            endpoints: config.endpoints,
+            redis: config.redis,
+            rascal: config.rascal
         }, extensions);
         //
         logger.info('====== Step 2: Load enabled database models ======');
