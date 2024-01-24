@@ -175,7 +175,7 @@ class RedisClient extends EventObject {
                 message: msg
             });
         }
-        return func.apply(this._client, args);
+        return this._client[method](...args);
     }
     async dispose () {
         if (this.isConnected()) {

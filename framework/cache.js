@@ -150,14 +150,14 @@ class Cache extends EventModule {
             callback = options;
             options = undefined;
         }
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return _setValue.call(this, key, val, options, callback);
+        }
         if (!this._client) {
             return callback({
                 code: eRetCodes.REDIS_ERR,
                 message: 'Redis server not connected.'
             });
-        }
-        if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _setValue.call(this, key, val, options, callback);
         }
         return this._client.execute('set', key, this._json ? JSON.stringify(val) : val, callback);
     }
