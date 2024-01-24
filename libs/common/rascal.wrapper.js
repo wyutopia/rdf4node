@@ -20,7 +20,7 @@ const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
 
 // The rascal client factory 
-class RascalFactory extends EventModule {
+class RascalManager extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props);
         // The member variables
@@ -50,20 +50,20 @@ class RascalFactory extends EventModule {
         }
         return this._clients[name];
     }
-    dispose(callback) {
-        logger.info(`${this.$name}: Destroy all rascal clients ...`);
-        async.eachLimit(Object.keys(this._clients), 3, (name, next) => {
-            let client = this._clients[name];
-            if (client === undefined) {
-                return process.nextTick(next);
-            }
-            return client.dispose(next);
-        }, () => {
-            logger.info(`${this.$name}: All rascal clients have been destroyed.`);
-            return callback();
-        });
+    async dispose() {
+        try {
+            const promises = [];
+            const clientKeys = Object.keys(this._clients);
+            clientKeys.forEach(key => {
+                promises.push(this._clients[key].dispose());
+            });
+            logger.info(`${this.$name}: Destroy ${clientKeys.length} rascal clients ...`);
+            return await Promise.all(promises);
+        } catch (ex) {
+            logger.error(`!!! Dispose client error! - ${ex.message}`);
+            return 0;
+        }
     }
-    disposeAsync = util.promisify(this.dispose)
 }
 
 
@@ -198,9 +198,9 @@ class RascalClient extends CommonObject {
         this._pubKeys = [];
     }
     // Implementing methods
-    dispose(callback) {
+    async dispose() {
         if (this._broker === null || this.state !== eClientState.Conn) {
-            return process.nextTick(callback);
+            return `${this.$name}: closed.`;
         }
         this.state = eClientState.Closing;
         this._broker.shutdown(err => {
@@ -213,7 +213,6 @@ class RascalClient extends CommonObject {
             return callback();
         });
     }
-    disposeAsync = util.promisify(this.dispose)
     // Perform publishing
     publish(pubKey, data, options, callback) {
         logger.debug(`${this.$name}[${this.state}]: Publish - ${pubKey}, ${tools.inspect(data)}, ${tools.inspect(options)}`);
@@ -261,5 +260,5 @@ class RascalClient extends CommonObject {
 
 // Define module
 module.exports = exports = {
-    RascalFactory
+    RascalManager
 };

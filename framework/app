@@ -22,6 +22,9 @@ const logDirManager = require('../utils/logdir.manager');
 //
 const { ConsulClient } = require('../libs/base/consul.wrapper');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
+const { RedisManager } = require('../libs/common/redis.wrapper');
+const { RascalManager } = require('../libs/common/rascal.wrapper');
+
 const logger = WinstonLogger(process.env.SRV_ROLE || 'app');
 // The framework components
 const { Registry } = require('./registry');
@@ -138,7 +141,7 @@ const _typeAppConfig = {
 function _initSelf(props) {
     Object.keys(_typeAppConfig).forEach(key => {
         const propKey = '_' + key;
-        this[propKey] = props[key] !== undefined? props[key] : _typeAppConfig[key];
+        this[propKey] = props[key] !== undefined ? props[key] : _typeAppConfig[key];
     })
 }
 
@@ -181,7 +184,7 @@ function _readModelDirSync(modelDir, loadedModels, options) {
     });
 }
 
-function _mergeCacheOptions (resident, config) {
+function _mergeCacheOptions(resident, config) {
     const options = {};
     options.enabled = config.enabled || resident.enabled || false;
     if (options.enabled) {
@@ -203,16 +206,24 @@ class Application extends EventEmitter {
         if (props.consul) { // Consul configured
             this._consulClient = new ConsulClient(props.consul);
         }
+        this.redisManger = new RedisManager(this, {
+            $name: sysdefs.eFrameworkModules.REDIS_CM,
+            $type: sysdefs.eModuleType.CM
+        });
+        this.rascalManager = new RascalManager(this, {
+            $name: sysdefs.eFrameworkModules.RASCAL_CM,
+            $type: sysdefs.eModuleType.CM
+        });
         //
-        this.ebus = new EventBus(this, {$name: sysdefs.eFrameworkModules.EBUS});    // ebus should be the first framework component!!!
-        this.upload = new UploadHelper(this, {$name: sysdefs.eFrameworkModules.UPLOAD});
-        this.registry = new Registry(this, {$name: sysdefs.eFrameworkModules.REGISTRY});
+        this.ebus = new EventBus(this, { $name: sysdefs.eFrameworkModules.EBUS });    // ebus should be the first framework component!!!
+        this.upload = new UploadHelper(this, { $name: sysdefs.eFrameworkModules.UPLOAD });
+        this.registry = new Registry(this, { $name: sysdefs.eFrameworkModules.REGISTRY });
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
-        this.cacheFactory = new CacheFactory(this, {$name: sysdefs.eFrameworkModules.CACHE});
-        this.taskFactory = new TaskFactory(this, {$name: sysdefs.eFrameworkModules.XTASK});
-        this.distLocker = new DistributedEntityLocker({$name: sysdefs.eFrameworkModules.DLOCKER});
+        this.cacheFactory = new CacheFactory(this, { $name: sysdefs.eFrameworkModules.CACHE });
+        this.taskFactory = new TaskFactory(this, { $name: sysdefs.eFrameworkModules.XTASK });
+        this.distLocker = new DistributedEntityLocker({ $name: sysdefs.eFrameworkModules.DLOCKER });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
-        this.epFactory = new EndpointFactory(this, {$name: sysdefs.eFrameworkModules.ENDPOINT});
+        this.epFactory = new EndpointFactory(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
     }
     getVersion() {
         if (this._version === null) {
@@ -266,7 +277,12 @@ class Application extends EventEmitter {
         }
         promMonitor.init(this);
         logDirManager.init(this);
-
+        if (config.redis) {
+            this.redisManger.init(config.redis);
+        }
+        if (config.rascal) {
+            this.rascalManager.init(config.rascal);
+        }
         if (config.eventBus) {
             this.ebus.init(config.eventBus, extensions.eventBus || {});
         }
@@ -315,9 +331,9 @@ class Application extends EventEmitter {
         let entries = fs.readdirSync(serviceDir, {
             withFileTypes: true
         });
-        entries.forEach( dirent => {
+        entries.forEach(dirent => {
             if (dirent.isDirectory()  // Recursive not support currently
-                || (options.enabledServices && options.enabledServices.indexOf(dirent.name) === -1)) {  
+                || (options.enabledServices && options.enabledServices.indexOf(dirent.name) === -1)) {
                 return null;
             }
             let filePath = path.join(serviceDir, dirent.name);
@@ -455,7 +471,7 @@ class Application extends EventEmitter {
         //
         logger.info(`>>>>>> Stop all modules ...`);
         const promises = [];
-        Object.keys(this._arch).forEach( layer => {
+        Object.keys(this._arch).forEach(layer => {
             logger.info(`>>>>>> ${layer}: Clean up modules ...`);
             this._arch[layer].forEach(m => {
                 if (typeof m.dispose === 'function') {

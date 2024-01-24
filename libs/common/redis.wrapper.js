@@ -184,16 +184,9 @@ class RedisClient extends EventObject {
             this._client.disconnect();
             this._client = null;
         }
-        return `${this.$name} disposed.`;
+        return `${this.$name} closed.`;
     }
 }
-
-const gClientSpecOptions = {
-    name: {
-        type: 'String'
-    },
-    config: {}
-};
 
 function _genClientId(config) {
     if (!this._shareConnection) { // Always create new connection
@@ -204,10 +197,10 @@ function _genClientId(config) {
     return tools.md5Sign(seed);
 }
 
-const _typeRedisWrapperProps = {
-    name: 'string',
-    shareConnection: 'boolean',
-    shareDatabase: 'boolean'
+const _defaultRedisManagerProps = {
+    shareConnection: false,
+    shareDatabase: false,
+    servers: {}
 };
 
 /**
@@ -222,15 +215,12 @@ const _typeRedisWrapperProps = {
  */
 
 // The wrapper class
-class RedisFactory extends EventModule {
+class RedisManager extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props)
-        //
-        this._shareConnection = props.shareConnection !== undefined ? props.shareConnection : false;
-        this._shareDatabase = props.shareDatabase !== undefined ? props.shareDatabase : false;
-        this._servers = props.servers || {};
         // Define member variable
         this._clients = {};
+        this._state = sysdefs.eModuleState.INIT;
         // Implementing event handlers
         this.on('client-end', clientId => {
             logger.info(`${this.$name}: On client end. - ${clientId}`);
@@ -239,13 +229,23 @@ class RedisFactory extends EventModule {
             }
         });
     }
+    init(config) {
+        if (this.state !== sysdefs.eModuleState.INIT) {
+            logger.error(`!!! Already initialzied.`)
+            return null;
+        }
+        Object.keys(_defaultRedisManagerProps).forEach(key => {
+            let propKey = '_' + key;
+            this[propKey] = config[key] !== undefined? config[key] : _defaultRedisManagerProps[key];
+        })
+        this.state = sysdefs.eModuleState.ACTIVE;
+    }
     // Implementing member methods
     /**
      * 
      * @param { string } name - The client name
      * @param { string } server - The server config key
      * @param { Object } options
-     * @param { string } options.engine - The engine type. enum: native, redis
      * @param { number } options.database - The database number
      * @param { string } options.host - The host ip
      * @param { number } options.port - The host port
@@ -254,6 +254,9 @@ class RedisFactory extends EventModule {
      * @returns 
      */
     createClient(name, server, options) {
+        if (this._state !== sysdefs.eModuleState.ACTIVE) {
+            throw new Error(`!!! Initialize before using.`);
+        }
         let config = tools.deepAssign({}, this._servers[server], options);
         logger.info(`${this.$name}: Create client with ${name} - ${tools.inspect(config)}`);
         //
@@ -270,30 +273,25 @@ class RedisFactory extends EventModule {
         return this._clients[clientId];
     }
     async dispose() {
+        if (this._state !== sysdefs.eModuleState.ACTIVE) {
+            return `inactive.`;
+        }
         this.state = sysdefs.eModuleState.STOP_PENDING;
-        logger.info(`Closing all client connections ...`);
         let keys = Object.keys(this._clients);
-        async.eachLimit(keys, 3, (key, next) => {
-            let client = this._clients[key];
-            if (client === undefined) {
-                return process.nextTick(next);
-            }
-            return client.dispose(next);
-        }, () => {
-            logger.info(`${this.$name}: All connections closed.`);
-            return callback();
+        const promises = [];
+        keys.forEach(key => {
+            promises.push(this._clients[key].dispose());
         });
+        logger.info(`Closing ${keys.length} client connections ...`);
+        try {
+            return await Promise.all(promises);
+        } catch (ex) {
+            logger.error(`Dispose client error! - ${ex.message}`);
+            return ex;
+        }
     }
 }
 
-// const _props = Object.assign({
-//     $name: _MODULE_NAME,
-//     $type: sysdefs.eModuleType.CM,
-//     mandatory: true,
-//     state: sysdefs.eModuleState.ACTIVE
-// }, sysconf.redis || {});
-// const redisWrapper = new RedisFactory(_props);
-
 module.exports = {
-    RedisFactory
+    RedisManager
 }

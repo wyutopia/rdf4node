@@ -13,7 +13,6 @@ const _MODULE_NAME = sysdefs.eFrameworkModules.CACHE;
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
-const redisWrapper = require('../libs/common/redis.wrapper');
 
 const _CACHE_DEFAULT = 'default';
 const eDataType = {
@@ -120,91 +119,91 @@ class Cache extends EventModule {
         _initCacheEntity(this, props.cacheProps);
         this._dataRepo = {};
         this._client = null;
-        // Implementing all the cache operation methods
-        /**
-         * Set the key-value
-         * @param { string } key 
-         * @param { string | Object} val 
-         * @param { Object } options - Set options
-         * @param { Number } options.ttl - The ttl value in milesecond 
-         * @param { * } callback 
-         * @returns 
-         */
-        this.set = (key, val, options, callback) => {
-            if (typeof options === 'function') {
-                callback = options;
-                options = undefined;
-            }
-            if (this._engine === sysdefs.eCacheEngine.Native) {
-                return _setValue.call(this, key, val, options, callback);
-            }
-            return this._client.execute('set', key, this._json ? JSON.stringify(val) : val, callback);
-        };
-        this.get = (key, callback) => {
-            if (this._engine === sysdefs.eCacheEngine.Native) {
-                return _getvalue.call(this, key, callback);
-            }
-            this._client.execute('get', key, (err, result) => {
-                if (err) {
-                    return callback(err);
-                }
-                return callback(null, this._json ? JSON.parse(result) : result);
-            });
-        };
-        this.unset = (key, callback) => {
-            if (this._engine === sysdefs.eCacheEngine.Native) {
-                return _unsetValue.call(this, key, callback);
-            }
-            return this._client.execute('unset', key, callback);
-        };
-        /**
-         * Set multiply KVs
-         * @param { Object } data - The JSON value
-         * @param {*} options 
-         * @param {*} callback 
-         * @returns 
-         */
-        this.mset = (data, options, callback) => {
-            if (typeof options === 'function') {
-                callback = options;
-                options = {};
-            }
-            if (this._engine === sysdefs.eCacheEngine.Native) {
-                return _setMultiValues.call(this, data, options, callback);
-            }
-            let args = [];
-            Object.keys(data).forEach(key => {
-                args.push(key);
-                args.push(data[key].toString());
-            });
-            args.push(callback);
-            return this._client.invokeApply('mset', args);
-        };
-        this.mget = (keys, callback) => {
-            return callback({
-                code: eRetCodes.REDIS_METHOD_NOTEXISTS,
-                message: 'Method not available!'
-            });
-        };
         //
-        (() => {
-            if (this._engine !== sysdefs.eCacheEngine.Native) {
-                let options = {};
-                if (this._prefix) {
-                    options.prefix = this._prefix;
-                }
-                if (this._database) {
-                    options.database = this._database;
-                }
-                this._client = redisWrapper.createClient(props.$name, this._server, options);
-                //this._client = _fakeClient;
+        if (this._engine == sysdefs.eCacheEngine.Redis) {
+            let options = {};
+            if (this._prefix) {
+                options.prefix = this._prefix;
             }
-        })()
+            if (this._database) {
+                options.database = this._database;
+            }
+            try {
+                this._client = appCtx.redisFactory.createClient(props.$name, this._server, options);
+            } catch (err) {
+                logger.error(err.message);
+            }
+        }
+    }
+    // Implementing all the cache operation methods
+    /**
+     * Set the key-value
+     * @param { string } key 
+     * @param { string | Object} val 
+     * @param { Object } options - Set options
+     * @param { Number } options.ttl - The ttl value in milesecond 
+     * @param { * } callback 
+     * @returns 
+     */
+    set(key, val, options, callback) {
+        if (typeof options === 'function') {
+            callback = options;
+            options = undefined;
+        }
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return _setValue.call(this, key, val, options, callback);
+        }
+        return this._client.execute('set', key, this._json ? JSON.stringify(val) : val, callback);
+    }
+    get(key, callback) {
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return _getvalue.call(this, key, callback);
+        }
+        this._client.execute('get', key, (err, result) => {
+            if (err) {
+                return callback(err);
+            }
+            return callback(null, this._json ? JSON.parse(result) : result);
+        });
+    }
+    unset(key, callback) {
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return _unsetValue.call(this, key, callback);
+        }
+        return this._client.execute('unset', key, callback);
+    }
+    /**
+     * Set multiply KVs
+     * @param { Object } data - The JSON value
+     * @param {*} options 
+     * @param {*} callback 
+     * @returns 
+     */
+    mset(data, options, callback) {
+        if (typeof options === 'function') {
+            callback = options;
+            options = {};
+        }
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return _setMultiValues.call(this, data, options, callback);
+        }
+        let args = [];
+        Object.keys(data).forEach(key => {
+            args.push(key);
+            args.push(data[key].toString());
+        });
+        args.push(callback);
+        return this._client.invokeApply('mset', args);
+    };
+    mget(keys, callback) {
+        return callback({
+            code: eRetCodes.REDIS_METHOD_NOTEXISTS,
+            message: 'Method not available!'
+        });
     }
 }
 
 const _typeCacheProps = {
-    engine: sysdefs.eCacheEngine.Native,
     shareConnection: false,
     shareDatabase: false
 }
@@ -218,23 +217,21 @@ class CacheFactory extends EventModule {
         this._state = sysdefs.eModuleState.INIT;
     }
     init(config) {
-        Object.keys(_typeCacheProps).forEach (key => {
+        Object.keys(_typeCacheProps).forEach(key => {
             const propKey = '_' + key;
-            this[propKey] = config[key] !== undefined? config[key] : _typeCacheProps[key];
+            this[propKey] = config[key] !== undefined ? config[key] : _typeCacheProps[key];
         });
-        if (this._engine === sysdefs.eCacheEngine.Redis) {
-            const redisConf = config[this._engine];
-            if (redisConf !== undefined) {
-                this._redisFactory = new RedisFactory(this, redisConf);
-            }
-            this._state = sysdefs.eModuleState.READY;
-        } else {
-            this._state = sysdefs.eModuleState.ACTIVE;
+        if (config.redis) {
+            this._redisFactory = new RedisFactory(this, {
+                $name: `redis@${this.$name}`,
+                config: config.redis
+            });
         }
+        this._state = sysdefs.eModuleState.ACTIVE;
     }
     /**
      * 
-     * @param {string} name 
+     * @param {string} name - The repository name
      * @param {Types.CacheProperties} cacheProps 
      * @returns 
      */

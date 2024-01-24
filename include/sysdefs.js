@@ -62,7 +62,9 @@ const eFrameworkModules = {
     ROUTER          : '_router_',
     DLOCKER         : '_distlocker_',
     XTASK           : '_xtask_',
-    UPLOAD          : '_upload_'
+    UPLOAD          : '_upload_',
+    REDIS_CM        : '_redis_cm_',
+    RASCAL_CM       : '_racal_cm_'
 };
 exports.eFrameworkModules = eFrameworkModules;
 
