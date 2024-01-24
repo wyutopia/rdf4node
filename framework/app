@@ -280,7 +280,7 @@ class Application extends EventEmitter {
         promMonitor.init(this);
         logDirManager.init(this);
         if (config.redis) {
-            this.redisManger.init(config.redis);
+            this.redisManager.init(config.redis);
         }
         if (config.rascal) {
             this.rascalManager.init(config.rascal);
