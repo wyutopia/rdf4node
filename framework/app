@@ -160,30 +160,23 @@ function _readModelDirSync(modelDir, loadedModels, options) {
         try {
             const modelSpec = require(fullPath);
             const modelName = modelSpec.modelName;
+            if (modelName === undefined) {
+                throw new Error('Invalid moduleName!');
+            }
             if (options.includeModels && options.includeModels.indexOf(modelName) === -1) {
                 return null;
             }
-            //
-            //let cacheConf = options.caches[modelName] || {};
-            // Get allowCache switch
-            //let allowCache = ((allowCache, cfg) => { // cache config has the privilege
-            //    return cfg.enabled !== undefined ? cfg.enabled : (allowCache !== undefined ? allowCache : false);
-            //})(modelSpec.allowCache, cacheConf);
-            // Assemble cacheOptions = cacheSpecProps + cacheEntityProps
-            //let cacheSpec = Object.assign({}, modelSpec.cacheSpec, cacheConf.spec);
             const cacheOptions = _mergeCacheOptions(modelSpec.cacheOptions || {}, options.cacheSpecs[modelName] || {});
             this.repoFactory.registerModel(modelName, {
                 schema: modelSpec.modelSchema,
                 refs: modelSpec.modelRefs || [],
                 // Cache options
-                cacheOptions,
-                //allowCache,
-                //cacheSpec
+                cacheOptions
             });
-            logger.debug(`${modelName} cache settings: ${allowCache} - ${tools.inspect(cacheSpec)}`);
+            logger.debug(`Load <${modelName}> with cache options: ${tools.inspect(cacheOptions)}`);
             loadedModels.push(modelName);
         } catch (ex) {
-            logger.error(`====== Load database schema from: ${dirent.name} error! - ${ex.message}`);
+            logger.error(`!!! Load database schema from: ${dirent.name} error! - ${ex.message}`);
         }
     });
 }
