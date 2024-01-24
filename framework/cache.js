@@ -237,7 +237,6 @@ class CacheFactory extends EventModule {
         super(appCtx, props);
         //
         this._caches = {};
-        this._redisFactory = null;
         this._state = sysdefs.eModuleState.INIT;
     }
     init(config) {
@@ -245,12 +244,6 @@ class CacheFactory extends EventModule {
             const propKey = '_' + key;
             this[propKey] = config[key] !== undefined ? config[key] : _typeCacheProps[key];
         });
-        if (config.redis) {
-            this._redisFactory = new RedisFactory(this, {
-                $name: `redis@${this.$name}`,
-                config: config.redis
-            });
-        }
         this._state = sysdefs.eModuleState.ACTIVE;
     }
     /**
