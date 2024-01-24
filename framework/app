@@ -206,7 +206,10 @@ class Application extends EventEmitter {
         if (props.consul) { // Consul configured
             this._consulClient = new ConsulClient(props.consul);
         }
-        this.redisManger = new RedisManager(this, {
+        // !!! *** ebus should be the first framework component ***
+        this.ebus = new EventBus(this, { $name: sysdefs.eFrameworkModules.EBUS });    
+        // Other framework components
+        this.redisManager = new RedisManager(this, {
             $name: sysdefs.eFrameworkModules.REDIS_CM,
             $type: sysdefs.eModuleType.CM
         });
@@ -215,7 +218,6 @@ class Application extends EventEmitter {
             $type: sysdefs.eModuleType.CM
         });
         //
-        this.ebus = new EventBus(this, { $name: sysdefs.eFrameworkModules.EBUS });    // ebus should be the first framework component!!!
         this.upload = new UploadHelper(this, { $name: sysdefs.eFrameworkModules.UPLOAD });
         this.registry = new Registry(this, { $name: sysdefs.eFrameworkModules.REGISTRY });
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });

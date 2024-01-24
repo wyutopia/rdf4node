@@ -129,7 +129,7 @@ class Cache extends EventModule {
                 options.database = this._database;
             }
             try {
-                this._client = appCtx.redisFactory.createClient(props.$name, this._server, options);
+                this._client = appCtx.redisManager.createClient(props.$name, this._server, options);
             } catch (err) {
                 logger.error(err.message);
             }
@@ -150,6 +150,12 @@ class Cache extends EventModule {
             callback = options;
             options = undefined;
         }
+        if (!this._client) {
+            return callback({
+                code: eRetCodes.REDIS_ERR,
+                message: 'Redis server not connected.'
+            });
+        }
         if (this._engine === sysdefs.eCacheEngine.Native) {
             return _setValue.call(this, key, val, options, callback);
         }
@@ -158,6 +164,12 @@ class Cache extends EventModule {
     get(key, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
             return _getvalue.call(this, key, callback);
+        }
+        if (!this._client) {
+            return callback({
+                code: eRetCodes.REDIS_ERR,
+                message: 'Redis server not connected.'
+            });
         }
         this._client.execute('get', key, (err, result) => {
             if (err) {
@@ -169,6 +181,12 @@ class Cache extends EventModule {
     unset(key, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
             return _unsetValue.call(this, key, callback);
+        }
+        if (!this._client) {
+            return callback({
+                code: eRetCodes.REDIS_ERR,
+                message: 'Redis server not connected.'
+            });
         }
         return this._client.execute('unset', key, callback);
     }
@@ -186,6 +204,12 @@ class Cache extends EventModule {
         }
         if (this._engine === sysdefs.eCacheEngine.Native) {
             return _setMultiValues.call(this, data, options, callback);
+        }
+        if (!this._client) {
+            return callback({
+                code: eRetCodes.REDIS_ERR,
+                message: 'Redis server not connected.'
+            });
         }
         let args = [];
         Object.keys(data).forEach(key => {
