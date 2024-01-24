@@ -18,7 +18,7 @@ const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 //
-const {eDataType, eLoadPolicy, initCacheSpec} = require('./cache');
+const { eDataType, eLoadPolicy, initCacheSpec } = require('./cache');
 
 function _packCacheSafeSelect(origSelect, allowCache, cacheSpec) {
     if (!origSelect || allowCache === false || !cacheSpec.select) {
@@ -281,7 +281,11 @@ function _buildQueryFilter(data, cacheSpec) {
 class Repository extends EventObject {
     constructor(appCtx, props) {
         super(props);
-        this._appCtx = appCtx;
+        // Wire up the framework components
+        this.dsFactory = appCtx.dsFactory;
+        this.cacheFactory = appCtx.cacheFactory;
+        this.distLocker = appCtx.distLocker;
+        //
         // Set model property and declaring member variable
         this.modelName = props.modelName || 'User';
         this.modelSchema = props.modelSchema || {};
@@ -292,8 +296,8 @@ class Repository extends EventObject {
             return this._model;
         };
         // Set cache property and declaring member variable
-        this.allowCache = props.allowCache !== undefined? props.allowCache : false;
-        this.cacheSpec = initCacheSpec(props.cacheSpec);
+        this.allowCache = props.cacheOptions.enabled || false;
+        this.cacheSpec = initCacheSpec(props.cacheOptions.spec || {});
         this._cache = null;
         this.getCache = () => {
             return this._cache;
@@ -702,12 +706,12 @@ class Repository extends EventObject {
         };
         // Initialize data model and cache
         (() => {
-            let ds = this._appCtx.getDataSource(this.dsName);
+            let ds = this.dsFactory.getDataSource(this.dsName);
             if (ds) {
                 this._model = ds.getModel(this.modelName, this.modelSchema);
             }
             if (this.allowCache === true) {
-                this._cache = this._appCtx.getCache(this.modelName, this.cacheSpec);
+                this._cache = this.cacheFactory.getCache(this.modelName, this.cacheSpec);
             }
         })();
     }
@@ -743,6 +747,7 @@ class RepositoryFactory extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
+        this.cacheFactory = appCtx.cacheFactory;
         this._modelSpecs = {};
         this._repos = {};
         // Implementing methods
@@ -751,7 +756,7 @@ class RepositoryFactory extends EventModule {
          * @param { string } modelName 
          * @param { Types.ModelSpecOptions } modelSpec 
          */
-        this.registerSchema = (modelName, modelSpec) => {
+        this.registerModel = (modelName, modelSpec) => {
             this._modelSpecs[modelName] = modelSpec;
         };
         this.getSubSchema = (modelName, subSchemaName) => {
@@ -790,9 +795,10 @@ class RepositoryFactory extends EventModule {
                         modelName: name,
                         modelSchema: spec.schema,
                         dsName: dsName,
-                        // cache 
-                        allowCache: spec.allowCache,
-                        cacheSpec: spec.cacheSpec   // _typeCacheOptions
+                        // cache
+                        cacheOptions: spec.cacheOptions 
+                        //allowCache: spec.allowCache,
+                        //cacheSpec: spec.cacheSpec   // _typeCacheOptions
                     });
                     logger.info(`>>> New repository: ${key} created. <<<`);
                 }

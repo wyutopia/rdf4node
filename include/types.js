@@ -48,8 +48,9 @@
  * @typedef {Object} ModelSpecOptions
  * @prop {Object} schema - The model schema
  * @prop {string[]} refs - The referenced model name array
- * @prop {boolean} allowCache - Enable or disable cache
- * @prop {CacheSpecOptions} cacheSpec - The cache spec
+ * @prop {Object} cacheOptions
+ * @prop {boolean} cacheOptions.enabled - Enable or disable cache
+ * @prop {CacheSpecOptions?} cacheOptions.spec - The cache spec
  */
 
 /**

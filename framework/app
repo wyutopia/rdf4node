@@ -164,19 +164,21 @@ function _readModelDirSync(modelDir, loadedModels, options) {
                 return null;
             }
             //
-            let cacheConf = options.caches[modelName] || {};
+            //let cacheConf = options.caches[modelName] || {};
             // Get allowCache switch
-            let allowCache = ((allowCache, cfg) => { // cache config has the privilege
-                return cfg.enabled !== undefined ? cfg.enabled : (allowCache !== undefined ? allowCache : false);
-            })(modelSpec.allowCache, cacheConf);
+            //let allowCache = ((allowCache, cfg) => { // cache config has the privilege
+            //    return cfg.enabled !== undefined ? cfg.enabled : (allowCache !== undefined ? allowCache : false);
+            //})(modelSpec.allowCache, cacheConf);
             // Assemble cacheOptions = cacheSpecProps + cacheEntityProps
-            let cacheSpec = Object.assign({}, modelSpec.cacheSpec, cacheConf.spec);
-            this.repoFactory.registerSchema(modelName, {
+            //let cacheSpec = Object.assign({}, modelSpec.cacheSpec, cacheConf.spec);
+            const cacheOptions = _mergeCacheOptions(modelSpec.cacheOptions || {}, options.cacheSpecs[modelName] || {});
+            this.repoFactory.registerModel(modelName, {
                 schema: modelSpec.modelSchema,
                 refs: modelSpec.modelRefs || [],
                 // Cache options
-                allowCache,
-                cacheSpec
+                cacheOptions,
+                //allowCache,
+                //cacheSpec
             });
             logger.debug(`${modelName} cache settings: ${allowCache} - ${tools.inspect(cacheSpec)}`);
             loadedModels.push(modelName);
@@ -184,6 +186,15 @@ function _readModelDirSync(modelDir, loadedModels, options) {
             logger.error(`====== Load database schema from: ${dirent.name} error! - ${ex.message}`);
         }
     });
+}
+
+function _mergeCacheOptions (resident, config) {
+    const options = {};
+    options.enabled = config.enabled || resident.enabled || false;
+    if (options.enabled) {
+        options.spec = Object.assign({}, resident.spec || {}, config.spec || {});
+    }
+    return options;
 }
 
 // The application class
@@ -203,10 +214,10 @@ class Application extends EventEmitter {
         this.upload = new UploadHelper(this, {$name: sysdefs.eFrameworkModules.UPLOAD});
         this.registry = new Registry(this, {$name: sysdefs.eFrameworkModules.REGISTRY});
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
-        this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.cacheFactory = new CacheFactory(this, {$name: sysdefs.eFrameworkModules.CACHE});
         this.taskFactory = new TaskFactory(this, {$name: sysdefs.eFrameworkModules.XTASK});
         this.distLocker = new DistributedEntityLocker({$name: sysdefs.eFrameworkModules.DLOCKER});
+        this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.epFactory = new EndpointFactory(this, {$name: sysdefs.eFrameworkModules.ENDPOINT});
     }
     getVersion() {
