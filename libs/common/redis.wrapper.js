@@ -230,7 +230,7 @@ class RedisManager extends EventModule {
         });
     }
     init(config) {
-        if (this.state !== sysdefs.eModuleState.INIT) {
+        if (this._state !== sysdefs.eModuleState.INIT) {
             logger.error(`!!! Already initialzied.`)
             return null;
         }
@@ -238,7 +238,7 @@ class RedisManager extends EventModule {
             let propKey = '_' + key;
             this[propKey] = config[key] !== undefined? config[key] : _defaultRedisManagerProps[key];
         })
-        this.state = sysdefs.eModuleState.ACTIVE;
+        this._state = sysdefs.eModuleState.ACTIVE;
     }
     // Implementing member methods
     /**
