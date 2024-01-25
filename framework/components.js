@@ -371,8 +371,6 @@ function _findUpdatedKeys(doc, updates, options) {
     return updatedKeys;
 }
 
-const _ERRMSG_INVALID_DS = 'DataSource not exists!';
-
 // The class
 class EntityController extends ControllerBase {
     constructor(props) {
@@ -398,7 +396,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 const baseOptions = _prepareFindOptions.call(this, req);
                 this._beforeFind(req, baseOptions, (err, options) => {
@@ -429,7 +427,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 const baseOptions = _prepareFindOptions.call(this, req);
                 this._beforeFind(req, baseOptions, (err, options) => {
@@ -461,7 +459,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 const baseOptions = _prepareFindOptions.call(this, req);
                 this._beforeFind(req, baseOptions, (err, options) => {
@@ -500,7 +498,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 const baseOptions = _prepareFindOptions.call(this, req);
                 this._beforeFind(req, baseOptions, (err, options) => {
@@ -538,7 +536,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 const baseOptions = _prepareFindOptions.call(this, req);
                 this._beforeFind(req, baseOptions, (err, options) => {
@@ -580,7 +578,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 const baseOptions = _prepareFindOptions.call(this, req);
                 this._beforeFind(req, baseOptions, (err, options) => {
@@ -618,7 +616,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 const baseOptions = _prepareFindOptions.call(this, req);
                 this._beforeFind(req, baseOptions, (err, options) => {
@@ -655,7 +653,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 this._allowAdd(req, (err) => {
                     if (err) {
@@ -701,7 +699,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 this._beforeInsert(req, (err, options) => {
                     if (err) {
@@ -742,7 +740,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 this._beforeUpdate(req, (err, params) => {
                     if (err) {
@@ -784,7 +782,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 this._allowDelete(req, req.$args.id, (err) => {
                     if (err) {
@@ -834,7 +832,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 this._allowDelete(req, req.$args.id, (err) => {
                     if (err) {
@@ -887,7 +885,7 @@ class EntityController extends ControllerBase {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);
                 if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
                 }
                 let options = _beforePatch.call(this, req);
                 if (options.noop) {

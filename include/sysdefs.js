@@ -367,3 +367,8 @@ const ePatchOp = {
     Replace : 'rep'
 };
 exports.ePatchOp = ePatchOp;
+
+const eErrMsg = {
+    INVALID_DS    : 'DataSource not exists!'
+};
+exports.eErrMsg = eErrMsg;
