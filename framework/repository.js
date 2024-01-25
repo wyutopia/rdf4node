@@ -116,7 +116,11 @@ function _updateOne(params, callback) {
     if (options.new === undefined) {
         options.new = true;
     }
-    logger.debug(`Update: ${this.$name} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`);
+    if (this.$name && this.$name.split('@').includes('Diagram')) {
+        logger.debug(`Update: ${this.$name} - ${tools.inspect(filter)}`);
+    } else {
+        logger.debug(`Update: ${this.$name} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`);
+    }
     //
     const query = this._model.findOneAndUpdate(filter, updates, options);
     const select = _packCacheSafeSelect(params.select, this.allowCache || false, this.cacheSpec);

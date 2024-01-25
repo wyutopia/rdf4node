@@ -389,6 +389,9 @@ function _authorize(req, scope, callback) {
     return _acHelper._realAuthorize(req, {scope: scope}, callback);
 }
 
+const _excludeLogUrls = [
+    '/v1/project/diagrams/update'
+];
 /**
  * 
  * @param {authType, validator, scope} options 
@@ -402,7 +405,9 @@ function _accessCtl ({authType, validator, scope}, req, res, next) {
             return res.sendStatus(err.code);
         }
         let params = Object.assign({}, req.params, req.query, req.body);
-        logger.debug(`Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
+        if (!_excludeLogUrls.includes(req.url)) {
+            logger.debug(`Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
+        }
         _parseParameters(params, validator, (err, args) => {
             if (err) {
                 return res.sendRsp(err.code, err.message);
