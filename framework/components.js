@@ -8,13 +8,13 @@ const ObjectId = require('mongoose').Types.ObjectId;
 const Types = require('../include/types');
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
-const {EventModule} = require('../include/events');
-const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const { EventModule } = require('../include/events');
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'comp');
 const tools = require('../utils/tools');
 //
-const {paginationVal, _DS_DEFAULT_} = require('./repository');
-const {_DEFAULT_PUBKEY_, _DEFAULT_CHANNEL_} = require('./ebus');
+const { paginationVal, _DS_DEFAULT_ } = require('./repository');
+const { _DEFAULT_PUBKEY_, _DEFAULT_CHANNEL_ } = require('./ebus');
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
 
@@ -29,7 +29,7 @@ function _$parsePatch(jsonPatch) {
     if (tools.isTypeOfArray(jsonPatch)) {
         jsonPatch.forEach(item => {
             let key = item.path.replace('/', '.').slice(1);
-            switch(item.op) {
+            switch (item.op) {
                 case 'add':
                     if (updates.$set === undefined) {
                         updates.$set = {};
@@ -101,7 +101,7 @@ function _publishEvents(options, callback) {
     }, domainEvent.success);
     if (typeof domainEvent.select === 'string') { // Remove not-allowed properties
         domainEvent.select.split(' ').forEach(key => {
-            if (_reNotAllowed.test(key)) {  
+            if (_reNotAllowed.test(key)) {
                 delete evt.body[key.slice(1)]
             }
         });
@@ -119,10 +119,10 @@ class ControllerBase extends EventModule {
         super(global.theApp, props);
     }
     getMultiRepos(modelNames, dsName = _DS_DEFAULT_) {
-        return this._appCtx.getMultiRepos(modelNames, dsName);
+        return this._appCtx.repoFactory.getMultiRepos(modelNames, dsName);
     }
     getRepo(modelName, dsName) {
-        return this._appCtx.getRepo(modelName, dsName);
+        return this._appCtx.repoFactory.getRepo(modelName, dsName);
     }
 }
 
@@ -157,11 +157,11 @@ const _defaultCtlSpec = {
     //
     allowAdd: function (req, callback) { return callback(); },
     beforeAdd: function (req, callback) { return callback(null, req.$args); },
-    beforeInsert: function (req, callback) { 
+    beforeInsert: function (req, callback) {
         return callback(null, {
             filter: req.$args,
             updates: req.$args
-        }); 
+        });
     },
     afterAdd: function (req, doc, callback) { return callback(null, doc); },
     //
@@ -194,10 +194,10 @@ const _defaultCtlSpec = {
         }
         return callback(null, params);
     },
-//    beforeUpdateOne: tools.noop,
+    //    beforeUpdateOne: tools.noop,
     afterUpdateOne: function (req, doc, callback) { return callback(null, doc); },
     //
-    allowDelete: function (req, id, callback) { 
+    allowDelete: function (req, id, callback) {
         return callback({
             code: eRetCodes.METHOD_NOT_ALLOWED,
             message: 'Not allowed!'
@@ -207,9 +207,9 @@ const _defaultCtlSpec = {
     afterDeleteOne: function (req, doc, callback) { return callback(null, doc); }
 };
 function _initCtlSpec(ctlSpec) {
-    Object.keys(_defaultCtlSpec).forEach( key => {
+    Object.keys(_defaultCtlSpec).forEach(key => {
         let privateKey = `_${key}`;
-        this[privateKey] = ctlSpec[key] !== undefined? ctlSpec[key] : _defaultCtlSpec[key];
+        this[privateKey] = ctlSpec[key] !== undefined ? ctlSpec[key] : _defaultCtlSpec[key];
     });
 }
 
@@ -220,7 +220,7 @@ function _initCtlSpec(ctlSpec) {
  * @param {*} callback 
  * @returns 
  */
-function _prepareFindOptions (req) {
+function _prepareFindOptions(req) {
     const options = {};
     const args = req.$args;
     // Step 1: Extract page, pageSize, brief, sort from request parameters
@@ -240,7 +240,7 @@ function _prepareFindOptions (req) {
     } else if (this._sort) {
         options.sort = this._sort;
     }
-    
+
     // Step 2: Append select, populate and from model spec
     // Convert id to _id if provided
     if (args.id !== undefined) {
@@ -271,7 +271,7 @@ function _prepareFindOptions (req) {
  * @param { Object } baseOptions.filter.populate - The populate option
  * @returns { Object } options - The total wrapper of query options
  */
-function _packFindOption (req, baseOptions = {}) {
+function _packFindOption(req, baseOptions = {}) {
     let baseFilter = baseOptions.filter || {};
     let filter = tools.deepAssign(baseFilter, req.$args);
     // Convert id to _id
@@ -288,7 +288,7 @@ function _packFindOption (req, baseOptions = {}) {
         options.sort = baseOptions.sort || this._sort;
     }
     if (req.$args.brief) { // Using briefSelect and no populate
-        options.select = this._briefSelect; 
+        options.select = this._briefSelect;
     } else {
         if (this._select) {
             options.select = this._select;
@@ -304,11 +304,11 @@ function _beforePatch(req) {
     let updates = this._parsePatch(req.$args.jsonPatch);
     //
     if (Object.keys(updates).length === 0) {
-        return {noop: 'Empty updates!'}
+        return { noop: 'Empty updates!' }
     }
     //
     let options = {
-        filter: {_id: req.$args.id},
+        filter: { _id: req.$args.id },
         updates: updates
     }
     if (this._select) {
@@ -318,7 +318,7 @@ function _beforePatch(req) {
 }
 
 function _setMandatoryKeys(keys, validator) {
-    keys.forEach( key => {
+    keys.forEach(key => {
         let path = key.replace('.', '.$embeddedValidators.');
         let val = tools.safeGetJsonValue(validator, path);
         if (val) {
@@ -345,7 +345,7 @@ function _getObjectIdString(v) {
  * @param { boolean } options.new - Flag for return updated document
  * @returns 
  */
-function _findUpdatedKeys (doc, updates, options) {
+function _findUpdatedKeys(doc, updates, options) {
     let configKeys = Object.keys(this._chainUpdateKeys);
     if (options.new === true || configKeys.length === 0) {
         return configKeys;
@@ -371,6 +371,8 @@ function _findUpdatedKeys (doc, updates, options) {
     return updatedKeys;
 }
 
+const _ERRMSG_INVALID_DS = 'DataSource not exists!';
+
 // The class
 class EntityController extends ControllerBase {
     constructor(props) {
@@ -385,51 +387,6 @@ class EntityController extends ControllerBase {
         _initCtlSpec.call(this, props.ctlSpec || {});
         // Register event publishers
         this._domainEvents = props.domainEvents || {};
-        // Implementing the class methods
-        /**
-         * 
-         * @param { Types.DataSourceOptions } dsOptions 
-         * @param { function } callback 
-         * @returns 
-         */
-        this.getRepo = (dsOptions, callback) => {
-            if (typeof dsOptions === 'function') {
-                callback = dsOptions;
-                dsOptions = {};
-            }
-            let dsName = dsOptions.dsName || _DS_DEFAULT_;
-            if (this._entityRepos[dsName] !== undefined) {
-                return callback(null, this._entityRepos[dsName]);
-            }
-            let repo = this._appCtx.repoFactory.getRepo(this.modelName, dsName);
-            if (!repo) {
-                let msg = `Repository not exists! - ${this.modelName} - ${dsName}`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.DB_ERROR,
-                    message: msg
-                });
-            }
-            this._entityRepos[dsName] = repo;
-            return callback(null, repo);
-        };
-        /**
-         * 
-         * @param { Types.DataSourceOptions } dsOptions 
-         * @returns 
-         */
-        this.getRepoSync = (dsOptions = {}) => {
-            let dsName = dsOptions.dsName || _DS_DEFAULT_;
-            let repo = this._entityRepos[dsName];
-            if (repo !== undefined) {
-                return repo;
-            }
-            repo = this._appCtx.repoFactory.getRepo(this.modelName, dsName);
-            if (repo) {
-                this._entityRepos[dsName] = repo;
-            }
-            return repo;
-        };
         // Implementing basic CRUD methods
         this.find = {
             val: (() => {
@@ -438,25 +395,25 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                const baseOptions = _prepareFindOptions.call(this, req);
+                this._beforeFind(req, baseOptions, (err, options) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    const baseOptions = _prepareFindOptions.call(this, req);
-                    this._beforeFind(req, baseOptions, (err, options) => {
+                    repo.findMany(options, (err, docs) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        repo.findMany(options, (err, docs) => {
+                        this._afterFindMany(req, docs, (err, results) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindMany(req, docs, (err, results) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                return res.sendSuccess(results);
-                            });
+                            return res.sendSuccess(results);
                         });
                     });
                 });
@@ -469,26 +426,26 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                const baseOptions = _prepareFindOptions.call(this, req);
+                this._beforeFind(req, baseOptions, (err, options) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    const baseOptions = _prepareFindOptions.call(this, req);
-                    this._beforeFind(req, baseOptions, (err, options) => {
+                    this.emit('before_find_one', req, options);
+                    repo.findOne(options, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this.emit('before_find_one', req, options);
-                        repo.findOne(options, (err, doc) => {
+                        this._afterFindOne(req, doc, (err, result) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindOne(req, doc, (err, result) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                return res.sendSuccess(result);
-                            });
+                            return res.sendSuccess(result);
                         });
                     });
                 });
@@ -501,30 +458,29 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                const baseOptions = _prepareFindOptions.call(this, req);
+                this._beforeFind(req, baseOptions, (err, options) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    //
-                    const baseOptions = _prepareFindOptions.call(this, req);
-                    this._beforeFind(req, baseOptions, (err, options) => {
+                    this.emit('before_find_partial', req, options);
+                    repo.findPartial(options, (err, result) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this.emit('before_find_partial', req, options);
-                        repo.findPartial(options, (err, result) => {
+                        this._afterFindPartial(req, result, (err, outcomes) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindPartial(req, result, (err, outcomes) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                return res.sendSuccess(outcomes);
-                            });
+                            return res.sendSuccess(outcomes);
                         });
-    
                     });
+
                 });
             }
         };
@@ -541,26 +497,26 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                const baseOptions = _prepareFindOptions.call(this, req);
+                this._beforeFind(req, baseOptions, (err, options) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    const baseOptions = _prepareFindOptions.call(this, req);
-                    this._beforeFind(req, baseOptions, (err, options) => {
+                    this.emit('before_findby_id', req, options);
+                    repo.findOne(options, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this.emit('before_findby_id', req, options);
-                        repo.findOne(options, (err, doc) => {
+                        this._afterFindOne(req, doc, (err, result) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindOne(req, doc, (err, result) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                return res.sendSuccess(result);
-                            });
+                            return res.sendSuccess(result);
                         });
                     });
                 });
@@ -579,30 +535,30 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                const baseOptions = _prepareFindOptions.call(this, req);
+                this._beforeFind(req, baseOptions, (err, options) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    const baseOptions = _prepareFindOptions.call(this, req);
-                    this._beforeFind(req, baseOptions, (err, options) => {
+                    this.emit('before_findby_project', req, options);
+                    repo.findMany(options, (err, docs) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this.emit('before_findby_project', req, options);
-                        repo.findMany(options, (err, docs) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            _publishEvents.call(this, {
-                                method: 'findByProject',
-                                data: docs
-                            }, () => {
-                                this._afterFindMany(req, docs, (err, results) => {
-                                    if (err) {
-                                        return res.sendRsp(err.code, err.message);
-                                    }
-                                    return res.sendSuccess(results);
-                                });
+                        _publishEvents.call(this, {
+                            method: 'findByProject',
+                            data: docs
+                        }, () => {
+                            this._afterFindMany(req, docs, (err, results) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                return res.sendSuccess(results);
                             });
                         });
                     });
@@ -621,27 +577,26 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                const baseOptions = _prepareFindOptions.call(this, req);
+                this._beforeFind(req, baseOptions, (err, options) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    //
-                    const baseOptions = _prepareFindOptions.call(this, req);
-                    this._beforeFind(req, baseOptions, (err, options) => {
+                    this.emit('before_findby_user', req, options);
+                    repo.findMany(options, (err, docs) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this.emit('before_findby_user', req, options);
-                        repo.findMany(options, (err, docs) => {
+                        this._afterFindMany(req, docs, (err, results) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindMany(req, docs, (err, results) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                return res.sendSuccess(results);
-                            });
+                            return res.sendSuccess(results);
                         });
                     });
                 });
@@ -660,27 +615,26 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                const baseOptions = _prepareFindOptions.call(this, req);
+                this._beforeFind(req, baseOptions, (err, options) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    //
-                    const baseOptions = _prepareFindOptions.call(this, req);
-                    this._beforeFind(req, baseOptions, (err, options) => {
+                    this.emit('before_findby_group', req, options);
+                    repo.findMany(options, (err, docs) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this.emit('before_findby_group', req, options);
-                        repo.findMany(options, (err, docs) => {
+                        this._afterFindMany(req, docs, (err, results) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            this._afterFindMany(req, docs, (err, results) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                return res.sendSuccess(results);
-                            });
+                            return res.sendSuccess(results);
                         });
                     });
                 });
@@ -698,37 +652,37 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                this._allowAdd(req, (err) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._allowAdd(req, (err) => {
+                    this._beforeAdd(req, (err, data) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this._beforeAdd(req, (err, data) => {
+                        if (data._id === undefined && req.$args.oid !== undefined) {
+                            data._id = req.$args.oid;
+                        }
+                        repo.create(data, (err, doc) => {
                             if (err) {
                                 return res.sendRsp(err.code, err.message);
                             }
-                            if (data._id === undefined && req.$args.oid !== undefined) {
-                                data._id = req.$args.oid;
-                            }
-                            repo.create(data, (err, doc) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                let obj = doc.toObject();
-                                _publishEvents.call(this, {
-                                    method: 'addOne',
-                                    data: obj,
-                                    mode: req.$args.mode || 0
-                                }, () => {
-                                    this._afterAdd(req, doc, (err, result) => {
-                                        if (err) {
-                                            return res.sendRsp(err.code, err.message);
-                                        }
-                                        return res.sendSuccess(result);
-                                    });
+                            let obj = doc.toObject();
+                            _publishEvents.call(this, {
+                                method: 'addOne',
+                                data: obj,
+                                mode: req.$args.mode || 0
+                            }, () => {
+                                this._afterAdd(req, doc, (err, result) => {
+                                    if (err) {
+                                        return res.sendRsp(err.code, err.message);
+                                    }
+                                    return res.sendSuccess(result);
                                 });
                             });
                         });
@@ -744,29 +698,29 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                this._beforeInsert(req, (err, options) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeInsert(req, (err, options) => {
+                    repo.insert(options, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        repo.insert(options, (err, doc) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            let obj = doc.toObject();
-                            _publishEvents.call(this, {
-                                method: 'inertOne',
-                                data: obj
-                            }, () => {
-                                this._afterAdd(req, doc, (err, result) => {
-                                    if (err) {
-                                        return res.sendRsp(err.code, err.message);
-                                    }
-                                    return res.sendSuccess(result);
-                                });
+                        let obj = doc.toObject();
+                        _publishEvents.call(this, {
+                            method: 'inertOne',
+                            data: obj
+                        }, () => {
+                            this._afterAdd(req, doc, (err, result) => {
+                                if (err) {
+                                    return res.sendRsp(err.code, err.message);
+                                }
+                                return res.sendSuccess(result);
                             });
                         });
                     });
@@ -785,30 +739,30 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                this._beforeUpdate(req, (err, params) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    this._beforeUpdate(req, (err, params) => {
+                    this.emit('before_update_one', req, params);
+                    repo.updateOne(params, (err, doc) => {
                         if (err) {
                             return res.sendRsp(err.code, err.message);
                         }
-                        this.emit('before_update_one', req, params);
-                        repo.updateOne(params, (err, doc) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
+                        let obj = doc.toObject();
+                        _publishEvents.call(this, {
+                            method: 'updateOne',
+                            data: obj,
+                            headers: {
+                                updatedKeys: _findUpdatedKeys.call(this, obj, req.$args, params.options)
                             }
-                            let obj = doc.toObject();
-                            _publishEvents.call(this, {
-                                method: 'updateOne',
-                                data: obj,
-                                headers: {
-                                    updatedKeys: _findUpdatedKeys.call(this, obj, req.$args, params.options)
-                                }
-                            }, () => {
-                                this._afterUpdateOne(req, doc, (err, result) => {
-                                    return res.sendSuccess(result);
-                                });
+                        }, () => {
+                            this._afterUpdateOne(req, doc, (err, result) => {
+                                return res.sendSuccess(result);
                             });
                         });
                     });
@@ -827,36 +781,36 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                this._allowDelete(req, req.$args.id, (err) => {
                     if (err) {
-                        return res.sendRsp(err.code, err.message);
+                        return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                     }
-                    this._allowDelete(req, req.$args.id, (err) => {
+                    //
+                    let options = {
+                        filter: Object.assign({
+                            _id: req.$args.id
+                        }, this._deleteOptions || {})
+                    }
+                    this._beforeDeleteOne(options);
+                    repo.delete(options, (err, doc) => {
                         if (err) {
-                            return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
+                            return res.sendRsp(err.code, err.message);
                         }
-                        //
-                        let options = {
-                            filter: Object.assign({
-                                _id: req.$args.id
-                            }, this._deleteOptions || {})
+                        if (!doc) {
+                            return res.sendRsp(eRetCodes.ACCEPTED, 'No document deleted!');
                         }
-                        this._beforeDeleteOne(options);
-                        repo.delete(options, (err, doc) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            if (!doc) {
-                                return res.sendRsp(eRetCodes.ACCEPTED, 'No document deleted!');
-                            }
-                            _publishEvents.call(this, {
-                                method: 'deleteOne',
-                                data: doc.toObject()
-                            }, () => {
-                                this._afterDeleteOne(req, doc, () => {
-                                    return res.sendSuccess(doc);
-                                })
-                            });
+                        _publishEvents.call(this, {
+                            method: 'deleteOne',
+                            data: doc.toObject()
+                        }, () => {
+                            this._afterDeleteOne(req, doc, () => {
+                                return res.sendSuccess(doc);
+                            })
                         });
                     });
                 });
@@ -877,44 +831,43 @@ class EntityController extends ControllerBase {
                 }
             },
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                this._allowDelete(req, req.$args.id, (err) => {
                     if (err) {
-                        return res.sendRsp(err.code, err.message);
+                        return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                     }
-                    let dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                    this._allowDelete(req, req.$args.id, (err) => {
+                    //
+                    repo.updateOne({
+                        filter: {
+                            _id: req.$args.id,
+                            status: sysdefs.eStatus.ACTIVE
+                        },
+                        updates: {
+                            $set: {
+                                updateAt: new Date(),
+                                status: sysdefs.eStatus.DELETED,
+                                comment: req.$args.comment
+                            }
+                        },
+                        allowEmpty: true
+                    }, (err, doc) => {
                         if (err) {
-                            return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
+                            return res.sendRsp(err.code, 'Fake delete error!');
                         }
-                        //
-                        repo.updateOne({
-                            filter: {
-                                _id: req.$args.id,
-                                status: sysdefs.eStatus.ACTIVE
-                            },
-                            updates: {
-                                $set: {
-                                    updateAt: new Date(),
-                                    status: sysdefs.eStatus.DELETED,
-                                    comment: req.$args.comment
-                                }
-                            },
-                            allowEmpty: true
-                        }, (err, doc) => {
-                            if (err) {
-                                return res.sendRsp(err.code, 'Fake delete error!');
-                            }
-                            if (!doc) {
-                                return res.sendRsp(eRetCodes.DB_DELETE_ERR, `${req.$args.id} already deleted!`);
-                            }
-                            _publishEvents.call(this, {
-                                method: 'deleteOne',
-                                data: doc.toObject()
-                            }, () => {
-                                this._afterDeleteOne(req, doc, () => {
-                                    return res.sendSuccess(doc);
-                                })
-                            });
+                        if (!doc) {
+                            return res.sendRsp(eRetCodes.DB_DELETE_ERR, `${req.$args.id} already deleted!`);
+                        }
+                        _publishEvents.call(this, {
+                            method: 'deleteOne',
+                            data: doc.toObject()
+                        }, () => {
+                            this._afterDeleteOne(req, doc, () => {
+                                return res.sendSuccess(doc);
+                            })
                         });
                     });
                 });
@@ -931,25 +884,25 @@ class EntityController extends ControllerBase {
                 }
             },
             fn: (req, res) => {
-                this.getRepo(req.dataSource, (err, repo) => {
+                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                const repo = this.getRepo(this.modelName, dsName);
+                if (!repo) {
+                    return res.sendRsp(eRetCodes.DB_ERROR, _ERRMSG_INVALID_DS);
+                }
+                let options = _beforePatch.call(this, req);
+                if (options.noop) {
+                    return res.sendRsp(eRetCodes.ACCEPTED, options.noop);
+                }
+                repo.updateOne(options, (err, doc) => {
                     if (err) {
                         return res.sendRsp(err.code, err.message);
                     }
-                    let options = _beforePatch.call(this, req);
-                    if (options.noop) {
-                        return res.sendRsp(eRetCodes.ACCEPTED, options.noop);
-                    }
-                    repo.updateOne(options, (err, doc) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        _publishEvents.call(this, {
-                            method: 'patchOne',
-                            data: doc
-                        }, () => {
-                            this._afterPatchOne(doc);
-                            return res.sendSuccess(doc);
-                        });
+                    _publishEvents.call(this, {
+                        method: 'patchOne',
+                        data: doc
+                    }, () => {
+                        this._afterPatchOne(doc);
+                        return res.sendSuccess(doc);
                     });
                 });
             }
