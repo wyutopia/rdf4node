@@ -117,16 +117,12 @@ function _publishEvents(options, callback) {
 class ControllerBase extends EventModule {
     constructor(props) {
         super(global.theApp, props);
-        // Declaring member variables
-        // Implementing member methods
-        this._getRepositories = (modelNames, dsName = 'default') => {
-            assert(Array.isArray(modelNames));
-            let results = {};
-            modelNames.forEach(modelName => {
-                results[modelName] = this._appCtx.repoFactory.getRepo(modelName, dsName);
-            });
-            return results;
-        };
+    }
+    getMultiRepos(modelNames, dsName = _DS_DEFAULT_) {
+        return this._appCtx.getMultiRepos(modelNames, dsName);
+    }
+    getRepo(modelName, dsName) {
+        return this._appCtx.getRepo(modelName, dsName);
     }
 }
 
@@ -213,7 +209,7 @@ const _defaultCtlSpec = {
 function _initCtlSpec(ctlSpec) {
     Object.keys(_defaultCtlSpec).forEach( key => {
         let privateKey = `_${key}`;
-        this[privateKey] = ctlSpec[key] || _defaultCtlSpec[key];
+        this[privateKey] = ctlSpec[key] !== undefined? ctlSpec[key] : _defaultCtlSpec[key];
     });
 }
 
