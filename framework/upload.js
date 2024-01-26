@@ -93,7 +93,7 @@ class UploadHelper extends CommonObject {
         }
         logger.info(`>>> Init with with config: ${tools.inspect(config)}`);
         _initSelf.call(this, config);
-        this_state = sysdefs.eModuleState.READY;
+        this._state = sysdefs.eModuleState.READY;
         return 1;
     }
     getUpload (absDir, options) {

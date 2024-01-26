@@ -782,7 +782,7 @@ function _readModelDirSync(modelDir, loadedModels, options) {
                 return null;
             }
             const cacheOptions = _mergeCacheOptions(modelSpec.cacheOptions || {}, options.cacheOptions[modelName] || {});
-            this.repoFactory.registerModel(modelName, {
+            this.registerModel(modelName, {
                 schema: modelSpec.modelSchema,
                 refs: modelSpec.modelRefs || [],
                 // Cache options
@@ -831,6 +831,7 @@ class RepositoryFactory extends EventModule {
             return 0;
         }
         loadDataModels.call(this, config);
+        this._state = sysdefs.eModuleState.ACTIVE;
     }
     // Implementing methods
     /**
