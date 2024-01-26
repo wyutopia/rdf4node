@@ -11,7 +11,8 @@ const util = require('util');
 const appRoot = require('app-root-path');
 const ObjectId = require('mongoose').Types.ObjectId;
 // Framework libs
-const _MODULE_NAME = require('../include/sysdefs').eFrameworkModules.REPOSITORY;
+const sysdefs = require('../include/sysdefs')
+const _MODULE_NAME = sysdefs.eFrameworkModules.REPOSITORY;
 const eRetCodes = require('../include/retcodes');
 const { EventModule, EventObject, sysEvents } = require('../include/events');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
@@ -24,7 +25,7 @@ function _packCacheSafeSelect(origSelect, allowCache, cacheSpec) {
     if (!origSelect || allowCache === false || !cacheSpec.select) {
         return origSelect;
     }
-    const origSelKeys = typeof origSelect === 'string'? origSelect.split(' ') : Object.keys(origSelect || {});
+    const origSelKeys = typeof origSelect === 'string' ? origSelect.split(' ') : Object.keys(origSelect || {});
     if (origSelKeys[0].slice(0, 1) === '-') { // The original select is an exclusion projection, using cacheSpec.select instead
         return cacheSpec.select;
     }
@@ -32,7 +33,7 @@ function _packCacheSafeSelect(origSelect, allowCache, cacheSpec) {
         if (origSelKeys.indexOf(key) === -1) {
             origSelKeys.push(key);
         }
-    }); 
+    });
     return origSelKeys.join(' ');
 }
 
@@ -40,8 +41,8 @@ function _packCacheSafePopulate(origPopulate, allowCache, cacheSpec) {
     if (allowCache === false || !cacheSpec.populate) {
         return origPopulate;
     }
-    const origArr = origPopulate? (tools.isTypeOfArray(origPopulate)? origPopulate : [origPopulate]) : [];
-    const cacheArr = tools.isTypeOfArray(cacheSpec.populate)? cacheSpec.populate : [cacheSpec.populate];
+    const origArr = origPopulate ? (tools.isTypeOfArray(origPopulate) ? origPopulate : [origPopulate]) : [];
+    const cacheArr = tools.isTypeOfArray(cacheSpec.populate) ? cacheSpec.populate : [cacheSpec.populate];
     return origArr.concat(cacheArr);
 }
 
@@ -155,7 +156,7 @@ function _updateOne(params, callback) {
             });
         }
         // Append cache
-        _appendCache.call(this, doc, {updates: updates}, () => {
+        _appendCache.call(this, doc, { updates: updates }, () => {
             return callback(null, doc);
         });
     });
@@ -167,24 +168,24 @@ function _updateOne(params, callback) {
  * @param {Types.CacheSpecOptions} cacheSpec 
  * @returns {string}
  */
-function _parseCacheKey (data, cacheSpec) {
+function _parseCacheKey(data, cacheSpec) {
     //logger.debug(`Parse cacheKey: ${tools.inspect(data)} - ${tools.inspect(cacheSpec)}`);
     if (tools.isTypeOfPrimitive(data)) {
         return data;
     }
     if (cacheSpec.keyNameTemplate) {
         let keyNameArray = [];
-        cacheSpec.keyNameTemplate.split(':').forEach( field => {
-            keyNameArray.push(data[field] === undefined? '*' : tools.purifyObjectId(data[field]));
+        cacheSpec.keyNameTemplate.split(':').forEach(field => {
+            keyNameArray.push(data[field] === undefined ? '*' : tools.purifyObjectId(data[field]));
         });
-        const cacheKey  = keyNameArray.join(':');
+        const cacheKey = keyNameArray.join(':');
         //logger.debug(`Parse cacheKey: ${tools.inspect(data)} - ${cacheKey}`);
         logger.debug(`The cacheKey: ${cacheKey}`);
         return cacheKey;
     }
     if (cacheSpec.keyName) {
         let cacheKey = data[cacheSpec.keyName];
-        return typeof cacheKey === 'string'? cacheKey : cacheKey.toString();
+        return typeof cacheKey === 'string' ? cacheKey : cacheKey.toString();
     }
     return data['_id'];
 }
@@ -200,7 +201,7 @@ function _parseCacheValue(doc, valueKeys) {
         return doc;
     }
     let cv = {};
-    valueKeys.split(' ').forEach (key => {
+    valueKeys.split(' ').forEach(key => {
         if (doc[key]) {
             cv[key] = doc[key];
         }
@@ -209,7 +210,7 @@ function _parseCacheValue(doc, valueKeys) {
 }
 
 const _checkPaths = ['$set', '$push', '$pull', '$addToSet', '$unset'];
-function _cacheValueUpdated(valueKeys, {mandatory, updates}) {
+function _cacheValueUpdated(valueKeys, { mandatory, updates }) {
     logger.debug(`Check cache value updates: ${valueKeys} - ${mandatory} - ${tools.inspect(updates)}`);
     if (mandatory === true || !valueKeys) {
         return true;
@@ -236,7 +237,7 @@ function _cacheValueUpdated(valueKeys, {mandatory, updates}) {
 function _appendCache(data, options, callback) {
     if (typeof options === 'function') {
         callback = options;
-        options = { mandatory: true};
+        options = { mandatory: true };
     }
     if (this.allowCache === false || !data || !_cacheValueUpdated(this.cacheSpec.valueKeys, options)) {
         logger.debug(`Ignore cache updating dur no cacheValue changed!`);
@@ -244,7 +245,7 @@ function _appendCache(data, options, callback) {
     }
     logger.debug(`${this.$name}: Update cache with data ${tools.inspect(data)} ...`);
     let cacheValues = [];
-    let docs = Array.isArray(data)? data : [data];
+    let docs = Array.isArray(data) ? data : [data];
     //
     async.eachLimit(docs, 3, (doc, next) => {
         let cacheKey = _parseCacheKey(doc, this.cacheSpec);
@@ -254,8 +255,8 @@ function _appendCache(data, options, callback) {
     }, (err) => {
         if (err) {
             logger.error(`Set cache error! - ${err.message}`);
-        }        
-        return callback(null, tools.isTypeOfArray(data)? cacheValues : cacheValues[0]);
+        }
+        return callback(null, tools.isTypeOfArray(data) ? cacheValues : cacheValues[0]);
     });
 }
 
@@ -268,15 +269,15 @@ function _appendCache(data, options, callback) {
 function _buildQueryFilter(data, cacheSpec) {
     let filter = {};
     if (cacheSpec.keyNameTemplate) {
-        cacheSpec.keyNameTemplate.split(':').forEach (key => {
+        cacheSpec.keyNameTemplate.split(':').forEach(key => {
             if (data[key] !== undefined) {
                 filter[key] = data[key];
             }
         });
     } else if (cacheSpec.keyName) {
-        filter[cacheSpec.keyName] = tools.isTypeOfPrimitive(data)? data : data[cacheSpec.keyName];
+        filter[cacheSpec.keyName] = tools.isTypeOfPrimitive(data) ? data : data[cacheSpec.keyName];
     } else {
-        filter._id = tools.isTypeOfPrimitive(data)? data : data._id;
+        filter._id = tools.isTypeOfPrimitive(data) ? data : data._id;
     }
     return filter;
 }
@@ -736,14 +737,82 @@ function _deepGetModelRefs(modelSpecs, key, totalRefs) {
         return;
     }
     let nextKeys = [];
-    refs.forEach (refKey => {
+    refs.forEach(refKey => {
         if (totalRefs.indexOf(refKey) === -1) {
             nextKeys.push(refKey);
         }
     });
-    nextKeys.forEach( nextKey => {
+    nextKeys.forEach(nextKey => {
         _deepGetModelRefs(modelSpecs, nextKey, totalRefs);
     });
+}
+
+function _mergeCacheOptions(resident, config) {
+    const options = {};
+    options.enabled = config.enabled || resident.enabled || false;
+    if (options.enabled) {
+        options.spec = Object.assign({}, resident.spec || {}, config.spec || {});
+        options.props = Object.assign({}, resident.props || {}, config.props || {});
+    }
+    return options;
+}
+
+const _excludeModelPaths = ['.DS_Store', '_templates'];
+function _readModelDirSync(modelDir, loadedModels, options) {
+    //logger.debug(`====== Scan directory: ${modelDir}`);
+    let entries = fs.readdirSync(modelDir, {
+        withFileTypes: true
+    });
+    entries.forEach(dirent => {
+        if (options.excludePaths.indexOf(dirent.name) !== -1) { // Ignore excluded paths
+            return null;
+        }
+        let fullPath = path.join(modelDir, dirent.name);
+        if (dirent.isDirectory()) { // Recursive directory
+            return _readModelDirSync.call(this, fullPath, loadedModels, options);
+        }
+        //
+        try {
+            const modelSpec = require(fullPath);
+            const modelName = modelSpec.modelName;
+            if (modelName === undefined) {
+                throw new Error('Invalid moduleName!');
+            }
+            if (options.includeModels && options.includeModels.indexOf(modelName) === -1) {
+                return null;
+            }
+            const cacheOptions = _mergeCacheOptions(modelSpec.cacheOptions || {}, options.cacheOptions[modelName] || {});
+            this.repoFactory.registerModel(modelName, {
+                schema: modelSpec.modelSchema,
+                refs: modelSpec.modelRefs || [],
+                // Cache options
+                cacheOptions
+            });
+            logger.debug(`Load <${modelName}> with cache options: ${tools.inspect(cacheOptions)}`);
+            loadedModels.push(modelName);
+        } catch (ex) {
+            logger.error(`!!! Load database schema from: ${dirent.name} error! - ${ex.message}`);
+        }
+    });
+}
+
+/**
+ * @param { Object } options
+ * @param { string[]?} options.excludePaths - The exclude model paths
+ * @param { string? } options.modelPath - The 
+ * @param { string[]?} options.excludeModels - The exclude model names 
+ * @param { string[]?} options.includeModels - The included model names
+ * @returns
+ */
+function loadDataModels(options) {
+    options.excludePaths = _excludeModelPaths.concat(options.excludePaths || []);
+    logger.info('>>>>>> loadDataModels with options: ', tools.inspect(options));
+    //
+    const modelDir = path.join(appRoot.path, options.modelPath || 'models');
+    const loadedModels = [];
+    _readModelDirSync.call(this, modelDir, loadedModels, options);
+    logger.info(`>>>>>> Total ${loadedModels.length} database schemas registered. <<<<<<`);
+    return loadedModels.length;
 }
 
 // The repository-factory
@@ -754,114 +823,122 @@ class RepositoryFactory extends EventModule {
         this.cacheFactory = appCtx.cacheFactory;
         this._modelSpecs = {};
         this._repos = {};
-        // Implementing methods
-        /**
-         * Register model with modelSpec
-         * @param { string } modelName 
-         * @param { Types.ModelSpecOptions } modelSpec 
-         */
-        this.registerModel = (modelName, modelSpec) => {
-            this._modelSpecs[modelName] = modelSpec;
-        };
-        this.getSubSchema = (modelName, subSchemaName) => {
-            return this._modelSpecs[modelName].subSchemas[subSchemaName];
-        };
-        /**
-         * Get one repository by model name
-         * @param { string } modelName - The model name
-         * @param { string } dsName - The dataSource name
-         * @returns 
-         */
-        this.getRepo = (modelName, dsName = _DS_DEFAULT_) => {
-            assert(modelName !== undefined);
-            //
-            let repoKey = `${modelName}@${dsName}`;
-            if (repoKey === 'test@default') {
-                logger.error(`Using ${key} repository is not recommended in real project!`);
-            }
-            let modelSpec = this._modelSpecs[modelName];
-            if (!modelSpec) {
-                logger.error(`modelSpec: ${modelName} not registered.`);
-                return null;
-            }
-            if (this._repos[repoKey]) {
-                return this._repos[repoKey];
-            }            
-            let totalRefModels = [];
-            _deepGetModelRefs(this._modelSpecs, modelName, totalRefModels);
-            totalRefModels.forEach(name => {
-                let spec = this._modelSpecs[name];
-                let key = `${name}@${dsName}`;
-                if (spec !== undefined && this._repos[key] === undefined) {
-                    this._repos[key] = new Repository(this._appCtx, {
-                        $name: key,
-                        // model spec
-                        modelName: name,
-                        modelSchema: spec.schema,
-                        dsName: dsName,
-                        // cache
-                        cacheOptions: spec.cacheOptions 
-                        //allowCache: spec.allowCache,
-                        //cacheSpec: spec.cacheSpec   // _typeCacheOptions
-                    });
-                    logger.info(`>>> New repository: ${key} created. <<<`);
-                }
-            });
-            return this._repos[repoKey];
-        };
-        /**
-         * Get multiple repositories by model names
-         * @param { string[] } modelNames - The array of model name
-         * @param { string } dsName - The dataSource name
-         * @returns 
-         */
-        this.getMultiRepos = (modelNames, dsName = 'default') => {
-            assert(Array.isArray(modelNames));
-            let results = {};
-            modelNames.forEach(modelName => {
-                let repo = this.getRepo(modelName, dsName);
-                results[modelName] = repo;
-            });
-            return results;
-        };
-        // entitiesOption[modelName] = {ids, queryOptions};
-        this.findEntities = (entitiesOption, dsName, callback) => {
-            if (typeof dsName === 'function') {
-                callback = dsName;
-                dsName = 'default'
-            }
-            logger.debug(`findEntites: ${tools.inspect(entitiesOption)} - ${dsName}`);
-            let results = {};
-            let modelNames = Object.keys(entitiesOption);
-            async.each(modelNames, (modelName, next) => {
-                let repo = this.getRepo(modelName, dsName);
-                if (!repo) {
-                    return process.nextTick(next);
-                }
-                let queryOptions = entitiesOption[modelName];
-                repo.findMany(queryOptions, (err, docs) => {
-                    if (err) {
-                        logger.error(`Find ${modelName} entites error! - ${err.message}`);
-                        return next();
-                    }
-                    docs.forEach(doc => {
-                        results[doc._id] = doc;
-                    });
-                    return next();
-                });
-            }, () => {
-                return callback(null, results);
-            });
-        };
-        this.findDistEntites = (distEntitiesOption, callback) => {
-            return callback(null, {});
+        this._state = sysdefs.eModuleState.INIT;
+    }
+    init(config) {
+        if (this._state !== sysdefs.eModuleState.INIT) {
+            logger.error(`!!! Already initialized.`);
+            return 0;
         }
+        loadDataModels.call(this, config);
+    }
+    // Implementing methods
+    /**
+     * Register model with modelSpec
+     * @param { string } modelName 
+     * @param { Types.ModelSpecOptions } modelSpec 
+     */
+    registerModel(modelName, modelSpec) {
+        this._modelSpecs[modelName] = modelSpec;
+    }
+    getSubSchema(modelName, subSchemaName) {
+        return this._modelSpecs[modelName].subSchemas[subSchemaName];
+    }
+    /**
+     * Get one repository by model name
+     * @param { string } modelName - The model name
+     * @param { string } dsName - The dataSource name
+     * @returns 
+     */
+    getRepo(modelName, dsName = _DS_DEFAULT_) {
+        assert(modelName !== undefined);
+        //
+        let repoKey = `${modelName}@${dsName}`;
+        if (repoKey === 'test@default') {
+            logger.error(`Using ${key} repository is not recommended in real project!`);
+        }
+        let modelSpec = this._modelSpecs[modelName];
+        if (!modelSpec) {
+            logger.error(`modelSpec: ${modelName} not registered.`);
+            return null;
+        }
+        if (this._repos[repoKey]) {
+            return this._repos[repoKey];
+        }
+        let totalRefModels = [];
+        _deepGetModelRefs(this._modelSpecs, modelName, totalRefModels);
+        totalRefModels.forEach(name => {
+            let spec = this._modelSpecs[name];
+            let key = `${name}@${dsName}`;
+            if (spec !== undefined && this._repos[key] === undefined) {
+                this._repos[key] = new Repository(this._appCtx, {
+                    $name: key,
+                    // model spec
+                    modelName: name,
+                    modelSchema: spec.schema,
+                    dsName: dsName,
+                    // cache
+                    cacheOptions: spec.cacheOptions
+                    //allowCache: spec.allowCache,
+                    //cacheSpec: spec.cacheSpec   // _typeCacheOptions
+                });
+                logger.info(`>>> New repository: ${key} created. <<<`);
+            }
+        });
+        return this._repos[repoKey];
+    }
+    /**
+     * Get multiple repositories by model names
+     * @param { string[] } modelNames - The array of model name
+     * @param { string } dsName - The dataSource name
+     * @returns 
+     */
+    getMultiRepos(modelNames, dsName = 'default') {
+        assert(Array.isArray(modelNames));
+        let results = {};
+        modelNames.forEach(modelName => {
+            let repo = this.getRepo(modelName, dsName);
+            results[modelName] = repo;
+        });
+        return results;
+    }
+    // entitiesOption[modelName] = {ids, queryOptions};
+    findEntities(entitiesOption, dsName, callback) {
+        if (typeof dsName === 'function') {
+            callback = dsName;
+            dsName = 'default'
+        }
+        logger.debug(`findEntites: ${tools.inspect(entitiesOption)} - ${dsName}`);
+        let results = {};
+        let modelNames = Object.keys(entitiesOption);
+        async.each(modelNames, (modelName, next) => {
+            let repo = this.getRepo(modelName, dsName);
+            if (!repo) {
+                return process.nextTick(next);
+            }
+            let queryOptions = entitiesOption[modelName];
+            repo.findMany(queryOptions, (err, docs) => {
+                if (err) {
+                    logger.error(`Find ${modelName} entites error! - ${err.message}`);
+                    return next();
+                }
+                docs.forEach(doc => {
+                    results[doc._id] = doc;
+                });
+                return next();
+            });
+        }, () => {
+            return callback(null, results);
+        });
+    }
+    findDistEntites(distEntitiesOption, callback) {
+        return callback(null, {});
     }
 }
 
 module.exports = exports = {
-    _DS_SYSTEM_ : 'system',
-    _DS_DEFAULT_ : 'default',
+    _DS_SYSTEM_: 'system',
+    _DS_DEFAULT_: 'default',
     paginationVal: {
         pageSize: {
             type: 'String'

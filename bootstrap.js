@@ -21,7 +21,7 @@ const { Application } = require('./framework/app');
 
 /**
  * 
- * @param { Object } extensions - The customized overrides and extensions
+ * @param { Object? } extensions - The customized overrides and extensions
  * @param { Object? } extensions.registry
  * @param { Object? } extensions.eventBus
  * @param { Object? } extensions.endpoints
@@ -47,23 +47,12 @@ async function bootstrap(extensions) {
     const result = {};
     try {
         logger.info('====== Step 1: Init framework components ======');
-        result.framework = await theApp.initFramework({
-            registry: config.registry,
-            eventBus: config.eventBus,
-            dataSources: config.dataSources,
-            caches: config.caches,
-            endpoints: config.endpoints,
-            redis: config.redis,
-            rascal: config.rascal
-        }, extensions);
+        result.framework = await theApp.initFramework(config, extensions);
         //
-        logger.info('====== Step 2: Load enabled database models ======');
-        result.dataModels = theApp.loadDataModels(config.dataModels || {});
-        //
-        logger.info('====== Step 3: Start enabled services ======');
+        logger.info('====== Step 2: Load enabled services ======');
         result.services = theApp.loadServices(config.services || {});
-        
-        // Start the applcatioin
+        //
+        logger.info('====== Step 3: App startup ======');
         result.start = await theApp.start();
     } catch (ex) {
         logger.error(`!!! Bootstrap error! - ${tools.inspect(ex)}`);

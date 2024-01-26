@@ -6,7 +6,6 @@
 // Node libs
 const assert = require('assert');
 const appRoot = require('app-root-path');
-const async = require('async');
 const EventEmitter = require('events');
 const fs = require('fs');
 const path = require('path');
@@ -145,55 +144,6 @@ function _initSelf(props) {
     })
 }
 
-const _excludeModelPaths = ['.DS_Store', '_templates'];
-function _readModelDirSync(modelDir, loadedModels, options) {
-    //logger.debug(`====== Scan directory: ${modelDir}`);
-    let entries = fs.readdirSync(modelDir, {
-        withFileTypes: true
-    });
-    entries.forEach(dirent => {
-        if (options.excludePaths.indexOf(dirent.name) !== -1) { // Ignore excluded paths
-            return null;
-        }
-        let fullPath = path.join(modelDir, dirent.name);
-        if (dirent.isDirectory()) { // Recursive directory
-            return _readModelDirSync.call(this, fullPath, loadedModels, options);
-        }
-        //
-        try {
-            const modelSpec = require(fullPath);
-            const modelName = modelSpec.modelName;
-            if (modelName === undefined) {
-                throw new Error('Invalid moduleName!');
-            }
-            if (options.includeModels && options.includeModels.indexOf(modelName) === -1) {
-                return null;
-            }
-            const cacheOptions = _mergeCacheOptions(modelSpec.cacheOptions || {}, options.cacheOptions[modelName] || {});
-            this.repoFactory.registerModel(modelName, {
-                schema: modelSpec.modelSchema,
-                refs: modelSpec.modelRefs || [],
-                // Cache options
-                cacheOptions
-            });
-            logger.debug(`Load <${modelName}> with cache options: ${tools.inspect(cacheOptions)}`);
-            loadedModels.push(modelName);
-        } catch (ex) {
-            logger.error(`!!! Load database schema from: ${dirent.name} error! - ${ex.message}`);
-        }
-    });
-}
-
-function _mergeCacheOptions(resident, config) {
-    const options = {};
-    options.enabled = config.enabled || resident.enabled || false;
-    if (options.enabled) {
-        options.spec = Object.assign({}, resident.spec || {}, config.spec || {});
-        options.props = Object.assign({}, resident.props || {}, config.props || {});
-    }
-    return options;
-}
-
 // The application class
 class Application extends EventEmitter {
     constructor(props) {
@@ -294,11 +244,14 @@ class Application extends EventEmitter {
         if (config.upload) {
             this.upload.init(config.upload);
         }
+        if (config.cache) {
+            this.cacheFactory.init(config.cache);
+        }
         if (config.dataSources) {
             this.dsFactory.init(config.dataSources);
         }
-        if (config.cache) {
-            this.cacheFactory.init(config.cache);
+        if (config.dataModels) {
+            this.repoFactory.init(config.dataModels);
         }
         if (config.endpoints) {
             this.epFactory.init(config.endpoints, extensions.endpoints || {});
@@ -307,25 +260,6 @@ class Application extends EventEmitter {
         this._state = sysdefs.eModuleState.READY;
         return 'ok';
     }
-    /**
-     * @param { Object } options
-     * @param { string[]?} options.excludePaths - The exclude model paths
-     * @param { string? } options.modelPath - The 
-     * @param { string[]?} options.excludeModels - The exclude model names 
-     * @param { string[]?} options.includeModels - The included model names
-     * @returns
-     */
-    loadDataModels(options) {
-        options.excludePaths = _excludeModelPaths.concat(options.excludePaths || []);
-        logger.info('>>>>>> loadDataModels with options: ', tools.inspect(options));
-        //
-        const modelDir = path.join(appRoot.path, options.modelPath || 'models');
-        const loadedModels = [];
-        _readModelDirSync.call(this, modelDir, loadedModels, options);
-        logger.info(`>>>>>> Total ${loadedModels.length} database schemas registered. <<<<<<`);
-        return loadedModels.length;
-    }
-
     loadServices(options) {
         let serviceDir = path.join(appRoot.path, options.servicePath || 'services');
         logger.info(`>>>>>> Load all services module from ${serviceDir} ...`);
