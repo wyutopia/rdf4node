@@ -806,6 +806,9 @@ function _readModelDirSync(modelDir, loadedModels, options) {
  */
 function loadDataModels(options) {
     options.excludePaths = _excludeModelPaths.concat(options.excludePaths || []);
+    if (options.cacheOptions === undefined) {
+        options.cacheOptions = {};
+    }
     logger.info('>>>>>> loadDataModels with options: ', tools.inspect(options));
     //
     const modelDir = path.join(appRoot.path, options.modelPath || 'models');
