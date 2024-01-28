@@ -46,9 +46,9 @@ cp "${TEMP_DIR}/common/extensions.js" .
 cd ..
 echo "Folder common created."
 
-# Step 4: Add conf folder
-mkdir -p conf
-cd conf
+# Step 4: Add conf.d folder
+mkdir -p conf.d
+cd conf.d
 cp "${TEMP_DIR}/conf/conf.template.js" .
 cp "${TEMP_DIR}/conf/app.dev.js" .
 cp "${TEMP_DIR}/conf/version.json" ./version.json

@@ -15,7 +15,7 @@ try {
     const srvRole = process.env.SRV_ROLE || 'app';
     const nodeEnv = process.env.NODE_ENV ? process.env.NODE_ENV.slice(0, 3) : 'dev';
     const cnfFileName = `${srvRole}.${nodeEnv}.js`;
-    const cnfFilePath = process.env.CFG_FILE || path.join(appRoot.path, 'conf', cnfFileName);
+    const cnfFilePath = process.env.CFG_FILE || path.join(appRoot.path, 'conf.d', cnfFileName);
     assert(cnfFilePath !== undefined);
     console.log('>>> Load config from file: ', cnfFilePath);
     config = require(cnfFilePath);
