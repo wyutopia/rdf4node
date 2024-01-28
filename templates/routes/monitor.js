@@ -1,7 +1,7 @@
 /**
  * Created by Eric 2021/06/17
  */
- const {monitor} = require('../applications');
+ const {monitor} = require('../app');
 
  module.exports = exports = [
    {

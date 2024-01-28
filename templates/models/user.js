@@ -2,15 +2,13 @@
  * Created by Eric on 2023/02/16
  */
 const {
-    pubdefs,
-    mongoose: db,
+    pubdefs, 
+    mongoose: {Schema, SchemaDL, Types: {ObjectId}},
     cache: {eDataType, eLoadPolicy}
 } = require('../app');
-const Schema = db.Schema;
-const ObjectId = Schema.Types.ObjectId;
 
 // Define user schema
-let schema = new Schema({
+const sdl = new SchemaDL({
     version            : { type: Number, default: 1 },
     createAt           : { type: Date, default: Date.now },
     updateAt           : { type: Date },
@@ -39,13 +37,14 @@ let schema = new Schema({
         match: /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
     }
 });
+const schema = new Schema(sdl.spec);
 schema.index({createAt: 1});
 schema.index({updateAt: -1});
 schema.index({username: 1, mobile: 1, email: 1, status: 1});
 
-const _searchVal = schema.extractValidators(['username', 'mobile', 'email', 'status']);
-const _addVal = schema.extractValidators(['username', 'password', 'mobile', 'email']);
-const _updateVal = schema.extractValidators(['mobile', 'email', 'status']);
+const _searchVal = sdl.extractValidators(['username', 'mobile', 'email', 'status']);
+const _addVal = sdl.extractValidators(['username', 'password', 'mobile', 'email']);
+const _updateVal = sdl.extractValidators(['mobile', 'email', 'status']);
 
 // Declaring module exports
 const _MODEL_NAME = 'User';

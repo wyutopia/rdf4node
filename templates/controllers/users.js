@@ -3,14 +3,14 @@
  */
  const {
     pubdefs, tools, 
-    winstonWrapper: {WinstonLogger},
+    WinstonLogger,
     components: { EntityController }
-} = require('@icedeer/rdf4node');
+} = require('../app');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'usr');
 const _MODULE_NAME = pubdefs.eAppModules.UserCtl;
 
 // Import model 
-const {modelName, modelSchema, modelRefs, ctlSpec} = require('../models/user');
+const { modelName, modelSchema, modelRefs, ctlSpec } = require('../models/user');
 
 // Declaring the class 
 class UserController extends EntityController {
