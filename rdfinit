@@ -49,9 +49,9 @@ echo "Folder common created."
 # Step 4: Add conf.d folder
 mkdir -p conf.d
 cd conf.d
-cp "${TEMP_DIR}/conf/conf.template.js" .
-cp "${TEMP_DIR}/conf/app.dev.js" .
-cp "${TEMP_DIR}/conf/version.json" ./version.json
+cp "${TEMP_DIR}/conf.d/conf.template.js" .
+cp "${TEMP_DIR}/conf.d/app.dev.js" .
+cp "${TEMP_DIR}/conf.d/version.json" ./version.json
 sed -i $BACK_FILE "s/rdf4node/${PRJ_NAME}/g" version.json
 
 rm -f *.bak
