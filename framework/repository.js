@@ -408,7 +408,7 @@ class Repository extends EventObject {
             }, params.options || {});
             return this._model.findOneAndUpdate(params.filter, params.updates, options, (err, doc) => {
                 if (err) {
-                    let msg = `Insert error! - ${err.message}`;
+                    let msg = `[${this.$name}] Insert error! - ${err.message}`;
                     logger.error(msg);
                     return callback({
                         code: eRetCodes.DB_ERROR,
