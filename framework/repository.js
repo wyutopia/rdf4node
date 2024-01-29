@@ -21,6 +21,9 @@ const tools = require('../utils/tools');
 //
 const { eDataType, eLoadPolicy, initCacheSpec } = require('./cache');
 
+const _DS_SYSTEM_ = 'system';
+const _DS_DEFAULT_ = 'default';
+
 function _packCacheSafeSelect(origSelect, allowCache, cacheSpec) {
     if (!origSelect || allowCache === false || !cacheSpec.select) {
         return origSelect;
@@ -941,8 +944,7 @@ class RepositoryFactory extends EventModule {
 }
 
 module.exports = exports = {
-    _DS_SYSTEM_: 'system',
-    _DS_DEFAULT_: 'default',
+    _DS_SYSTEM_, _DS_DEFAULT_,
     paginationVal: {
         pageSize: {
             type: 'String'
