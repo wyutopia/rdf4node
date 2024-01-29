@@ -276,6 +276,13 @@ class Application extends EventEmitter {
             try {
                 let svc = require(filePath);
                 let svcName = this.registry.register(svc);
+                if (typeof svc.start === 'function') {
+                    try {
+                        svc.start(options[svcName] || {});  // With potential configuration identified by svcName
+                    } catch (ex) {
+                        logger.error(`!!! Call start() of ${svcName} error! - ${ex.message}`);
+                    }
+                }
                 allServices.push(svcName);
             } catch (ex) {
                 logger.error(`!!! Load service: ${dirent.name} error! - ${ex.message}`);

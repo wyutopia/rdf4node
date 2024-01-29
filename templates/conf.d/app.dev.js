@@ -1,18 +1,18 @@
 module.exports = exports = {
     app: {
-        "name": "app",
-        "alias": "app@dev",
-        "tags": [
-            "Kubernetes", "Linux", "Alpine", "node", "amd64"
+        name: "app",
+        alias: "app@dev",
+        tags: [
+            "Alpine", "node"
         ],
-        "defaultDataSource": "default",
+        defaultDataSource: "default",
         enableMonitor: true,
         security: {
-            "ip": false,
-            "encryptKey": "1234",
-            "expiresIn": "72h",
-            "enableAuthentication": true,
-            "enableAuthorization": false
+            ip: false,
+            encryptKey: "123456",
+            expiresIn: "72h",
+            enableAuthentication: true,
+            enableAuthorization: false
         },
         consul: {
             host: '127.0.0.1',
@@ -21,39 +21,39 @@ module.exports = exports = {
     },
     // Followings are framework components
     registry: {
-        "type": "consul",
-        "config": {
-            "host": "127.0.0.1",
-            "port": 8500
+        type: "consul",
+        config: {
+            host: "127.0.0.1",
+            port: 8500
         }
     },
     eventBus: {
-        "lo": true,
-        "persistent": true,
-        "disabledEvents": [],
-        "triggerEvents": [],
-        "engine": "native",
+        lo: true,
+        persistent: true,
+        disabledEvents: [],
+        triggerEvents: [],
+        engine: "native",
     },
     dataSources: {
-        "default": {
-            "type": "mongo",
-            "config": {
-                "ip": "127.0.0.1",
-                "port": 27017,
-                "user": "dbo",
-                "pwd": "123456",
-                "db": "demo",
-                "authSource": "demo"
+        default: {
+            type: "mongo",
+            config: {
+                ip: "127.0.0.1",
+                port: 27017,
+                user: "dbo",
+                pwd: "123456",
+                db: "demo",
+                authSource: "demo"
             },
-            "enabled": true
+            enabled: true
         }
     },
     // Followings are module configurations
     modules: { },
     upload: {
-        "engine": "native",
-        "alioss": {},
-        "minio": {}
+        engine: "native",
+        alioss: {},
+        minio: {}
     },
     endpoints: [{
         name: 'web',
@@ -65,14 +65,14 @@ module.exports = exports = {
             payloadLimit: '5mb',
             enableRateLimit: false,
             rateLimit: {
-                "options": {
-                    "windowMs": 60000,
-                    "max": 60,
-                    "expireTimeMs": 900000
+                options: {
+                    windowMs: 60000,
+                    max: 60,
+                    expireTimeMs: 900000
                 },
-                "store": {
-                    "type": "mongo",
-                    "confPath": "dataSources.default.config"
+                store: {
+                    type: "mongo",
+                    confPath: "dataSources.default.config"
                 }
             }
         }
@@ -84,6 +84,10 @@ module.exports = exports = {
     },
     services: {
         //servicePath: 'services',
-        enabledServices: []
+        enabledServices: [],
+        // Service options by name
+        UserSvc: {
+            key: 'aaa'
+        }
     }
 }
