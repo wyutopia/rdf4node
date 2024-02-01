@@ -6,12 +6,18 @@ const mongoose = require('mongoose');
 //
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.DATASOURCE;
-const {EventModule, EventObject} = require('../include/events');
-const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const { EventModule, EventObject } = require('../include/events');
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 
 const _DS_DEFAULT = 'default';
+
+/**
+ * @typedef DataModelOptions
+ * @prop { string } dsName
+ * @prop { Object? } modification
+ */
 
 function _initMongoConnection(config) {
     const options = {
@@ -42,20 +48,9 @@ class DataSource extends EventObject {
         // Declaring member variables
         this.isConnected = false;
         this._models = {};
-        // Implenting event handlers
-        this.getModel = (modelName, modelSchema) => {
-            assert(modelName !== undefined && modelSchema !== undefined);
-            if (!this.isConnected) {
-                return null;
-            }
-            if (this._models[modelName] === undefined) {
-                this._models[modelName] = this._conn.model(modelName, modelSchema);
-            }
-            return this._models[modelName];
-        };
         //
         (() => {
-            switch(this.dbType) {
+            switch (this.dbType) {
                 case sysdefs.eDbType.NATIVE:
                     _initProcMemoryStorage.call(this, this.conf);
                     break;
@@ -70,6 +65,24 @@ class DataSource extends EventObject {
             }
         })();
     }
+    // Implenting member methods
+    /**
+     * 
+     * @param { string } modelName 
+     * @param { DataModelSchema } modelSchema 
+     * @param { Object? } modification
+     * @returns 
+     */
+    getModel(modelName, modelSchema, modification) {
+        assert(modelName !== undefined && modelSchema !== undefined);
+        if (!this.isConnected) {
+            return null;
+        }
+        if (this._models[modelName] === undefined) {
+            this._models[modelName] = this._conn.model(modelName, modelSchema);
+        }
+        return this._models[modelName];
+    }
 }
 
 // The factory class
@@ -79,13 +92,27 @@ class DataSourceFactory extends EventModule {
         //
         this._ds = {};
     }
-    getEntries () {
+    getEntries() {
         return Object.entries(this._ds);
     }
-    getDataSource (name) {
+    getDataSource(name) {
         return this._ds[name];
-    };
-    _msgProc (msg, ackOrNack) {
+    }
+    /**
+     * 
+     * @param {*} modelName 
+     * @param {*} modelSchema 
+     * @param { DataModelOptions } options 
+     * @returns 
+     */
+    getModel(modelName, modelSchema, options) {
+        const ds = this._ds[options.dsName];
+        if (ds instanceof DataSource) {
+            return ds.getModel(modelName, modelSchema, options.modification);
+        }
+        return null;
+    }
+    _msgProc(msg, ackOrNack) {
         //TODO: Handler message
         if (typeof ackOrNack === 'function') {
             return ackOrNack(true);
@@ -117,6 +144,6 @@ class DataSourceFactory extends EventModule {
 }
 
 module.exports = exports = {
-    _DS_DEFAULT : 'default',
+    _DS_DEFAULT: 'default',
     DataSourceFactory
 };
