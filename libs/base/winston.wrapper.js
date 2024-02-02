@@ -66,25 +66,25 @@
          this.info = (...msg) => {
             let filename = __stack[1].getFileName().split('/').slice(-1)[0];
             let line = __stack[1].getLineNumber();
-            msg.unshift([filename, line]);
+            msg.unshift(filename, line);
             this._logger.info(msg.join(' '));
         }
         this.error = (...msg) => {
             let filename = __stack[1].getFileName().split('/').slice(-1)[0];
             let line = __stack[1].getLineNumber();
-            msg.unshift([filename, line]);
+            msg.unshift(filename, line);
             this._logger.error(msg.join(' '));
         }
         this.warn = (...msg) => {
             let filename = __stack[1].getFileName().split('/').slice(-1)[0];
             let line = __stack[1].getLineNumber();
-            msg.unshift([filename, line]);
+            msg.unshift(filename, line);
             this._logger.warn(msg.join(' '));
         }
         this.debug = (...msg) => {
             let filename = __stack[1].getFileName().split('/').slice(-1)[0];
             let line = __stack[1].getLineNumber();
-            msg.unshift([filename, line]);
+            msg.unshift(filename, line);
             this._logger.debug(msg.join(' '));
         }
      }

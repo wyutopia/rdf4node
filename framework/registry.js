@@ -26,7 +26,7 @@ class Registry extends CommonObject {
         //
         let name = moduleRef.$name || tools.uuidv4();
         if (this._modules[name] !== undefined) {
-            logger.error(`module: ${name} already exists! overrided!!!`);
+            logger.error(`!!! module: ${name} already exists! overrided.`);
         }
         this._modules[name] = moduleRef;
         return name;
