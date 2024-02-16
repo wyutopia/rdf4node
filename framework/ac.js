@@ -4,6 +4,7 @@
 const jsonwebtoken = require('jsonwebtoken');
 const { ObjectId } = require('bson');
 //
+const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
 const tools = require('../utils/tools');
 const {CommonModule} = require('../include/base');
@@ -345,14 +346,18 @@ class AccessControllerHelper extends CommonModule {
             return jwt.sign(payload, ENCRYPT_KEY, jwtSignOptions);        
         };
         //
-        this._realAuthorize = function (req, options, callback) {
+        this.realAuthorize = function (req, options, callback) {
             if (typeof options === 'function') {
                 callback = options;
                 options = {};
             }
-            logger.info('Do nothing on authorization!');
+            logger.info('>>> Do nothing on authorization! <<< ');
             return callback();
         };
+        this.akskAuthenticate = function (req, callback) {
+            logger.info('>>> Do nothing! Please override this method to implement AKSK authentication. <<<')
+            return callback();
+        }
     }
 }
 const _acHelper = new AccessControllerHelper({
@@ -362,7 +367,7 @@ const _acHelper = new AccessControllerHelper({
 // The private methods
 function _authenticate(authType, req, callback) {
     req.$token = {};
-    if (authType === 'jwt') {
+    if (authType === sysdefs.eRequestAuthType.JWT) {
         return _validateJwt(req, (err, token) => {
             if (err && config.enableAuthentication === true) {
                 return callback(err);
@@ -373,7 +378,10 @@ function _authenticate(authType, req, callback) {
             return callback();
         });
     }
-    if (authType === 'cookie') {
+    if (authType === sysdefs.eRequestAuthType.AKSK) {
+        return _acHelper.akskAuthenticate(req, callback);
+    }
+    if (authType === sysdefs.eRequestAuthType.COOKIE) {
         // TODO: Add cookie validation here ...
         return callback();
     }
@@ -386,7 +394,7 @@ function _authorize(req, scope, callback) {
         return callback();
     }
     // Do real authorization
-    return _acHelper._realAuthorize(req, {scope: scope}, callback);
+    return _acHelper.realAuthorize(req, {scope: scope}, callback);
 }
 
 const _excludeLogUrls = [
