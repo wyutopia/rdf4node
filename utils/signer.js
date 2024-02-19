@@ -226,6 +226,10 @@ class Signer {
      * @returns 
      */
     sign(r) {
+        if (r.headers === undefined) {
+            r.headers = {}
+        }
+        // Prepare time
         let headerTime = _findHeader(r, _HEADER_X_DATE);
         if (headerTime === null) {
             headerTime = _getTime();
@@ -234,6 +238,7 @@ class Signer {
         if (r.method !== "PUT" && r.method !== "PATCH" && r.method !== "POST") {
             r.body = ""
         }
+        // 
         let queryString = _canonicalQueryString(r);
         if (queryString !== "") {
             queryString = "?" + queryString
