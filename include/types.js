@@ -104,4 +104,13 @@
  * @prop {boolean?} multi - Choose the method between deleteOne and deleteMany. Default: false for deleteOne.
  */
 
+/**
+ * @typedef { Object } RequestWrapper
+ * @prop { enum<string> } method - The request method
+ * @prop { string } host - The host string
+ * @prop { Object } headers - The headers wrapper
+ * @prop { Object } query - The query parameters
+ * @prop { Object | string | ? } body - The body
+ */
+
 module.exports = exports = {};

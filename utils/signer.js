@@ -1,6 +1,7 @@
 /**
  * Created by Eric on 2024/02/17
  */
+const Types = require('../include/types');
 const crypto = require('crypto');
 
 const _HEADER_ALGORITHM = 'x-hmac-sha256';
@@ -107,16 +108,21 @@ function _canonicalURI(r) {
     return urlpath;
 }
 
-function _canonicalQueryString(r) {
+/**
+ * Canonical query string
+ * @param { Object } query 
+ * @returns { string }
+ */
+function _canonicalQueryString(query) {
     let keys = [];
-    for (let key in r.query) {
+    for (let key in query) {
         keys.push(key)
     }
     keys.sort();
     let a = [];
     for (let i in keys) {
         let key = _urlEncode(keys[i]);
-        let value = r.query[keys[i]];
+        let value = query[keys[i]];
         if (Array.isArray(value)) {
             value.sort();
             for (let iv in value) {
@@ -166,17 +172,17 @@ function _canonicalRequest(r, signedHeaders) {
         let data = _requestPayload(r);
         hexencode = cryptoWrapper.hexEncodeSHA256Hash(data);
     }
-    return r.method + "\n" + _canonicalURI(r) + "\n" + _canonicalQueryString(r) + "\n" + _canonicalHeaders(r, signedHeaders) + "\n" + signedHeaders.join(';') + "\n" + hexencode
+    return r.method + "\n" + _canonicalURI(r) + "\n" + _canonicalQueryString(r.query) + "\n" + _canonicalHeaders(r, signedHeaders) + "\n" + signedHeaders.join(';') + "\n" + hexencode
 }
 
 // Create a "String to Sign".
 function _stringToSign(canonicalRequest, t) {
     var bytes = cryptoWrapper.hexEncodeSHA256Hash(canonicalRequest);
-    return Algorithm + "\n" + t + "\n" + bytes
+    return _HEADER_ALGORITHM + "\n" + t + "\n" + bytes
 }
 
 // Create the HWS Signature.
-function _signStringToSign(stringToSign, signingKey) {
+function _signHmacsha256(stringToSign, signingKey) {
     return cryptoWrapper.hmacsha256(signingKey, stringToSign)
 }
 
@@ -214,6 +220,11 @@ class Signer {
         this._accessKey = props.ak;
         this._secretKey = props.sk;
     }
+    /**
+     * 
+     * @param {Types.RequestWrapper} r 
+     * @returns 
+     */
     sign(r) {
         let headerTime = _findHeader(r, _HEADER_X_DATE);
         if (headerTime === null) {
@@ -239,7 +250,7 @@ class Signer {
         let signedHeaders = _signedHeaders(r);
         let canonicalRequest = _canonicalRequest(r, signedHeaders);
         let stringToSign = _stringToSign(canonicalRequest, headerTime);
-        let signature = _signStringToSign(stringToSign, this._secretKey);
+        let signature = _signHmacsha256(stringToSign, this._secretKey);
         //
         options.headers[_HEADER_AUTHORIZATION] = _authHeaderValue(this._accessKey, signedHeaders, signature);
         return options
