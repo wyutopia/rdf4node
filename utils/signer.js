@@ -2,12 +2,14 @@
  * Created by Eric on 2024/02/17
  */
 const Types = require('../include/types');
+const tools = require('./tools');
 const crypto = require('crypto');
 
 const _HEADER_ALGORITHM = 'x-hmac-sha256';
 const _HEADER_AUTHORIZATION = 'Authorization';
 const _HEADER_CONTENT_SHA256 = 'x-content-sha256';
 const _HEADER_X_DATE = 'x-a9kb-date';
+const _HEADER_X_NONCE = 'x-a9kb-nonce';
 
 const _noEscape = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0 - 15
@@ -145,7 +147,7 @@ function _canonicalHeaders(r, signedHeaders) {
         let value = headers[signedHeaders[i]];
         a.push(signedHeaders[i] + ':' + value.trim())
     }
-    return a.join('\n') + "\n";
+    return a.join('\n');
 }
 
 function _signedHeaders(r) {
@@ -158,21 +160,24 @@ function _signedHeaders(r) {
 }
 
 function _requestPayload(r) {
-    return r.body
+    return r.body || '';
 }
 /**
  * Build a CanocialRequest from a regular request string
- * @param {*} r 
- * @param {*} signedHeaders 
+ * @param {*} r
+ * @param {*} signedHeaders
  * @returns 
  */
 function _canonicalRequest(r, signedHeaders) {
-    let hexencode = _findHeader(r, _HEADER_CONTENT_SHA256);
-    if (hexencode === null) {
+    let hexencode = r.headers[_HEADER_CONTENT_SHA256];
+    if (!hexencode) {
         let data = _requestPayload(r);
-        hexencode = cryptoWrapper.hexEncodeSHA256Hash(data);
+        hexencode = cryptoWrapper.hexEncodeSHA256Hash(typeof data === 'string'? data : JSON.stringify(data));
     }
-    return r.method + "\n" + _canonicalURI(r) + "\n" + _canonicalQueryString(r.query) + "\n" + _canonicalHeaders(r, signedHeaders) + "\n" + signedHeaders.join(';') + "\n" + hexencode
+    return r.method + "\n" 
+        + _canonicalQueryString(r.query || r.params) + "\n"
+        + _canonicalHeaders(r, signedHeaders) + "\n"
+        + signedHeaders.join(';') + "\n" + hexencode
 }
 
 // Create a "String to Sign".
@@ -214,6 +219,43 @@ function _getTime() {
         _twoChar(date.getUTCHours()) + _twoChar(date.getUTCMinutes()) + _twoChar(date.getUTCSeconds()) + "Z"
 }
 
+function _canoncialSign(r) {
+    // Create headers wrapper if not exits
+    if (r.headers === undefined) {
+        r.headers = {}
+    }
+    // Prepare time
+    let headerTime = _findHeader(r, _HEADER_X_DATE);
+    if (headerTime === null) {
+        headerTime = _getTime();
+        r.headers[_HEADER_X_DATE] = headerTime
+    }
+    if (r.method !== "PUT" && r.method !== "PATCH" && r.method !== "POST") {
+        r.body = ""
+    }
+    // 
+    let queryString = _canonicalQueryString(r);
+    if (queryString !== "") {
+        queryString = "?" + queryString
+    }
+    let options = {
+        hostname: r.host,
+        path: _encodeURI(r.uri) + queryString,
+        method: r.method,
+        headers: r.headers
+    };
+    if (_findHeader(r, 'host') === null) {
+        r.headers.host = r.host;
+    }
+    let signedHeaders = _signedHeaders(r.headers);
+    let canonicalRequest = _canonicalRequest(r, signedHeaders);
+    let stringToSign = _stringToSign(canonicalRequest, headerTime);
+    let signature = _signHmacsha256(stringToSign, this._secretKey);
+    //
+    options.headers[_HEADER_AUTHORIZATION] = _authHeaderValue(this._accessKey, signedHeaders, signature);
+    return options
+}
+
 // The class 
 class Signer {
     constructor(props) {
@@ -225,40 +267,32 @@ class Signer {
      * @param {Types.RequestWrapper} r 
      * @returns 
      */
+
     sign(r) {
+        if (r.method === undefined) {
+            r.method = 'get';
+        }
         if (r.headers === undefined) {
             r.headers = {}
         }
-        // Prepare time
-        let headerTime = _findHeader(r, _HEADER_X_DATE);
-        if (headerTime === null) {
+        // Timestamp
+        let headerTime = r.headers[_HEADER_X_DATE];
+        if (!headerTime) {
             headerTime = _getTime();
-            r.headers[_HEADER_X_DATE] = headerTime
+            r.headers[_HEADER_X_DATE] = headerTime;
         }
-        if (r.method !== "PUT" && r.method !== "PATCH" && r.method !== "POST") {
-            r.body = ""
+        // Nonce
+        let headerNonce = r.headers[_HEADER_X_NONCE];
+        if (!headerNonce) {
+            headerNonce = tools.genAKey();
+            r.headers[_HEADER_X_NONCE] = headerNonce;
         }
-        // 
-        let queryString = _canonicalQueryString(r);
-        if (queryString !== "") {
-            queryString = "?" + queryString
-        }
-        let options = {
-            hostname: r.host,
-            path: _encodeURI(r.uri) + queryString,
-            method: r.method,
-            headers: r.headers
-        };
-        if (_findHeader(r, 'host') === null) {
-            r.headers.host = r.host;
-        }
+        //
         let signedHeaders = _signedHeaders(r);
         let canonicalRequest = _canonicalRequest(r, signedHeaders);
         let stringToSign = _stringToSign(canonicalRequest, headerTime);
         let signature = _signHmacsha256(stringToSign, this._secretKey);
-        //
-        options.headers[_HEADER_AUTHORIZATION] = _authHeaderValue(this._accessKey, signedHeaders, signature);
-        return options
+        r.headers[_HEADER_AUTHORIZATION] = _authHeaderValue(this._accessKey, signedHeaders, signature);
     }
     validate(r) {
 

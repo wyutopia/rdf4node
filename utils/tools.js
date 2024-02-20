@@ -235,76 +235,6 @@ exports.invokeHttpRequest = function (options, callback) {
     });
 };
 
-/**
- * The parameter parser for http request
- * @param {json object} params
- * @param {mandatory, optional} options
- * @param {*} callback
- * @returns
- */
-exports.parseParameters = function (params, options, callback) {
-    logger.info(`Input parameters: ${_inspect(params)}`);
-    // Step 1: Preparing the input parameters
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
-    }
-    if (!params) {
-        return callback({
-            code: eRetCodes.BAD_REQUEST,
-            message: 'Null parameters'
-        });
-    }
-    if (_isTypeOfArray(options)) {
-        options = {
-            mandatory: options,
-            optional: []
-        }
-    } else {
-        if (!options.mandatory) {
-            options.mandatory = [];
-        }
-        if (!options.optional) {
-            options.optional = [];
-        }
-    }
-    let args = {};
-    let errMsg = null;
-    // Step 2: Parsing mandatory parameters
-    for (let i in options.mandatory) {
-        let key = options.mandatory[i];
-        if (!params[key]) {
-            errMsg = `Missing parameter(s): ${key}`;
-            break;
-        }
-        if (options.checkObjectId === true && key === '_id' && !ObjectId.isValid(params[key])) {
-            errMsg = `Invalid ObjectId value: ${params[key]}`;
-            break;
-        }
-        args[key] = params[key];
-    }
-    if (errMsg !== null) {
-        logger.error(errMsg);
-        return callback({
-            code: eRetCodes.BAD_REQUEST,
-            message: errMsg
-        });
-    }
-    // Step 3: Parsing optional parameters
-    for (let j in options.optional) {
-        let key = options.optional[j];
-        // Note: Exclude duplicate keys from mandatory
-        if (options.mandatory.indexOf(key) === -1 && params[key] !== undefined) {
-            if (options.checkObjectId === true && key === '_id' && !ObjectId.isValid(params[key])) {
-                errMsg = `Invalid ObjectId value format: ${params[key]}`;
-                break;
-            }
-            args[key] = params[key];
-        }
-    }
-    return callback(errMsg, args);
-};
-
 function _extractProps (args, propNames) {
     let props = {};
     let keys = Array.isArray(propNames)? propNames : Object.keys(propNames);
@@ -316,13 +246,6 @@ function _extractProps (args, propNames) {
     return props;
 }
 exports.extractProps = _extractProps;
-
-exports.parseParameter2 = function (args, validator, callback) {
-    return callback({
-        code: eRetCodes.GONE,
-        message: 'Using parseParameter from ac'
-    });
-};
 
 exports.checkSign = function (req, res, next) {
     return next();
