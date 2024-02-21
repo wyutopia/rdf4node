@@ -15,6 +15,7 @@ const _HEADER_AUTHORIZATION = 'Authorization';
 const _HEADER_CONTENT_SHA256 = 'x-content-sha256';
 const _HEADER_X_DATE = 'x-a9kb-date';
 const _HEADER_X_NONCE = 'x-a9kb-nonce';
+const _HEADER_X_AK = 'x-a9kb-access';
 
 const _noEscape = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0 - 15
@@ -164,29 +165,57 @@ function _signedHeaders(r) {
     return a;
 }
 
-function _parseSignedHeaders(SignedHeaders) {
-    if (!SignedHeaders) {
-        return [];
-    }
-    return SignedHeaders.split(';');
+const _validPrimitiveTypes = ['string', 'number', 'bigint', 'boolean', 'symbol'];
+
+function _flatArray(v) {
+    let result = '';
+    v.forEach(e => {
+        if (_validPrimitiveTypes.includes(typeof e)) {
+            result += '' + e;
+        }
+    });
+    return result;
 }
 
-function _requestPayload(r) {
-    return r.body || '';
+function _requestPayload(r, isValidation = true) {
+    let body = isValidation? r.body : r.data;
+    let method = r.method.toUpperCase();
+    if (body || (method !== 'PUT' && method !== 'PATCH' && method !== 'POST')) { // Ignore body for GET request
+        return '';
+    }
+    // Only depth 1 values will be added into will be accoutable
+    let payload = '';
+    let keys = Object.keys(body);
+    keys = keys.sort();
+    keys.forEach(k => {
+        let v = body[k];
+        let t = typeof v;
+        if (_validPrimitiveTypes.includes(t)) {
+            payload += `${k}=${body[k]}`
+        } else if (Array.isArray(v)) {
+            let flatArray = _flatArray(v);
+            if (flatArray) {
+                payload += `${k}=${flatArray}`
+            }
+        }        
+    });
+    return payload;
 }
 /**
  * Build a CanocialRequest from a regular request string
  * @param {*} r
  * @param {*} signedHeaders
+ * @param { boolean } isValidation - Indicate the calling context
  * @returns 
  */
-function _canonicalRequest(r, signedHeaders) {
+function _canonicalRequest(r, signedHeaders, isValidation) {
     let hexencode = r.headers[_HEADER_CONTENT_SHA256];
     if (!hexencode) {
-        let data = _requestPayload(r);
-        hexencode = cryptoWrapper.hexEncodeSHA256Hash(typeof data === 'string'? data : JSON.stringify(data));
+        let data = _requestPayload(r, isValidation);
+        logger.debug(`The playload: ${data}`);
+        hexencode = cryptoWrapper.hexEncodeSHA256Hash(data);
     }
-    return r.method + "\n" 
+    return r.method.toUpperCase() + "\n" 
         + _canonicalQueryString(r.query || r.params) + "\n"
         + _canonicalHeaders(r, signedHeaders) + "\n"
         + signedHeaders.join(';') + "\n" + hexencode
@@ -299,7 +328,7 @@ class Signer {
 
     sign(r) {
         if (r.method === undefined) {
-            r.method = 'get';
+            r.method = 'GET';
         }
         if (r.headers === undefined) {
             r.headers = {}
@@ -318,13 +347,14 @@ class Signer {
         }
         //
         let signedHeaders = _signedHeaders(r);
-        logger.debug(`>>> The signedHeaders: ${tools.inspect(signedHeaders)}`);
-        let canonicalRequest = _canonicalRequest(r, signedHeaders);
-        logger.debug(`>>> The canonicalRequest: ${canonicalRequest}`);
+        //logger.debug(`>>> The signedHeaders: ${tools.inspect(signedHeaders)}`);
+        let canonicalRequest = _canonicalRequest(r, signedHeaders, false);
+        //logger.debug(`>>> The canonicalRequest: ${canonicalRequest}`);
         let stringToSign = _stringToSign(canonicalRequest, headerTime);
-        logger.debug(`>>> The stringToSign: ${stringToSign}`);
+        //logger.debug(`>>> The stringToSign: ${stringToSign}`);
         let signature = _signHmacsha256(stringToSign, this._secretKey);
         r.headers[_HEADER_AUTHORIZATION] = _packAuthHeader(this._accessKey, signedHeaders, signature);
+        r.headers[_HEADER_X_AK] = this._accessKey;
     }
     validate(r) {
         try {
@@ -341,11 +371,11 @@ class Signer {
                 throw new Error('Invalid authorization header!');
             }
             const signedHeaders = headerAuth['SignedHeaders'] || [];
-            logger.debug(`>>> The signedHeaders: ${tools.inspect(signedHeaders)}`);
-            let canonicalRequest = _canonicalRequest(r, signedHeaders);
-            logger.debug(`>>> The canonicalRequest: ${canonicalRequest}`);
+            //logger.debug(`>>> The signedHeaders: ${tools.inspect(signedHeaders)}`);
+            let canonicalRequest = _canonicalRequest(r, signedHeaders, true);
+            //logger.debug(`>>> The canonicalRequest: ${canonicalRequest}`);
             let stringToSign = _stringToSign(canonicalRequest, headerTime);
-            logger.debug(`>>> The stringToSign: ${stringToSign}`);
+            //logger.debug(`>>> The stringToSign: ${stringToSign}`);
             let serverSignature = _signHmacsha256(stringToSign, this._secretKey);
             if (clientSignature !== serverSignature) {
                 throw new Error('Invalid signature!');
@@ -357,7 +387,11 @@ class Signer {
     }
 }
 
+function _findAccessKey (r) {
+    return r.headers[_HEADER_X_AK];
+}
+
 module.exports = exports = {
     Signer,
-    parseAuthHeader: _parseAuthHeader
+    findAccessKey: _findAccessKey
 }
