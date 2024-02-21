@@ -7,7 +7,8 @@ const crypto = require('crypto');
 const Types = require('../include/types');
 const eRetCodes = require('../include/retcodes');
 const tools = require('./tools');
-
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'tools');
 // Define headers
 const _HEADER_ALGORITHM = 'x-hmac-sha256';
 const _HEADER_AUTHORIZATION = 'Authorization';
@@ -213,7 +214,7 @@ function _signHmacsha256(stringToSign, signingKey) {
  * @returns 
  */
 function _packAuthHeader(accessKey, signedHeaders, signature) {
-    return _HEADER_ALGORITHM + " Access=" + accessKey + ", SignedHeaders=" + signedHeaders.join(';') + ", Signature=" + signature;
+    return _HEADER_ALGORITHM + " Access=" + accessKey + ",SignedHeaders=" + signedHeaders.join(';') + ",Signature=" + signature;
 }
 
 function _parseAuthHeader (authValue) {
@@ -221,13 +222,13 @@ function _parseAuthHeader (authValue) {
     if (!authValue) {
         throw new Error('Missing Authorization!');
     }
-    let authSegments = authValue.replace(',', '').split(' ');
-    headerAuth.algorithm = authSegments.shift();
+    let authSegments = authValue.split(' ');
+    headerAuth.algorithm = authSegments[0];
     if (headerAuth.algorithm !== _HEADER_ALGORITHM) {
         throw new Error('Bad algorithm!');
     }
-    authSegments.forEach(seg => {
-        let kv = p.split('=');
+    authSegments[1].split(',').forEach(seg => {
+        let kv = seg.split('=');
         headerAuth[kv[0]] = kv[0] === 'SignedHeaders'? kv[1].split(';') : kv[1];
     });
     return headerAuth;
@@ -317,19 +318,22 @@ class Signer {
         }
         //
         let signedHeaders = _signedHeaders(r);
+        logger.debug(`>>> The signedHeaders: ${tools.inspect(signedHeaders)}`);
         let canonicalRequest = _canonicalRequest(r, signedHeaders);
+        logger.debug(`>>> The canonicalRequest: ${canonicalRequest}`);
         let stringToSign = _stringToSign(canonicalRequest, headerTime);
+        logger.debug(`>>> The stringToSign: ${stringToSign}`);
         let signature = _signHmacsha256(stringToSign, this._secretKey);
         r.headers[_HEADER_AUTHORIZATION] = _packAuthHeader(this._accessKey, signedHeaders, signature);
     }
     validate(r) {
         try {
             let headerTime = r.headers[_HEADER_X_DATE];
-            let headerNonce = r.header[_HEADER_X_NONCE];
+            let headerNonce = r.headers[_HEADER_X_NONCE];
             if (!(headerTime && headerNonce)) {
                 throw new Error('Missing mandatory headers!');
             }            
-            let headerAuth = _parseAuthHeader(r.header[_HEADER_AUTHORIZATION])
+            let headerAuth = _parseAuthHeader(r.headers[_HEADER_AUTHORIZATION.toLowerCase()])
             //
             const accessKey = headerAuth['Access'];
             const clientSignature = headerAuth['Signature'];
@@ -337,8 +341,11 @@ class Signer {
                 throw new Error('Invalid authorization header!');
             }
             const signedHeaders = headerAuth['SignedHeaders'] || [];
+            logger.debug(`>>> The signedHeaders: ${tools.inspect(signedHeaders)}`);
             let canonicalRequest = _canonicalRequest(r, signedHeaders);
+            logger.debug(`>>> The canonicalRequest: ${canonicalRequest}`);
             let stringToSign = _stringToSign(canonicalRequest, headerTime);
+            logger.debug(`>>> The stringToSign: ${stringToSign}`);
             let serverSignature = _signHmacsha256(stringToSign, this._secretKey);
             if (clientSignature !== serverSignature) {
                 throw new Error('Invalid signature!');
