@@ -212,8 +212,25 @@ function _signHmacsha256(stringToSign, signingKey) {
  * @param { string } signature 
  * @returns 
  */
-function _authHeaderValue(accessKey, signedHeaders, signature) {
+function _packAuthHeader(accessKey, signedHeaders, signature) {
     return _HEADER_ALGORITHM + " Access=" + accessKey + ", SignedHeaders=" + signedHeaders.join(';') + ", Signature=" + signature;
+}
+
+function _parseAuthHeader (authValue) {
+    const headerAuth = {};
+    if (!authValue) {
+        throw new Error('Missing Authorization!');
+    }
+    let authSegments = authValue.replace(',', '').split(' ');
+    headerAuth.algorithm = authSegments.shift();
+    if (headerAuth.algorithm !== _HEADER_ALGORITHM) {
+        throw new Error('Bad algorithm!');
+    }
+    authSegments.forEach(seg => {
+        let kv = p.split('=');
+        headerAuth[kv[0]] = kv[0] === 'SignedHeaders'? kv[1].split(';') : kv[1];
+    });
+    return headerAuth;
 }
 
 function _twoChar(s) {
@@ -263,7 +280,7 @@ function _canoncialSign(r) {
     let stringToSign = _stringToSign(canonicalRequest, headerTime);
     let signature = _signHmacsha256(stringToSign, this._secretKey);
     //
-    options.headers[_HEADER_AUTHORIZATION] = _authHeaderValue(this._accessKey, signedHeaders, signature);
+    options.headers[_HEADER_AUTHORIZATION] = _packAuthHeader(this._accessKey, signedHeaders, signature);
     return options
 }
 
@@ -303,48 +320,37 @@ class Signer {
         let canonicalRequest = _canonicalRequest(r, signedHeaders);
         let stringToSign = _stringToSign(canonicalRequest, headerTime);
         let signature = _signHmacsha256(stringToSign, this._secretKey);
-        r.headers[_HEADER_AUTHORIZATION] = _authHeaderValue(this._accessKey, signedHeaders, signature);
+        r.headers[_HEADER_AUTHORIZATION] = _packAuthHeader(this._accessKey, signedHeaders, signature);
     }
     validate(r) {
-        let headerTime = r.headers[_HEADER_X_DATE];
-        let headerNonce = r.header[_HEADER_X_NONCE];
-        if (!(headerTime && headerNonce)) {
-            return 'Missing mandatory headers!';
+        try {
+            let headerTime = r.headers[_HEADER_X_DATE];
+            let headerNonce = r.header[_HEADER_X_NONCE];
+            if (!(headerTime && headerNonce)) {
+                throw new Error('Missing mandatory headers!');
+            }            
+            let headerAuth = _parseAuthHeader(r.header[_HEADER_AUTHORIZATION])
+            //
+            const accessKey = headerAuth['Access'];
+            const clientSignature = headerAuth['Signature'];
+            if (!(accessKey && clientSignature)) {
+                throw new Error('Invalid authorization header!');
+            }
+            const signedHeaders = headerAuth['SignedHeaders'] || [];
+            let canonicalRequest = _canonicalRequest(r, signedHeaders);
+            let stringToSign = _stringToSign(canonicalRequest, headerTime);
+            let serverSignature = _signHmacsha256(stringToSign, this._secretKey);
+            if (clientSignature !== serverSignature) {
+                throw new Error('Invalid signature!');
+            }
+            return 'ok';
+        } catch (ex) {
+            return ex.message;
         }
-        let headerAuth = r.header[_HEADER_AUTHORIZATION];
-        if (!headerAuth) {
-            return 'Missing Authorization!';
-        }
-        //
-        const authSegments = headerAuth.split(' ');
-        if (authSegments[0] !== _HEADER_ALGORITHM) {
-            return 'Bad algorithm!';
-        }
-        if (!authSegments[1]) {
-            return 'Invalid Authorization header!';
-        }
-        const authParams = _parseAuthorization(authSegments[1]);
-        const accessKey = authParams['Access'];
-        const signedHeaders = _parseSignedHeaders(authParams['SignedHeaders']);
-        const clientSignature = authParams['Signature'];
-        if (!(accessKey && clientSignature)) {
-            return 'Invalid Authorization header!';
-        }
-        //
-        let canonicalRequest = _canonicalRequest(r, signedHeaders);
-        let stringToSign = _stringToSign(canonicalRequest, headerTime);
-        let serverSignature = _signHmacsha256(stringToSign, this._secretKey);
-        if (clientSignature !== serverSignature) {
-            return 'Invalid signature!';
-        }
-        return null;
     }
 }
 
 module.exports = exports = {
     Signer,
-    findHeader: _findHeader,
-    signedHeaders: _signedHeaders,
-    canocialRequest: _canonicalRequest,
-    stringToSign: _stringToSign
+    parseAuthHeader: _parseAuthHeader
 }
