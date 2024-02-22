@@ -113,4 +113,11 @@
  * @prop { Object | string | ? } body - The body
  */
 
+/**
+ * @typedef { Object } HeaderAuthWrapper
+ * @prop { string } algorithm - The algorithm indicator string, should be 'x-hmac-sha256'
+ * @prop { string } Access - The accessKey value
+ * @prop { string } SignedHeaders - The signedHeaders value
+ * @prop { string } Signature - The signature value
+ */
 module.exports = exports = {};

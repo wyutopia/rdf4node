@@ -246,8 +246,10 @@ function _packAuthHeader(accessKey, signedHeaders, signature) {
     return _HEADER_ALGORITHM + " Access=" + accessKey + ",SignedHeaders=" + signedHeaders.join(';') + ",Signature=" + signature;
 }
 
-function _parseAuthHeader (authValue) {
+function _parseHeaderAuth (headers) {
     const headerAuth = {};
+    //
+    const authValue = headers[_HEADER_ALGORITHM.toLowerCase()];
     if (!authValue) {
         throw new Error('Missing Authorization!');
     }
@@ -317,8 +319,8 @@ function _canoncialSign(r) {
 // The class 
 class Signer {
     constructor(props) {
-        this._accessKey = props.ak;
-        this._secretKey = props.sk;
+        this._accessKey = props.accessKey;
+        this._secretKey = props.secretKey;
     }
     /**
      * 
@@ -356,14 +358,20 @@ class Signer {
         r.headers[_HEADER_AUTHORIZATION] = _packAuthHeader(this._accessKey, signedHeaders, signature);
         r.headers[_HEADER_X_AK] = this._accessKey;
     }
-    validate(r) {
+    /**
+     * 
+     * @param { Types.RequestWrapper } r 
+     * @param { Types.HeaderAuthWrapper } authWrapper 
+     * @returns 
+     */
+    validate(r, authWrapper) {
         try {
             let headerTime = r.headers[_HEADER_X_DATE];
             let headerNonce = r.headers[_HEADER_X_NONCE];
             if (!(headerTime && headerNonce)) {
                 throw new Error('Missing mandatory headers!');
             }            
-            let headerAuth = _parseAuthHeader(r.headers[_HEADER_AUTHORIZATION.toLowerCase()])
+            let headerAuth = authWrapper? authWrapper : _parseHeaderAuth(r.headers)
             //
             const accessKey = headerAuth['Access'];
             const clientSignature = headerAuth['Signature'];
@@ -393,5 +401,5 @@ function _findAccessKey (r) {
 
 module.exports = exports = {
     Signer,
-    findAccessKey: _findAccessKey
+    parseHeaderAuth: _parseHeaderAuth
 }
