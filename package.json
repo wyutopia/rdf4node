@@ -1,6 +1,6 @@
 {
     "name": "@icedeer/rdf4node",
-    "version": "0.57.8",
+    "version": "0.58.0",
     "description": "A rapid develop framework based on express for nodejs",
     "author": {
         "name": "Eric Wang",
@@ -15,6 +15,7 @@
     "dependencies": {
         "app-root-path": "3.1.0",
         "async": "^3.2.5",
+        "axios": "^1.6.7",
         "bluebird": "^3.7.2",
         "bson": "^6.2.0",
         "consul": "^1.2.0",
@@ -42,7 +43,7 @@
         "@influxdata/influxdb-client-apis": "^1.33.2",
         "ali-oss": "^6.18.1",
         "clickhouse": "^2.6.0",
-        "connect-mongodb-session": "^3.1.1",
+        "connect-mongodb-session": "^2.2.0",
         "connect-redis": "^7.1.0",
         "ldap-authentication": "^2.3.3",
         "mongoose": "^6.12.3",

@@ -8,6 +8,7 @@ const spawn = require('child_process').spawn;
 const util = require("util");
 const { networkInterfaces } = require("os");
 // The 3rd-party libs
+const axios = require('axios');
 const { ObjectId } = require('bson');
 const request = require('request');
 const { v4: uuidv4 } = require('uuid');
@@ -234,6 +235,37 @@ exports.invokeHttpRequest = function (options, callback) {
         });
     });
 };
+
+function _bodyParser(body) {
+    if (!body) {
+        throw new Error('Invalid response');
+    }
+    if (body.code !== eRetCodes.SUCCESS) {
+        throw new Error(`${body.code}#${body.message}`);
+    }
+    return body.data;
+}
+/**
+ * 
+ * @param {*} options 
+ * @param { function? } bodyParser 
+ */
+exports.httpAsync = async function (options, bodyParser) {
+    const fnFlowCtl = options.fnFlowCtl;
+    if (typeof fnFlowCtl === 'function') {
+        delete options.fnFlowCtl;
+        await fnFlowCtl(options);
+    }
+    const rsp = axios(options);
+    const body = rsp.data;
+    if (!bodyParser) {
+        bodyParser = _bodyParser;
+    }
+    if (typeof bodyParser === 'function') {
+        return bodyParser(body);
+    }
+    return body;
+}
 
 function _extractProps (args, propNames) {
     let props = {};
