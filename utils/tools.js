@@ -258,7 +258,7 @@ exports.httpAsync = async function (options, bodyParser) {
     }
     const rsp = axios(options);
     const body = rsp.data;
-    if (!bodyParser) {
+    if (bodyParser === undefined) { // null means return raw data body
         bodyParser = _bodyParser;
     }
     if (typeof bodyParser === 'function') {
