@@ -256,7 +256,7 @@ exports.httpAsync = async function (options, bodyParser) {
         delete options.fnFlowCtl;
         await fnFlowCtl(options);
     }
-    const rsp = axios(options);
+    const rsp = await axios(options);
     const body = rsp.data;
     if (bodyParser === undefined) { // null means return raw data body
         bodyParser = _bodyParser;
