@@ -24,11 +24,7 @@ function _createMongoStore(name, options) {
     const MongoStore = require('connect-mongodb-session')(session);
     return new MongoStore({
         uri: tools.packMongoUri(options),
-        collection: name,
-        connectionOptions: {
-            useUnifiedTopology: true,
-            useNewUrlParser: true
-        }
+        collection: name
     })
 }
 
