@@ -102,13 +102,15 @@ function _readRouteFileSync(specs, rootDir, routePath, filename) {
         const routeObj = require(filePath);
         //
         const scope = routeObj.scope || 'usr';
+        const authType = routeObj.authType || 'jwt';
+        //
         const routes = routeObj.routes || [];
         routes.forEach(route => {
             if (route.handler.fn !== undefined) {
                 let subPath = filename.split('.')[0].replace('-', '/');
                 let r = {
                     path: path.join('/', routePath, subPath, route.path),
-                    authType: route.authType || 'jwt',
+                    authType: route.authType || authType,
                     scope: scope,
                     method: route.method.toUpperCase(),
                     validator: route.handler.val || {},

@@ -382,8 +382,13 @@ function _authenticate(authType, req, callback) {
         return _acHelper.akskAuthenticate(req, callback);
     }
     if (authType === sysdefs.eRequestAuthType.COOKIE) {
-        // TODO: Add cookie validation here ...
-        return callback();
+        if (req.session && req.session.uid) {
+            return callback();
+        }
+        return callback({
+            code: eRetCodes.SESSION_EXPIRED,
+            message: 'Session expired.'
+        })
     }
     return callback();
 }
