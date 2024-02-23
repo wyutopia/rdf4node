@@ -84,7 +84,7 @@ class HttpEndpoint extends Endpoint {
         app.use(express.json({ limit: this._config.payloadLimit || '50mb' }));
         app.use(express.urlencoded({ extended: false }));
         app.use(cookieParser());
-        app.use(express.static(path.join(__dirname, 'public')));
+        app.use(express.static(this._config.staticPath || path.join(appRoot.path, 'public')));
         // Step 3: Set rateLimit on demand
         if (this._config.enableRateLimit && this._config.rateLimit) {
             app.use(RateLimit(this._config.rateLimit));
