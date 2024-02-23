@@ -10,7 +10,7 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const createError = require('http-errors');
 const { EventModule } = require('../include/events');
-const { eFrameworkModules, eModuleState } = require('../include/sysdefs');
+const { eFrameworkModules, eModuleState, eRequestAuthType } = require('../include/sysdefs');
 const _MODULE_NAME = eFrameworkModules.ENDPOINT;
 const tools = require('../utils/tools');
 // The endpoint kinds
@@ -92,7 +92,17 @@ class HttpEndpoint extends Endpoint {
         } else {
             logger.info('>>>>>> Rate limitation disabled. <<<<<<');
         }
-        // Step 4: Setup dataSource middleware
+        // Step 4: Setup middleware session while authType is cookie
+        const authConfig = this._config.authentication;
+        if (authConfig && authConfig.type === eRequestAuthType.COOKIE) {
+            try {
+                const session = require('./session')(authConfig.store, authConfig.options);
+                app.use(session);
+            } catch (ex) {
+                logger.error(`!!! Setup session error! - ${ex.message}`);
+            }
+        }
+        // Step 5: Setup dataSource middleware
         const dsName = process.env.DS_DEFAULT || _DS_DEFAULT_;
         app.use((req, res, next) => {
             req.dataSource = {
@@ -103,7 +113,7 @@ class HttpEndpoint extends Endpoint {
             }
             return next();
         })
-        // Step 5: Setup routes
+        // Step 6: Setup routes
         routeHelper.initRouter(router, this._config);
         app.use('/', router);
         // The 404 and forware to error handler
