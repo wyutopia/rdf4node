@@ -249,7 +249,7 @@ function _packAuthHeader(accessKey, signedHeaders, signature) {
 function _parseHeaderAuth (headers) {
     const headerAuth = {};
     //
-    const authValue = headers[_HEADER_ALGORITHM.toLowerCase()];
+    const authValue = headers[_HEADER_AUTHORIZATION.toLowerCase()];
     if (!authValue) {
         throw new Error('Missing Authorization!');
     }
