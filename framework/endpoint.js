@@ -76,6 +76,14 @@ class HttpEndpoint extends Endpoint {
             return false;
         }
         const app = express();
+        if (this._config.trustProxy !== undefined) {
+            try {
+                let numberOfProxies = parseInt(this._config.trustProxy);
+                app.set('trust proxy', numberOfProxies);    
+            } catch (ex) {
+                logger.error(`!!! Set trust-proxy error! - ${ex.message}`);
+            }
+        }
         // Step 1: Setup view engine
         app.set('views', this._config.viewPath || path.join(appRoot.path, 'views'));
         app.set('view engine', this._config.engine || 'ejs');
