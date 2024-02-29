@@ -257,14 +257,13 @@ exports.httpAsync = async function (options, bodyParser) {
         await fnFlowCtl(options);
     }
     const rsp = await axios(options);
-    const body = rsp.data;
     if (bodyParser === undefined) { // null means return raw data body
         bodyParser = _bodyParser;
     }
     if (typeof bodyParser === 'function') {
-        return bodyParser(body);
+        return bodyParser(rsp.data);
     }
-    return body;
+    return rsp;
 }
 
 function _extractProps (args, propNames) {
