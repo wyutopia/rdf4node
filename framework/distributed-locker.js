@@ -88,11 +88,14 @@ class DistributedEntityLocker extends CommonObject {
         this._persistant = props.persistant !== undefined? props.persistant : false;
         this._locks = {};
     }
+    init (config) {
+        //TODO: initializing ...
+    }
     // Implement methods
     /**
      * Lock single domain entity
      * @param { LockEntity } entity
-     * @param { LockOptions } options
+     * @param { LockOptions? } options
      * @param { function } callback
      */
     lockOne (entity, options, callback) {

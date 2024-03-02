@@ -253,6 +253,9 @@ class Application extends EventEmitter {
         if (config.dataModels) {
             this.repoFactory.init(config.dataModels);
         }
+        if (config.distLocker) {
+            this.distLocker.init(config.distLocker);
+        }
         if (config.endpoints) {
             this.epFactory.init(config.endpoints, extensions.endpoints || {});
         }
