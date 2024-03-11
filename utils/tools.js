@@ -429,7 +429,7 @@ exports.addToSet = function (arr, item) {
  * @returns { ObjectId }
  */
 function _purifyObjectId (doc) {
-    if (!doc) {
+    if (!doc || doc instanceof ObjectId) {
         return doc;
     }
     if (ObjectId.isValid(doc)) {

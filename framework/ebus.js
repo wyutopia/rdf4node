@@ -14,8 +14,6 @@ const { eSysEvents, EventObject, EventModule, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY
 const eRetCodes = require('../include/retcodes');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
-//
-const { RascalFactory } = require('../libs/common/rascal.wrapper');
 
 /**
  * The event headers
@@ -269,32 +267,36 @@ class EventBus extends EventModule {
         this._eventLogger = new fn(this._appCtx, {
             $name: sysdefs.eFrameworkModules.EVTLOGGER
         });
-        // >>>  Create rabbitmq if necessary <<<
         if (config.engine !== sysdefs.eEventBusEngine.RabbitMQ) {
             return null;
         }
-        // Step 1: Create rascalFactory
-        this._rascalFactory = new RascalFactory(this._appCtx, {
-            $name: _MODULE_NAME,
-            $type: sysdefs.eModuleType.CM,
-            mandatory: true,
-            state: sysdefs.eModuleState.ACTIVE
-        });
-        // Step 2: Create rascal client
-        let mqConf = config[config.engine] || {};
-        //
-        let vhost = mqConf.vhost;
-        let connection = mqConf.connection;
-        Object.keys(mqConf.channels).forEach(chn => {
-            let clientId = `${chn}@${config.engine}`;
-            let options = {
-                vhost: vhost,
-                connection: connection,
-                params: mqConf.channels[chn]
-            }
-            this._clients[clientId] = this._rascalFactory.getClient(clientId, options);
-        });
-        logger.info(`${this.$name}: rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
+        // >>>  Create rabbitmq if necessary <<<
+        try {
+            const { RascalFactory } = require('../libs/common/rascal.wrapper');
+            this._rascalFactory = new RascalFactory(this._appCtx, {
+                $name: _MODULE_NAME,
+                $type: sysdefs.eModuleType.CM,
+                mandatory: true,
+                state: sysdefs.eModuleState.ACTIVE
+            });
+            // Step 2: Create rascal client
+            let mqConf = config[config.engine] || {};
+            //
+            let vhost = mqConf.vhost;
+            let connection = mqConf.connection;
+            Object.keys(mqConf.channels).forEach(chn => {
+                let clientId = `${chn}@${config.engine}`;
+                let options = {
+                    vhost: vhost,
+                    connection: connection,
+                    params: mqConf.channels[chn]
+                }
+                this._clients[clientId] = this._rascalFactory.getClient(clientId, options);
+            });
+            logger.info(`${this.$name}: rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
+        } catch (ex) {
+            logger.error(`Initialize rascal error! - ${ex.message}`);
+        }
     }
 
     // Implementing methods

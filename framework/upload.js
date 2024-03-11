@@ -4,7 +4,6 @@
 const crypto = require('crypto');
 const path = require('path');
 //
-const AliOSS = require('ali-oss');
 const appRoot = require('app-root-path');
 const moment = require('moment');
 const multer = require('multer');
@@ -24,13 +23,19 @@ function _initSelf(options) {
     this._engineConf = options[this._engine];
     if (this._engineConf) {
         if (this._engine === sysdefs.eOSSEngine.AliOSS) {
-            this._alioss = new AliOSS(this._engineConf.config);
-            if (this._engineConf.config.cname === true) {
-                this._baseUrl = this._baseUrlPattern = this._engineConf.config.endpoint;
-            } else {
-                this._baseUrl = `https://${this._engineConf.config.bucket}.${this._engineConf.config.endpoint}`;
-                this._baseUrlPattern = `http://${this._engineConf.config.bucket}.${this._engineConf.config.endpoint}`
+            try {
+                const AliOSS = require('ali-oss');
+                this._alioss = new AliOSS(this._engineConf.config);
+                if (this._engineConf.config.cname === true) {
+                    this._baseUrl = this._baseUrlPattern = this._engineConf.config.endpoint;
+                } else {
+                    this._baseUrl = `https://${this._engineConf.config.bucket}.${this._engineConf.config.endpoint}`;
+                    this._baseUrlPattern = `http://${this._engineConf.config.bucket}.${this._engineConf.config.endpoint}`
+                }
+            } catch (ex) {
+                logger.error(`Initialize ali-oss error! - ${ex.message}`);
             }
+
         } else if (this._engine === sysdefs.eOSSEngine.MINIO) {
             // TODO: Add minio configures
             //this._minio = new Minio(this._engineConf.config);
