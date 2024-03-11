@@ -142,6 +142,47 @@ function _initSelf(props) {
     })
 }
 
+function _recursiveLoadService(svcPath, options) {
+    let loaded = [];
+    let currentDir = path.join(appRoot.path, svcPath);
+    logger.info(`>>>>>> Load services from ${currentDir} ...`);
+    let entries = fs.readdirSync(currentDir, {
+        withFileTypes: true
+    });
+    entries.forEach(dirent => {
+        if (dirent.name === '.DS_Store') {
+            return null;
+        }
+        const entryPath = path.join(svcPath, dirent.name);
+        if (dirent.isDirectory()) { // Recursively
+            loaded = loaded.concat(_recursiveLoadService.call(this, entryPath, options));
+            return null;
+        }
+        if (options.enabledServices.indexOf(entryPath) === -1) { // Ignore disabled service
+            return null;
+        }
+        try {
+            let filePath = path.join(currentDir, dirent.name);
+            let svc = require(filePath);
+            let svcName = this.registry.register(svc);
+            if (typeof svc.start === 'function') {
+                try {
+                    svc.start(options[svcName] || {});  // With potential configuration identified by svcName
+                } catch (ex) {
+                    logger.error(`!!! Call start() of ${svcName} error! - ${ex.message}`);
+                }
+            }
+            loaded.push({
+                file: filePath,
+                name: svcName
+            });
+        } catch (ex) {
+            logger.error(`!!! Load service: ${filePath} error! - ${ex.message}`);
+        }
+    });
+    return loaded;
+}
+
 // The application class
 class Application extends EventEmitter {
     constructor(props) {
@@ -157,7 +198,7 @@ class Application extends EventEmitter {
         this.redisManager = null;
         this.rascalManager = null;
         // !!! *** ebus should be the first framework component ***
-        this.ebus = new EventBus(this, { $name: sysdefs.eFrameworkModules.EBUS });    
+        this.ebus = new EventBus(this, { $name: sysdefs.eFrameworkModules.EBUS });
         this.upload = new UploadHelper(this, { $name: sysdefs.eFrameworkModules.UPLOAD });
         this.registry = new Registry(this, { $name: sysdefs.eFrameworkModules.REGISTRY });
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
@@ -203,12 +244,12 @@ class Application extends EventEmitter {
     }
     //
     /**
-     * 
+     *
      * @param { Object } config - The framework config
      * @param { Object? } config.registry
      * @param { Object? } config.dataSources
      * @param { Object? } config.eventBus
-     * @returns 
+     * @returns
      */
     async initFramework(config, extensions) {
         if (this._state !== sysdefs.eModuleState.INIT) {
@@ -272,33 +313,18 @@ class Application extends EventEmitter {
         return 'ok';
     }
     loadServices(options) {
-        let serviceDir = path.join(appRoot.path, options.servicePath || 'services');
-        logger.info(`>>>>>> Load all services module from ${serviceDir} ...`);
-        let allServices = [];
-        let entries = fs.readdirSync(serviceDir, {
-            withFileTypes: true
-        });
-        entries.forEach(dirent => {
-            if (dirent.isDirectory()  // Recursive not support currently
-                || (options.enabledServices && options.enabledServices.indexOf(dirent.name) === -1)) {
-                return null;
-            }
-            let filePath = path.join(serviceDir, dirent.name);
-            try {
-                let svc = require(filePath);
-                let svcName = this.registry.register(svc);
-                if (typeof svc.start === 'function') {
-                    try {
-                        svc.start(options[svcName] || {});  // With potential configuration identified by svcName
-                    } catch (ex) {
-                        logger.error(`!!! Call start() of ${svcName} error! - ${ex.message}`);
-                    }
-                }
-                allServices.push(svcName);
-            } catch (ex) {
-                logger.error(`!!! Load service: ${dirent.name} error! - ${ex.message}`);
-            }
-        });
+        if (options.enabledServices === undefined) {
+            return [];
+        }
+        if (options.servicePath === undefined) {
+            options.servicePath = 'services';
+        }
+        for (let i = 0; i < options.enabledServices.length; i++) {
+            options.enabledServices[i] = path.join(options.servicePath, options.enabledServices[i])
+        }
+        //
+        logger.info(`>>> Load services with options: ${tools.inspect(options)} ...`);
+        let allServices = _recursiveLoadService.call(this, options.servicePath, options);
         logger.debug(`>>> All available services: ${tools.inspect(allServices)}`);
         return allServices;
     }
