@@ -10,7 +10,8 @@ const os = require('os');
 const EventEmitter = require('events');
 // Framework libs
 const sysdefs = require('./sysdefs');
-const { modules: moduleConf } = require('./config');
+const config = require('./config');
+const moduleConf = config.modules = {};
 const eRetCodes = require('./retcodes');
 const {initObject, initModule, CommonModule, CommonObject} = require('./base');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
