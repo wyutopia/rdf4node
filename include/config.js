@@ -20,7 +20,9 @@ try {
     console.log('>>> Load config from file: ', cnfFilePath);
     config = require(cnfFilePath);
     //
-    console.log('>>> The application config: ', tools.inspect(config));
+    if (process.env.NODE_ENV !== 'production') {
+        console.log('>>> The application config: ', tools.inspect(config));
+    }
 } catch (ex) {
     console.error('!!! Load application config error! - ', ex);
     process.exit(1);
