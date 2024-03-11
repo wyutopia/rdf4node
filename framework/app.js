@@ -21,8 +21,6 @@ const logDirManager = require('../utils/logdir.manager');
 //
 const { ConsulClient } = require('../libs/base/consul.wrapper');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
-const { RedisManager } = require('../libs/common/redis.wrapper');
-const { RascalManager } = require('../libs/common/rascal.wrapper');
 
 const logger = WinstonLogger(process.env.SRV_ROLE || 'app');
 // The framework components
@@ -156,18 +154,10 @@ class Application extends EventEmitter {
         if (props.consul) { // Consul configured
             this._consulClient = new ConsulClient(props.consul);
         }
+        this.redisManager = null;
+        this.rascalManager = null;
         // !!! *** ebus should be the first framework component ***
         this.ebus = new EventBus(this, { $name: sysdefs.eFrameworkModules.EBUS });    
-        // Other framework components
-        this.redisManager = new RedisManager(this, {
-            $name: sysdefs.eFrameworkModules.REDIS_CM,
-            $type: sysdefs.eModuleType.CM
-        });
-        this.rascalManager = new RascalManager(this, {
-            $name: sysdefs.eFrameworkModules.RASCAL_CM,
-            $type: sysdefs.eModuleType.CM
-        });
-        //
         this.upload = new UploadHelper(this, { $name: sysdefs.eFrameworkModules.UPLOAD });
         this.registry = new Registry(this, { $name: sysdefs.eFrameworkModules.REGISTRY });
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
@@ -230,10 +220,28 @@ class Application extends EventEmitter {
         promMonitor.init(this);
         logDirManager.init(this);
         if (config.redis) {
-            this.redisManager.init(config.redis);
+            try {
+                const { RedisManager } = require('../libs/common/redis.wrapper');
+                this.redisManager = new RedisManager(this, {
+                    $name: sysdefs.eFrameworkModules.REDIS_CM,
+                    $type: sysdefs.eModuleType.CM
+                });
+                this.redisManager.init(config.redis);
+            } catch (ex) {
+                logger.error(`!!! Load and init redisManager error: ${ex.message}`);
+            }
         }
         if (config.rascal) {
-            this.rascalManager.init(config.rascal);
+            try {
+                const { RascalManager } = require('../libs/common/rascal.wrapper');
+                this.rascalManager = new RascalManager(this, {
+                    $name: sysdefs.eFrameworkModules.RASCAL_CM,
+                    $type: sysdefs.eModuleType.CM
+                })
+                this.rascalManager.init(config.rascal);
+            } catch (ex) {
+                logger.error(`!!! Load and init rascalManager error: ${ex.message}`);
+            }
         }
         if (config.eventBus) {
             this.ebus.init(config.eventBus, extensions.eventBus || {});
