@@ -146,7 +146,7 @@ const _reSysFile = new RegExp(/^\./)
 function _recursiveLoadDaemons(rootPath, subPath, options) {
     let loaded = [];
     let currentDir = path.join(rootPath, subPath);
-    logger.info(`>>>>>> Load daemons from ${currentDir} ...`);
+    logger.info(`> Load daemons from dir: ${currentDir}`);
     let entries = fs.readdirSync(currentDir, {
         withFileTypes: true
     });
