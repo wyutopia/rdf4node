@@ -78,14 +78,15 @@ module.exports = exports = {
         }
     }],
     dataModels: {
-        //modelPath: 'models',
+        //pathName: 'models',
         excludeModelPaths: [],
         caches: {},
     },
-    services: {
-        //servicePath: 'services',
-        enabledServices: [],
-        // Service options by name
+    daemons: {
+        //pathName: 'daemons',   // Optional, default is 'daemons'
+        //enabled: '*',
+        //disabled: [],
+        // Customized options by name
         UserSvc: {
             key: 'aaa'
         }

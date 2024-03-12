@@ -142,42 +142,45 @@ function _initSelf(props) {
     })
 }
 
-function _recursiveLoadService(svcPath, options) {
+const _reSysFile = new RegExp(/^\./)
+function _recursiveLoadDaemons(rootPath, subPath, options) {
     let loaded = [];
-    let currentDir = path.join(appRoot.path, svcPath);
-    logger.info(`>>>>>> Load services from ${currentDir} ...`);
+    let currentDir = path.join(rootPath, subPath);
+    logger.info(`>>>>>> Load daemons from ${currentDir} ...`);
     let entries = fs.readdirSync(currentDir, {
         withFileTypes: true
     });
     entries.forEach(dirent => {
-        if (dirent.name === '.DS_Store') {
+        if (_reSysFile.test(dirent.name)) { // Ignore macOS system file
             return null;
         }
-        const entryPath = path.join(svcPath, dirent.name);
+        const entryPath = path.join(subPath, dirent.name);
         if (dirent.isDirectory()) { // Recursively
-            loaded = loaded.concat(_recursiveLoadService.call(this, entryPath, options));
+            if (dirent.name !== 'libs') { // Ignore libs folders
+                loaded = loaded.concat(_recursiveLoadDaemons.call(this, rootPath, entryPath, options));
+            }
             return null;
         }
-        if (options.enabledServices.indexOf(entryPath) === -1) { // Ignore disabled service
+        if (options.disabled.includes(entryPath) || (options.enabled !== '*' && !options.enabled.includes(entryPath))) { // Ignore disabled service
             return null;
         }
         try {
             let filePath = path.join(currentDir, dirent.name);
-            let svc = require(filePath);
-            let svcName = this.registry.register(svc);
-            if (typeof svc.start === 'function') {
+            let daemon = require(filePath);
+            let name = this.registry.register(daemon);
+            if (typeof daemon.start === 'function') {
                 try {
-                    svc.start(options[svcName] || {});  // With potential configuration identified by svcName
+                    daemon.start(options[name] || {});  // With potential configuration identified by name
                 } catch (ex) {
-                    logger.error(`!!! Call start() of ${svcName} error! - ${ex.message}`);
+                    logger.error(`!!! Call start() of ${name} error! - ${ex.message}`);
                 }
             }
             loaded.push({
                 file: filePath,
-                name: svcName
+                name: name
             });
         } catch (ex) {
-            logger.error(`!!! Load service: ${filePath} error! - ${ex.message}`);
+            logger.error(`!!! Load daemon from: ${filePath} error! - ${ex.message}`);
         }
     });
     return loaded;
@@ -312,21 +315,21 @@ class Application extends EventEmitter {
         this._state = sysdefs.eModuleState.READY;
         return 'ok';
     }
-    loadServices(options) {
-        if (options.enabledServices === undefined) {
-            return [];
+    loadDaemons(options) {
+        if (options.enabled === undefined) {
+            options.enabled = '*';
         }
-        if (options.servicePath === undefined) {
-            options.servicePath = 'services';
+        if (options.disabled === undefined) {
+            options.disabled = [];
         }
-        for (let i = 0; i < options.enabledServices.length; i++) {
-            options.enabledServices[i] = path.join(options.servicePath, options.enabledServices[i])
-        }
+        // for (let i = 0; i < options.enabledServices.length; i++) {
+        //     options.enabledServices[i] = path.join(options.servicePath, options.enabledServices[i])
+        // }
         //
-        logger.info(`>>> Load services with options: ${tools.inspect(options)} ...`);
-        let allServices = _recursiveLoadService.call(this, options.servicePath, options);
-        logger.debug(`>>> All available services: ${tools.inspect(allServices)}`);
-        return allServices;
+        logger.info(`>>> Loading daemons with options: ${tools.inspect(options)} ...`);
+        let loaded = _recursiveLoadDaemons.call(this, path.join(appRoot.path, options.pathName || 'daemons'), '', options);
+        logger.debug(`>>> Loaded daemons: ${tools.inspect(loaded)}`);
+        return loaded;
     }
 
     //

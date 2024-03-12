@@ -49,8 +49,8 @@ async function bootstrap(extensions) {
         logger.info('====== Step 1: Init framework components ======');
         result.framework = await theApp.initFramework(config, extensions);
         //
-        logger.info('====== Step 2: Load enabled services ======');
-        result.services = theApp.loadServices(config.services || {});
+        logger.info('====== Step 2: Load daemon tasks ======');
+        result.daemons = theApp.loadDaemons(config.daemons || {});
         //
         logger.info('====== Step 3: App startup ======');
         result.start = await theApp.start();
