@@ -751,20 +751,24 @@ function _mergeCacheOptions(resident, config) {
 }
 
 const _excludeModelPaths = ['.DS_Store', '_templates'];
-function _readModelDirSync(modelDir, loadedModels, options) {
-    //logger.debug(`====== Scan directory: ${modelDir}`);
-    let entries = fs.readdirSync(modelDir, {
+function _recursiveReadModelDir(rootPath, subPath, options) {
+    let loaded = [];
+    let currentDir = path.join(rootPath, subPath);
+    logger.debug(`>> Scan directory: ${currentDir}`);
+    let entries = fs.readdirSync(currentDir, {
         withFileTypes: true
     });
     entries.forEach(dirent => {
-        if (options.excludePaths.indexOf(dirent.name) !== -1) { // Ignore excluded paths
+        if (options.excludePaths.includes(dirent.name)) { // Ignore excluded paths
             return null;
         }
-        let fullPath = path.join(modelDir, dirent.name);
+        const entryPath = path.join(subPath, dirent.name);
         if (dirent.isDirectory()) { // Recursive directory
-            return _readModelDirSync.call(this, fullPath, loadedModels, options);
+            loaded = loaded.concat(_recursiveReadModelDir.call(this, rootPath, entryPath, options));
+            return null;
         }
         //
+        const fullPath = path.join(currentDir, dirent.name);
         try {
             const modelSpec = require(fullPath);
             const modelName = modelSpec.modelName;
@@ -781,34 +785,33 @@ function _readModelDirSync(modelDir, loadedModels, options) {
                 // Cache options
                 cacheOptions
             });
-            logger.debug(`Load <${modelName}> with cache options: ${tools.inspect(cacheOptions)}`);
-            loadedModels.push(modelName);
+            logger.debug(`>>> Load <${modelName}> with cache options: ${tools.inspect(cacheOptions)}`);
+            loaded.push(modelName);
         } catch (ex) {
             logger.error(`!!! Load database schema from: ${dirent.name} error! - ${ex.message}`);
         }
     });
+    return loaded;
 }
 
 /**
  * @param { Object } options
  * @param { string[]?} options.excludePaths - The exclude model paths
- * @param { string? } options.modelPath - The 
+ * @param { string? } options.pathName - The 
  * @param { string[]?} options.excludeModels - The exclude model names 
  * @param { string[]?} options.includeModels - The included model names
  * @returns
  */
-function loadDataModels(options) {
+function _loadDataModels(options) {
     options.excludePaths = _excludeModelPaths.concat(options.excludePaths || []);
     if (options.cacheOptions === undefined) {
         options.cacheOptions = {};
     }
-    logger.info('>>>>>> loadDataModels with options: ', tools.inspect(options));
+    logger.info('> Load database models with options: ', tools.inspect(options));
     //
-    const modelDir = path.join(appRoot.path, options.modelPath || 'models');
-    const loadedModels = [];
-    _readModelDirSync.call(this, modelDir, loadedModels, options);
-    logger.info(`>>>>>> Total ${loadedModels.length} database schemas registered. <<<<<<`);
-    return loadedModels.length;
+    const loaded = _recursiveReadModelDir.call(this, path.join(appRoot.path, options.pathName || 'models'), '', options);;
+    logger.info(`> Total ${loaded.length} database model schemas registered. <<<<<<`);
+    return loaded.length;
 }
 
 // The repository-factory
@@ -826,7 +829,7 @@ class RepositoryFactory extends EventModule {
             logger.error(`!!! Already initialized.`);
             return 0;
         }
-        loadDataModels.call(this, config);
+        _loadDataModels.call(this, config);
         this._state = sysdefs.eModuleState.ACTIVE;
     }
     // Implementing methods
