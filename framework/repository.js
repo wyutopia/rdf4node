@@ -788,7 +788,7 @@ function _recursiveReadModelDir(rootPath, subPath, options) {
             logger.debug(`>>> Load <${modelName}> with cache options: ${tools.inspect(cacheOptions)}`);
             loaded.push(modelName);
         } catch (ex) {
-            logger.error(`!!! Load database schema from: ${dirent.name} error! - ${ex.message}`);
+            logger.error(`!!! Load database schema from: ${fullPath} error! - ${ex.message}`);
         }
     });
     return loaded;

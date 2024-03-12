@@ -164,8 +164,8 @@ function _recursiveLoadDaemons(rootPath, subPath, options) {
         if (options.disabled.includes(entryPath) || (options.enabled !== '*' && !options.enabled.includes(entryPath))) { // Ignore disabled service
             return null;
         }
+        let filePath = path.join(currentDir, dirent.name);
         try {
-            let filePath = path.join(currentDir, dirent.name);
             let daemon = require(filePath);
             let name = this.registry.register(daemon);
             if (typeof daemon.start === 'function') {
