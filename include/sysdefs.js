@@ -60,12 +60,17 @@ const eFrameworkModules = {
     CACHE           : '_cache_',
     ENDPOINT        : '_endpoint_',
     ROUTER          : '_router_',
-    DLOCKER         : '_distlocker_'
+    DLOCKER         : '_distlocker_',
+    XTASK           : '_xtask_',
+    UPLOAD          : '_upload_',
+    REDIS_CM        : '_redis_cm_',
+    RASCAL_CM       : '_racal_cm_'
 };
 exports.eFrameworkModules = eFrameworkModules;
 
 const eModuleState = {
     INIT         : 'init',
+    READY        : 'ready',
     ACTIVE       : 'active',
     SUSPEND      : 'suspend',
     STOP_PENDING : 'pending'
@@ -362,3 +367,8 @@ const ePatchOp = {
     Replace : 'rep'
 };
 exports.ePatchOp = ePatchOp;
+
+const eErrMsg = {
+    INVALID_DS    : 'DataSource not exists!'
+};
+exports.eErrMsg = eErrMsg;

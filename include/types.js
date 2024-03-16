@@ -48,8 +48,10 @@
  * @typedef {Object} ModelSpecOptions
  * @prop {Object} schema - The model schema
  * @prop {string[]} refs - The referenced model name array
- * @prop {boolean} allowCache - Enable or disable cache
- * @prop {CacheSpecOptions} cacheSpec - The cache spec
+ * @prop {Object} cacheOptions
+ * @prop {boolean} cacheOptions.enabled - Enable or disable cache
+ * @prop {CacheSpecOptions} cacheOptions.spec - The cache spec
+ * @prop {CacheProperties} cacheOptions.props - The cache entity properties
  */
 
 /**
@@ -102,4 +104,20 @@
  * @prop {boolean?} multi - Choose the method between deleteOne and deleteMany. Default: false for deleteOne.
  */
 
+/**
+ * @typedef { Object } RequestWrapper
+ * @prop { enum<string> } method - The request method
+ * @prop { string } host - The host string
+ * @prop { Object } headers - The headers wrapper
+ * @prop { Object } query - The query parameters
+ * @prop { Object | string | ? } body - The body
+ */
+
+/**
+ * @typedef { Object } HeaderAuthWrapper
+ * @prop { string } algorithm - The algorithm indicator string, should be 'x-hmac-sha256'
+ * @prop { string } Access - The accessKey value
+ * @prop { string } SignedHeaders - The signedHeaders value
+ * @prop { string } Signature - The signature value
+ */
 module.exports = exports = {};

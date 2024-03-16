@@ -6,11 +6,18 @@ const mongoose = require('mongoose');
 //
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.DATASOURCE;
-const {EventModule, EventObject} = require('../include/events');
-const sysConf = require('../include/config');
-const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const { EventModule, EventObject } = require('../include/events');
+const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
+
+const _DS_DEFAULT = 'default';
+
+/**
+ * @typedef DataModelOptions
+ * @prop { string } dsName
+ * @prop { Object? } modification
+ */
 
 function _initMongoConnection(config) {
     const options = {
@@ -41,20 +48,9 @@ class DataSource extends EventObject {
         // Declaring member variables
         this.isConnected = false;
         this._models = {};
-        // Implenting event handlers
-        this.getModel = (modelName, modelSchema) => {
-            assert(modelName !== undefined && modelSchema !== undefined);
-            if (!this.isConnected) {
-                return null;
-            }
-            if (this._models[modelName] === undefined) {
-                this._models[modelName] = this._conn.model(modelName, modelSchema);
-            }
-            return this._models[modelName];
-        };
         //
         (() => {
-            switch(this.dbType) {
+            switch (this.dbType) {
                 case sysdefs.eDbType.NATIVE:
                     _initProcMemoryStorage.call(this, this.conf);
                     break;
@@ -69,57 +65,85 @@ class DataSource extends EventObject {
             }
         })();
     }
+    // Implenting member methods
+    /**
+     * 
+     * @param { string } modelName 
+     * @param { DataModelSchema } modelSchema 
+     * @param { Object? } modification
+     * @returns 
+     */
+    getModel(modelName, modelSchema, modification) {
+        assert(modelName !== undefined && modelSchema !== undefined);
+        if (!this.isConnected) {
+            return null;
+        }
+        if (this._models[modelName] === undefined) {
+            this._models[modelName] = this._conn.model(modelName, modelSchema);
+        }
+        return this._models[modelName];
+    }
 }
 
 // The factory class
 class DataSourceFactory extends EventModule {
-    constructor(props) {
-        super(props);
+    constructor(appCtx, props) {
+        super(appCtx, props);
         //
         this._ds = {};
-        // Implementing methods
-        this.getEntries = () => {
-            return Object.entries(this._ds);
+    }
+    getEntries() {
+        return Object.entries(this._ds);
+    }
+    getDataSource(name) {
+        return this._ds[name];
+    }
+    /**
+     * 
+     * @param {*} modelName 
+     * @param {*} modelSchema 
+     * @param { DataModelOptions } options 
+     * @returns 
+     */
+    getModel(modelName, modelSchema, options) {
+        const ds = this._ds[options.dsName];
+        if (ds instanceof DataSource) {
+            return ds.getModel(modelName, modelSchema, options.modification);
         }
-        this.getDataSource = (name) => {
-            return this._ds[name];
-        };
-        this._msgProc = (msg, ackOrNack) => {
-            //TODO: Handler message
-            if (typeof ackOrNack === 'function') {
-                return ackOrNack(true);
+        return null;
+    }
+    _msgProc(msg, ackOrNack) {
+        //TODO: Handler message
+        if (typeof ackOrNack === 'function') {
+            return ackOrNack(true);
+        }
+    }
+    init(config) {
+        Object.keys(config).forEach(dsName => {
+            if (config[dsName].enabled === true) {
+                this._ds[dsName] = new DataSource({
+                    name: dsName,
+                    //
+                    dbType: config[dsName].type,
+                    conf: config[dsName].config
+                });
+            } else {
+                logger.info(`DataSource: ${dsName} is disabled!`);
             }
-        };
-        // The init codes
-        (() => {
-            let dsConf = sysConf.dataSources || {};
-            Object.keys(dsConf).forEach(dsName => {
-                if (dsConf[dsName].enabled === true) {
-                    this._ds[dsName] = new DataSource({
-                        name: dsName,
-                        //
-                        dbType: dsConf[dsName].type,
-                        conf: dsConf[dsName].config
-                    });
-                } else {
-                    logger.info(`DataSource: ${dsName} is disabled!`);
-                }
-            });
-            //
-            if (this._ds['default'] === undefined) {
-                logger.error(`>>> Set default data-source to in-memory storage! <<<`);
-                this._ds['default'] = new DataSource({
-                    name: 'default',
-                    dbType: sysdefs.eDbType.NATIVE,
-                    conf: {}
-                })
-            }
-        })();
+        });
+        //
+        if (this._ds[_DS_DEFAULT] === undefined) {
+            logger.error(`>>> Set default data-source to in-memory storage! <<<`);
+            this._ds[_DS_DEFAULT] = new DataSource({
+                name: _DS_DEFAULT,
+                dbType: sysdefs.eDbType.NATIVE,
+                conf: {}
+            })
+        }
     }
 }
 
 module.exports = exports = {
-    dsFactory: new DataSourceFactory({
-        name: _MODULE_NAME
-    })
+    _DS_DEFAULT: 'default',
+    DataSourceFactory
 };

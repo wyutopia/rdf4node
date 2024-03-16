@@ -2,20 +2,21 @@
  * The authentication and authorization module
  */
 const jsonwebtoken = require('jsonwebtoken');
-const {Types: {ObjectId}} = require('mongoose');
+const { ObjectId } = require('bson');
 //
+const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes');
 const tools = require('../utils/tools');
-const {CommonModule} = require('../include/base');
+const { CommonModule } = require('../include/base');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE);
 //
-const sysConf = require('../include/config');
-const config = sysConf.security || {};
+const { app: appConf } = require('../include/config');
+const config = appConf.security || {};
 const ENCRYPT_KEY = config.encryptKey || 'abcd1234';
 const EXPIRES_IN = config.expiresIn || '72h';
 const DEFAULT_OPTIONS = config.signOptions || {
-    expiresIn: EXPIRES_IN, 
+    expiresIn: EXPIRES_IN,
 };
 logger.info(`>>>>>> The jwt configuration: ${ENCRYPT_KEY} - ${tools.inspect(DEFAULT_OPTIONS)}`);
 
@@ -41,7 +42,7 @@ function _validateJwt(req, callback) {
     });
 };
 
-function _validateString (field, validator, argv) {
+function _validateString(field, validator, argv) {
     let errMsg = null;
     if (!argv && validator.allowEmpty) {
         return errMsg;
@@ -83,13 +84,13 @@ function _validateEmbeddedObject(field, validator, args) {
                 break;
             }
             if (val.enum) {
-                let enumValues = tools.isTypeOfArray(val.enum)? val.enum : Object.values(val.enum);
+                let enumValues = tools.isTypeOfArray(val.enum) ? val.enum : Object.values(val.enum);
                 if (enumValues.indexOf(argv) === -1) {
                     errMsg = `Value of ${field}.${i}.${valKey} is not allowed! - Should be one of ${tools.inspect(enumValues)}`;
                 }
             }
             if (!errMsg) {
-                switch(val.type) {
+                switch (val.type) {
                     case 'ObjectId':
                         if (!ObjectId.isValid(argv) && val.allowEmpty !== true) {
                             errMsg = `Invalid ObjectId value: ${field}.${i}.${valKey}!`;
@@ -141,14 +142,14 @@ function _validateTypedArray(field, validator, args) {
     let t = result[0];
     for (let i = 0; i < args.length; i++) {
         let argv = args[i];
-        switch(t) {
+        switch (t) {
             case 'String':
                 if (typeof argv !== 'string') {
                     errMsg = `type of #${i} in ${field} should be ${t}`;
                 }
                 break;
             case 'ObjectId':
-                if(!ObjectId.isValid(argv)) {
+                if (!ObjectId.isValid(argv)) {
                     errMsg = `type of #${i} in ${field} should be ${t}`;
                 }
                 break;
@@ -168,8 +169,8 @@ function _validateTypedArray(field, validator, args) {
     return errMsg
 }
 
-function _validateNumber (field, validator, argv, options = {}) {
-    let fullField = options.fieldPrefix === undefined? field : `${options.fieldPrefix}.${field}`;
+function _validateNumber(field, validator, argv, options = {}) {
+    let fullField = options.fieldPrefix === undefined ? field : `${options.fieldPrefix}.${field}`;
     let errMsg = null;
     if (typeof argv === 'string' || Number.isNaN(argv)) {
         errMsg = `Value type of ${fullField} Should be Number!`;
@@ -187,8 +188,8 @@ function _validateNumber (field, validator, argv, options = {}) {
     return errMsg;
 }
 
-function _validateDate (field, validator, argv, options = {}) {
-    let fullField = options.fieldPrefix === undefined? field : `${options.fieldPrefix}.${field}`;
+function _validateDate(field, validator, argv, options = {}) {
+    let fullField = options.fieldPrefix === undefined ? field : `${options.fieldPrefix}.${field}`;
     let errMsg = null;
     if (Date.parse(argv) === NaN) {
         errMsg = `Value format of ${fullField} should be Date!`;
@@ -201,7 +202,7 @@ function _validateParameter(field, validator, argv) {
     //logger.debug(`Perform validation: ${field} - ${tools.inspect(validator)} - ${tools.inspect(argv)}`);
     let errMsg = null;
     if (validator.enum) {
-        let enumValues = tools.isTypeOfArray(validator.enum)? validator.enum : Object.values(validator.enum);
+        let enumValues = tools.isTypeOfArray(validator.enum) ? validator.enum : Object.values(validator.enum);
         if (enumValues.indexOf(argv) === -1) {
             errMsg = `${field} value not allowed! - Should be one of ${tools.inspect(enumValues)}`;
         }
@@ -215,7 +216,7 @@ function _validateParameter(field, validator, argv) {
     if (errMsg !== null) {
         return errMsg;
     }
-    switch(validator.type) {
+    switch (validator.type) {
         case 'ObjectId':
             if (!ObjectId.isValid(argv) && validator.allowEmpty !== true) {
                 errMsg = `Invalid ObjectId value: ${field}!`;
@@ -265,7 +266,7 @@ function _unifyValidator(validator) {
     }
 }
 
-function _parseParameters (params, validator, callback) {
+function _parseParameters(params, validator, callback) {
     if (typeof validator === 'function') {
         callback = validator;
         validator = {};
@@ -282,7 +283,7 @@ function _parseParameters (params, validator, callback) {
     for (let i = 0; i < fields.length; i++) {
         let field = fields[i];
         let val = validator[field];
-        let argv = (params[field] !== undefined && val.type === 'Number')? parseFloat(params[field]) : params[field];
+        let argv = (params[field] !== undefined && val.type === 'Number') ? parseFloat(params[field]) : params[field];
 
         if (argv === undefined) {
             if (val.required === true) {
@@ -333,7 +334,7 @@ class AccessControllerHelper extends CommonModule {
         };
         this.genJwtToken = (payload, signOptions) => {
             const jwtSignOptions = Object.assign({}, signOptions, DEFAULT_OPTIONS);
-            return jsonwebtoken.sign(payload, ENCRYPT_KEY, jwtSignOptions);        
+            return jsonwebtoken.sign(payload, ENCRYPT_KEY, jwtSignOptions);
         };
         this.refreshJwtToken = (token, refreshOptions) => {
             const payload = jsonwebtoken.verify(token, ENCRYPT_KEY, refreshOptions.verify);
@@ -341,18 +342,22 @@ class AccessControllerHelper extends CommonModule {
             delete payload.exp;
             delete payload.nbf;
             delete payload.jti;
-            const jwtSignOptions = Object.assign({}, DEFAULT_OPTIONS, {jwtid: refreshOptions.jwtid});
-            return jwt.sign(payload, ENCRYPT_KEY, jwtSignOptions);        
+            const jwtSignOptions = Object.assign({}, DEFAULT_OPTIONS, { jwtid: refreshOptions.jwtid });
+            return jwt.sign(payload, ENCRYPT_KEY, jwtSignOptions);
         };
         //
-        this._realAuthorize = function (req, options, callback) {
+        this.realAuthorize = function (req, options, callback) {
             if (typeof options === 'function') {
                 callback = options;
                 options = {};
             }
-            logger.info('Do nothing on authorization!');
+            logger.info('>>> Do nothing on authorization! <<< ');
             return callback();
         };
+        this.akskAuthenticate = function (req, callback) {
+            logger.info('>>> Do nothing! Please override this method to implement AKSK authentication. <<<')
+            return callback();
+        }
     }
 }
 const _acHelper = new AccessControllerHelper({
@@ -362,7 +367,7 @@ const _acHelper = new AccessControllerHelper({
 // The private methods
 function _authenticate(authType, req, callback) {
     req.$token = {};
-    if (authType === 'jwt') {
+    if (authType === sysdefs.eRequestAuthType.JWT) {
         return _validateJwt(req, (err, token) => {
             if (err && config.enableAuthentication === true) {
                 return callback(err);
@@ -373,9 +378,17 @@ function _authenticate(authType, req, callback) {
             return callback();
         });
     }
-    if (authType === 'cookie') {
-        // TODO: Add cookie validation here ...
-        return callback();
+    if (authType === sysdefs.eRequestAuthType.AKSK) {
+        return _acHelper.akskAuthenticate(req, callback);
+    }
+    if (authType === sysdefs.eRequestAuthType.COOKIE) {
+        if (req.session && req.session.uid) {
+            return callback();
+        }
+        return callback({
+            code: eRetCodes.SESSION_EXPIRED,
+            message: 'Session expired.'
+        })
     }
     return callback();
 }
@@ -386,9 +399,12 @@ function _authorize(req, scope, callback) {
         return callback();
     }
     // Do real authorization
-    return _acHelper._realAuthorize(req, {scope: scope}, callback);
+    return _acHelper.realAuthorize(req, { scope: scope }, callback);
 }
 
+const _excludeLogUrls = [
+    '/v1/project/diagrams/update'
+];
 /**
  * 
  * @param {authType, validator, scope} options 
@@ -396,13 +412,15 @@ function _authorize(req, scope, callback) {
  * @param {*} res 
  * @param {*} next 
  */
-function _accessCtl ({authType, validator, scope}, req, res, next) {
+function _accessCtl({ authType, validator, scope }, req, res, next) {
     _authenticate(authType, req, err => {
         if (err) {
             return res.sendStatus(err.code);
         }
         let params = Object.assign({}, req.params, req.query, req.body);
-        logger.debug(`Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
+        if (!_excludeLogUrls.includes(req.url)) {
+            logger.debug(`Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
+        }
         _parseParameters(params, validator, (err, args) => {
             if (err) {
                 return res.sendRsp(err.code, err.message);
@@ -423,6 +441,6 @@ function _accessCtl ({authType, validator, scope}, req, res, next) {
 
 // Declaring module exports
 module.exports = exports = {
-    accessCtl : _accessCtl,
-    acHelper : _acHelper
+    accessCtl: _accessCtl,
+    acHelper: _acHelper
 };

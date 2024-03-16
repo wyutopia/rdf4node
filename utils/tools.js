@@ -1,19 +1,21 @@
 /**
  * Created by Eric on 2021/09/09
  */
+// The nodejs libs
 const assert = require('assert');
 const crypto = require('crypto');
-const ObjectId = require('mongoose').Types.ObjectId;
-const request = require('request');
 const spawn = require('child_process').spawn;
 const util = require("util");
 const { networkInterfaces } = require("os");
+// The 3rd-party libs
+const axios = require('axios');
+const { ObjectId } = require('bson');
+const request = require('request');
 const { v4: uuidv4 } = require('uuid');
-// Framework libs
+// The framework libs
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes.js');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
-const { experimental } = require('@grpc/grpc-js');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'tools');
 
 function _noop() {}
@@ -234,75 +236,35 @@ exports.invokeHttpRequest = function (options, callback) {
     });
 };
 
+function _bodyParser(body) {
+    if (!body) {
+        throw new Error('Invalid response');
+    }
+    if (body.code !== eRetCodes.SUCCESS) {
+        throw new Error(`${body.code}#${body.message}`);
+    }
+    return body.data;
+}
 /**
- * The parameter parser for http request
- * @param {json object} params
- * @param {mandatory, optional} options
- * @param {*} callback
- * @returns
+ * 
+ * @param {*} options 
+ * @param { function? } bodyParser 
  */
-exports.parseParameters = function (params, options, callback) {
-    logger.info(`Input parameters: ${_inspect(params)}`);
-    // Step 1: Preparing the input parameters
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
+exports.httpAsync = async function (options, bodyParser) {
+    const fnFlowCtl = options.fnFlowCtl;
+    if (typeof fnFlowCtl === 'function') {
+        delete options.fnFlowCtl;
+        await fnFlowCtl(options);
     }
-    if (!params) {
-        return callback({
-            code: eRetCodes.BAD_REQUEST,
-            message: 'Null parameters'
-        });
+    const rsp = await axios(options);
+    if (bodyParser === undefined) { // null means return raw data body
+        bodyParser = _bodyParser;
     }
-    if (_isTypeOfArray(options)) {
-        options = {
-            mandatory: options,
-            optional: []
-        }
-    } else {
-        if (!options.mandatory) {
-            options.mandatory = [];
-        }
-        if (!options.optional) {
-            options.optional = [];
-        }
+    if (typeof bodyParser === 'function') {
+        return bodyParser(rsp.data);
     }
-    let args = {};
-    let errMsg = null;
-    // Step 2: Parsing mandatory parameters
-    for (let i in options.mandatory) {
-        let key = options.mandatory[i];
-        if (!params[key]) {
-            errMsg = `Missing parameter(s): ${key}`;
-            break;
-        }
-        if (options.checkObjectId === true && key === '_id' && !ObjectId.isValid(params[key])) {
-            errMsg = `Invalid ObjectId value: ${params[key]}`;
-            break;
-        }
-        args[key] = params[key];
-    }
-    if (errMsg !== null) {
-        logger.error(errMsg);
-        return callback({
-            code: eRetCodes.BAD_REQUEST,
-            message: errMsg
-        });
-    }
-    // Step 3: Parsing optional parameters
-    for (let j in options.optional) {
-        let key = options.optional[j];
-        // Note: Exclude duplicate keys from mandatory
-        if (options.mandatory.indexOf(key) === -1 && params[key] !== undefined) {
-            if (options.checkObjectId === true && key === '_id' && !ObjectId.isValid(params[key])) {
-                errMsg = `Invalid ObjectId value format: ${params[key]}`;
-                break;
-            }
-            args[key] = params[key];
-        }
-    }
-    return callback(errMsg, args);
-};
+    return rsp;
+}
 
 function _extractProps (args, propNames) {
     let props = {};
@@ -315,13 +277,6 @@ function _extractProps (args, propNames) {
     return props;
 }
 exports.extractProps = _extractProps;
-
-exports.parseParameter2 = function (args, validator, callback) {
-    return callback({
-        code: eRetCodes.GONE,
-        message: 'Using parseParameter from ac'
-    });
-};
 
 exports.checkSign = function (req, res, next) {
     return next();
@@ -468,14 +423,18 @@ exports.addToSet = function (arr, item) {
     }
 }
 
-function _stringifyDocId (doc) {
+/**
+ * Get pure ObjectId from Doc object recursivly
+ * @param { Object } doc - The document object
+ * @returns { ObjectId }
+ */
+function _purifyObjectId (doc) {
     if (!doc || doc instanceof ObjectId) {
         return doc;
     }
-    if (typeof doc === 'string') {
-        return ObjectId(doc);
+    if (ObjectId.isValid(doc)) {
+        return new ObjectId(doc);
     }
-    return _stringifyDocId(doc._id);
+    return _purifyObjectId(doc._id);
 }
-
-exports.stringifyDocId = _stringifyDocId;
+exports.purifyObjectId = _purifyObjectId;

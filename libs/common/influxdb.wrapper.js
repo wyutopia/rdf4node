@@ -16,7 +16,7 @@ const eRetCodes = require('../../include/retcodes');
 const { EventObject, EventModule } = require('../../include/events');
 const theApp = require('../../app');
 const tools = require('../../utils/tools');
-const mntService = require('../base/prom.wrapper');
+const mntService = require('../base/prom.monitor');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'influxdb');
 const MODULE_NAME = "INFLUXDB_CONN";
@@ -130,8 +130,8 @@ class InfluxDbClient extends EventObject {
 }
 
 class ClientFactory extends EventModule {
-    constructor(props) {
-        super(props);
+    constructor(appCtx, props) {
+        super(appCtx, props);
         //
         this._clients = {};
         this.createClient = (name, config) => {

@@ -1,68 +1,50 @@
 /**
- * Create by Eric on 2022/05/11
+ * Import constants, enums, classes and utilities from @icedeer/rdf4node
+ * Created by Eric on 2021/11/10
+ * Updated by Eric on 2024/01/21
  */
-let createError = require('http-errors');
-let path = require('path');
-let cookieParser = require('cookie-parser');
-const {
-    sysConfig: {security: config},
-    MorganWrapper, httpMonitor, rateLimiter,
-    winstonWrapper: { WinstonLogger },
-    expressWrapper: express 
-} = require('@icedeer/rdf4node');
-const httpLogger = MorganWrapper(process.env.SRV_ROLE);
-const logger = WinstonLogger(process.env.SRV_ROLE);
+// Definitions
+const sysdefs= require('@icedeer/rdf4node/include/sysdefs');
+// Merge application definitions
+const pubdefs = require('./common/pubdefs');
+exports.pubdefs = ((...args) => {
+    const result = {};
+    args.forEach(arg => {
+        Object.keys(arg).forEach(key => {
+            result[key] = Object.assign(result[key] || {}, arg[key])
+        });
+    })
+    return result;
+})(sysdefs, pubdefs);
+//
+exports.eRetCodes = require('@icedeer/rdf4node/include/retcodes');
+exports.base = require('@icedeer/rdf4node/include/base');
+exports.events = require('@icedeer/rdf4node/include/events');
 
-let app = express();
-logger.info(`rdf4node-app start running in ${app.get('env')} env.`);
+// utilities
+exports.tools = require('@icedeer/rdf4node/utils/tools');
+exports.logDirManager = require('@icedeer/rdf4node/utils/logdir.manager');
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'ejs');
+// The config
+const config = require('@icedeer/rdf4node/include/config');
+exports.sysConfig = config;
+exports.allConfig = config;
 
-app.use(httpLogger);
-app.use(httpMonitor);
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+// base libs
+exports.expressWrapper = require('@icedeer/rdf4node/libs/base/express.wrapper');
+exports.WinstonLogger = require('@icedeer/rdf4node/libs/base/winston.wrapper').WinstonLogger;
+exports.monitor = require('@icedeer/rdf4node/libs/base/prom.monitor');
 
-if (config.enableRateLimit) {
-    logger.info('Rate limitation enabled.');
-    app.use(rateLimiter);
-}
+// common libs
+exports.mongoose = require('@icedeer/rdf4node/libs/common/mongoose.wrapper');
+exports.redisWrapper = require('@icedeer/rdf4node/libs/common/redis.wrapper');
 
-// Add dataSource into req temporary...
-app.use((req, res, next) => {
-    req.dataSource = {
-      dsName: 'default'
-    };
-    return next();
-});
-
-let indexRouter = require('./routes/index');
-app.use('/', indexRouter);
-
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-    next(createError(404));
-});
-
-// error handler
-app.use(function (err, req, res, next) {
-    // set locals, only providing error in development
-    res.locals.message = err.message;
-    //res.locals.error = req.app.get('env') === 'development' ? err : {};
-    if (req.app.get('env') === 'development') {
-        logger.error(`${err}`);
-        res.locals.error = err;
-    } else {
-        res.locals.error = {};
-    }
-
-    // render the error page
-    res.status(err.status || 500);
-    res.render('error');
-});
-
-module.exports = app;
+// framework components
+exports.ac = require('@icedeer/rdf4node/framework/ac');
+exports.components = require('@icedeer/rdf4node/framework/components');
+exports._DS_DEFAULT_ = require('@icedeer/rdf4node/framework/repository')._DS_DEFAULT_;
+exports.cache = require('@icedeer/rdf4node/framework/cache');
+exports.XTask = require('@icedeer/rdf4node/framework/xtask').XTask;
+exports.EventLogger = require('@icedeer/rdf4node/framework/ebus').EventLogger;
+//
+exports.bootstrap = require('@icedeer/rdf4node/bootstrap').bootstrap;

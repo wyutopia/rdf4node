@@ -10,7 +10,8 @@ const os = require('os');
 const EventEmitter = require('events');
 // Framework libs
 const sysdefs = require('./sysdefs');
-const { modules: moduleConf } = require('./config');
+const config = require('./config');
+const moduleConf = config.modules = {};
 const eRetCodes = require('./retcodes');
 const {initObject, initModule, CommonModule, CommonObject} = require('./base');
 const {WinstonLogger} = require('../libs/base/winston.wrapper');
@@ -22,24 +23,27 @@ const _DEFAULT_CHANNEL_ = 'default';
 const _DEFAULT_PUBKEY_ = 'pubEvents';
 const _DEFAULT_DEST_ = 'local';
 
-const sysEvents = {
+const eDomainEvent = {
+    // System
+    SYS_APP_START                  : 'app.start',
+    SYS_APP_STOP                   : 'app.stop',
     // Module
-    SYS_MODULE_CREATE              : '_module.create',
-    SYS_MODULE_INIT                : '_module.init',
-    SYS_MODULE_ACTIVE              : '_module.active',
-    SYS_MODULE_HALT                : '_module.halt',
-    SYS_MODULE_RESUME              : '_module.resume',
-    SYS_MODULE_DESTORY             : '_module.destroy',
+    SYS_MODULE_CREATE              : 'module.create',
+    SYS_MODULE_INIT                : 'module.init',
+    SYS_MODULE_ACTIVE              : 'module.active',
+    SYS_MODULE_HALT                : 'module.halt',
+    SYS_MODULE_RESUME              : 'module.resume',
+    SYS_MODULE_DESTORY             : 'module.destroy',
     // Admin
-    SYS_ADMIN_CREATE               : '_admin.create',
-    SYS_ADMIN_UPDATE               : '_admin.update',
-    SYS_ADMIN_CHGPWD               : '_admin.chgpwd',
-    SYS_ADMIN_SUSPEND              : '_admin.suspend',
-    SYS_ADMIN_DELETE               : '_admin.delete',
+    SYS_ADMIN_CREATE               : 'admin.create',
+    SYS_ADMIN_UPDATE               : 'admin.update',
+    SYS_ADMIN_CHGPWD               : 'admin.chgpwd',
+    SYS_ADMIN_SUSPEND              : 'admin.suspend',
+    SYS_ADMIN_DELETE               : 'admin.delete',
     // License
-    SYS_LIC_CREATE                 : '_lic.create',
-    SYS_LIC_UPDATE                 : '_lic.update',
-    SYS_LIC_DELETE                 : '_lic.delete',
+    SYS_LIC_CREATE                 : 'lic.create',
+    SYS_LIC_UPDATE                 : 'lic.update',
+    SYS_LIC_DELETE                 : 'lic.delete',
     // Message
     MSG_CREATE                     : 'msg.create',
     MSG_UPDATE                     : 'msg.update',
@@ -59,8 +63,9 @@ class EventObject extends EventEmitter {
 
 // Declaring the EventModule
 class EventModule extends EventObject {
-    constructor(props) {
+    constructor(appCtx, props) {
         super(props);
+        this._appCtx = appCtx;
         initModule.call(this, props);
         // Save event properties
         this._eventHandlers = props.eventHandlers || {};
@@ -71,8 +76,6 @@ class EventModule extends EventObject {
             channel: eventConf.channel || props.channel || _DEFAULT_CHANNEL_,
             pubKey: eventConf.pubKey || props.pubKey || _DEFAULT_PUBKEY_
         };
-        // Auto wire ebus instance
-        this._ebus = props.ebus || global._$ebus || null;
         /**
          * 
          * @param { Object } event 
@@ -86,19 +89,12 @@ class EventModule extends EventObject {
                 callback = options;
                 options = this._eventOptions;
             }
-            //
-            if (!this._ebus) {
-                return callback({
-                    code: eRetCodes.INTERNAL_SERVER_ERR,
-                    message: 'Initialize EventBus before using!'
-                })
-            }
             if (event.headers === undefined) {
                 event.headers = {
                     source: this.$name
                 }
             }
-            return this._ebus.publish(event, options, err => {
+            return this._appCtx.ebus.publish(event, options, err => {
                 if (err) {
                     return callback(err);
                 }
@@ -124,22 +120,13 @@ class EventModule extends EventObject {
         this.on('message', (msg, ackOrNack) => {
             setTimeout(this._msgProc.bind(this, msg, ackOrNack), 1);
         });
-        this.on('sys-event', evt => {
-            setTimeout(this._onSysEvent.bind(this, evt), 1);
-        });
-        this.on('domain-event', evt => {
-            setTimeout(this._onSysEvent.bind(this, evt), 2);
-        });
-        this.on('app-event', evt => {
-            setTimeout(this._onSysEvent.bind(this, evt), 3);
-        });
-        // Perform initiliazing codes...
+        // Register the module
         (() => {
-            if (this._ebus) {
+            if (!props.managed) {
                 let options = Object.assign({
                     subEvents: Object.keys(this._eventHandlers)
                 }, this._eventOptions);
-                this._ebus.register(this, options);
+                this._appCtx.registerModule(this, options);
             }
         })();
     }
@@ -147,8 +134,6 @@ class EventModule extends EventObject {
 
 // Declaring module exports
 module.exports = exports = {
-    EventObject: EventObject,
-    EventModule: EventModule,
-    eSysEvents: sysEvents,
-    _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEFAULT_DEST_
+    eDomainEvent,  _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEFAULT_DEST_,
+    EventObject, EventModule,
 };

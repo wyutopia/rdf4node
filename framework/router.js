@@ -4,13 +4,11 @@
 const fs = require('fs');
 const path = require('path');
 const appRoot = require('app-root-path');
-const _rootDir = path.join(appRoot.path, 'routes');
 // Framework
-const { WinstonLogger } = require('../libs/base/winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
-const { accessCtl } = require('./ac');
 const tools = require('../utils/tools');
-const { app: appConf, security: secConf } = require('../include/config');
+const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
+const {accessCtl} = require('./ac');
 
 /**
  * Middleware to Support CORS
@@ -18,12 +16,24 @@ const { app: appConf, security: secConf } = require('../include/config');
 const _ALLOW_HEADERS_BASE = [
     'Content-Type', 'Content-Length', 'Authorization', 'Accept', 'X-Requested-With', 'ActiveGroup', 'ActiveTenant', 'AuthToken'
 ];
-const _allowHeaders = secConf.allowHeaders ? _ALLOW_HEADERS_BASE.concat(secConf.allowHeaders) : _ALLOW_HEADERS_BASE;
-function _setCORS(router) {
+
+function _mergeAllowHeaders(allowHeaders) {
+    return allowHeaders ? _ALLOW_HEADERS_BASE.concat(allowHeaders) : _ALLOW_HEADERS_BASE;
+}
+
+/**
+ * Setup CORS
+ * @param {*} router
+ * @param { Object } options
+ * @param { string? } options.allowOrigin -
+ * @param { string[]? } options.allowHeaders -
+ * @param { string? } options.allowMethods -
+ */
+function _setCORS(router, options) {
     router.all('*', (req, res, next) => {
-        res.setHeader('Access-Control-Allow-Origin', secConf.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
-        res.setHeader('Access-Control-Allow-Headers', _allowHeaders.join(', '));
-        res.setHeader('Access-Control-Allow-Methods', secConf.allowMethods || 'POST, GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Origin', options.allowOrigin || '*'); // Replace * with actual front-end server ip or domain in production env.
+        res.setHeader('Access-Control-Allow-Headers', _mergeAllowHeaders(options.allowHeaders).join(', '));
+        res.setHeader('Access-Control-Allow-Methods', options.allowMethods || 'POST, GET, OPTIONS');
         if (req.method === 'OPTIONS') {
             return res.sendStatus(200);
         }
@@ -31,11 +41,16 @@ function _setCORS(router) {
     });
 }
 
-function _addHomepage(router) {
+/**
+ * Setup homepage
+ * @param {*} router
+ * @param {*} options
+ */
+function _addHomepage(router, options) {
     /* GET home page. */
     router.get('/', (req, res, next) => {
         //TODO: Replace title with your own project name
-        res.render('index', { title: appConf.alias || 'the rappid-dev-framework!' });
+        res.render('index', {title: theApp.getName() || 'the rappid-dev-framework!'});
     });
 }
 
@@ -46,6 +61,7 @@ const _EXCLUDE_FILES = [
     '.DS_Store',
     'index.js'
 ];
+
 function isExclude(filename) {
     return _EXCLUDE_FILES.indexOf(filename) !== -1;
 }
@@ -58,6 +74,7 @@ const _scopeToParameterKey = {
 };
 const _reDelKey = new RegExp(/^--/);
 const _reNotRequired = new RegExp(/^-/);
+
 function _calibrateValidator(validator, scope, modifications) {
     // Perform modifications if provided
     if (modifications !== undefined) {
@@ -83,56 +100,57 @@ function _calibrateValidator(validator, scope, modifications) {
     }
 }
 
-function _readRouteFileSync(specs, routePath, filename) {
-    let filePath = path.join(_rootDir, routePath, filename);
-    try {
-        const routeObj = require(filePath);
-        //
-        const scope = routeObj.scope || 'usr';
-        const routes = routeObj.routes || [];
-        routes.forEach(route => {
-            if (route.handler.fn !== undefined) {
-                let subPath = filename.split('.')[0].replace('-', '/');
-                let r = {
-                    path: path.join('/', routePath, subPath, route.path),
-                    authType: route.authType || 'jwt',
-                    scope: scope,
-                    method: route.method.toUpperCase(),
-                    validator: route.handler.val || {},
-                    multerFunc: route.multerFunc,
-                    handler: route.handler.fn,
-                    isNew: route.isNew,
-                    commit: route.commit
-                };
-                if (route.oldPath) {
-                    r.oldPath = path.join('/', routePath, subPath, route.oldPath);
-                }
-                _calibrateValidator(r.validator, scope, route.modValidators);
-                specs.push(r);
-            } else {
-                logger.error(`Route handling function is missing! - ${filename} - ${route.path}`);
-            }
-        });
-    } catch (ex) {
-        logger.error(`Load routes from file: ${filePath} error! - ${ex.message} - ${ex.stack}`);
-    }
-}
 
-function _readRouteDirSync(specs, routePath) {
-    let routeDir = path.join(_rootDir, routePath);
-    logger.debug(`Processing current directory: ${routeDir}`);
-
-    let entries = fs.readdirSync(routeDir, _READDIR_OPTIONS);
+function _recursiveReadRouteDir(rootPath, subPath, options) {
+    let specs = [];
+    let currentDir = path.join(rootPath, subPath);
+    logger.info(`> Read routes from dir: ${currentDir}`);
+    let entries = fs.readdirSync(currentDir, _READDIR_OPTIONS);
     entries.forEach(dirent => {
         if (isExclude(dirent.name)) {
             return null;
         }
+        const entryPath = path.join(subPath, dirent.name);
         if (dirent.isDirectory()) {
-            _readRouteDirSync(specs, path.join(routePath, dirent.name));
-        } else {
-            _readRouteFileSync(specs, routePath, dirent.name);
+            specs = specs.concat(_recursiveReadRouteDir(rootPath, entryPath, options));
+            return null;
+        }
+        let filePath = path.join(currentDir, dirent.name);
+        try {
+            const routePack = require(filePath);
+            //
+            const scope = routePack.scope || 'usr';
+            const authType = routePack.authType || 'jwt';
+            //
+            const routes = routePack.routes || [];
+            routes.forEach(route => {
+                if (route.handler.fn !== undefined) {
+                    let pathElem = path.parse(entryPath);
+                    let r = {
+                        path: path.join('/', pathElem.dir, pathElem.name, route.path),
+                        authType: route.authType || authType,
+                        scope: scope,
+                        method: route.method.toUpperCase(),
+                        validator: route.handler.val || {},
+                        multerFunc: route.multerFunc,
+                        handler: route.handler.fn,
+                        isNew: route.isNew,
+                        commit: route.commit
+                    };
+                    if (route.oldPath) {
+                        r.oldPath = path.join('/', pathElem.dir, pathElem.name, route.oldPath);
+                    }
+                    _calibrateValidator(r.validator, scope, route.modValidators);
+                    specs.push(r);
+                } else {
+                    logger.error(`Route handling function is missing! - ${filename} - ${route.path}`);
+                }
+            });
+        } catch (ex) {
+            logger.error(`Load routes from file: ${filePath} error! - ${ex.message} - ${ex.stack}`);
         }
     });
+    return specs;
 }
 
 function _setRoutes(router, routeSpecs) {
@@ -173,23 +191,25 @@ function _setRoutes(router, routeSpecs) {
     }
 }
 
-function _addAppRoutes(router) {
-    let routeSpecs = [];
-    _readRouteDirSync(routeSpecs, '');
+
+function _addAppRoutes(router, routeDir) {
+    let routeSpecs = _recursiveReadRouteDir(routeDir, '', {});
     _setRoutes(router, routeSpecs);
     //
     /* GET api document page on non-production env. */
     if (process.env.NODE_ENV !== 'production') {
         router.get('/api', (req, res) => {
-            return res.render('api', { routes: routeSpecs });
+            return res.render('api', {routes: routeSpecs});
         });
     }
 }
 
-function initRouter(router) {
-    _setCORS(router);
-    _addHomepage(router);
-    _addAppRoutes(router);
+function initRouter(router, options) {
+    logger.info(`>>> Init router with options: ${tools.inspect(options)}`);
+    _setCORS(router, options);
+    _addHomepage(router, options);
+    //
+    _addAppRoutes(router, path.join(appRoot.path, options.routePath || 'routes'));
 }
 
 // Declaring module exports

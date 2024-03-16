@@ -10,7 +10,7 @@ const eClientState = sysdefs.eClientState;
 const eRetCodes = require('../../include/retcodes');
 const {CommonObject,  CommonModule} = require('../../include/base');
 const tools = require('../../utils/tools');
-const mntService = require('../base/prom.wrapper');
+const mntService = require('../base/prom.monitor');
 const {WinstonLogger} = require('../base/winston.wrapper');
 
 const logger = WinstonLogger(process.env.SRV_ROLE || 'tedious');

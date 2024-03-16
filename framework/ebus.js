@@ -5,19 +5,15 @@
 const assert = require('assert');
 const async = require('async');
 const path = require('path');
-const EventEmitter = require('events');
 // Framework libs
 const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.EBUS;
-const {eventBus: config} = require('../include/config');
 const { initObject, initModule } = require('../include/base');
-const { eSysEvents, EventModule, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEFAULT_DEST_ } = require('../include/events');
+const { eSysEvents, EventObject, EventModule, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEFAULT_DEST_ } = require('../include/events');
 const eRetCodes = require('../include/retcodes');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
-//
-const rascalWrapper = require('../libs/common/rascal.wrapper');
 
 /**
  * The event headers
@@ -34,9 +30,10 @@ const rascalWrapper = require('../libs/common/rascal.wrapper');
  */
 
 // Define the eventLogger instance
-class EventLogger extends EventEmitter {
-    constructor(props) {
+class EventLogger extends EventObject {
+    constructor(appCtx, props) {
         super(props);
+        this._appCtx = appCtx;
         initObject.call(this, props);
         // Implenting member methods
         this._execPersistent = (options, callback) => {
@@ -75,10 +72,6 @@ class EventLogger extends EventEmitter {
         this.consume = this.con;
     }
 }
-global._$eventLogger = new EventLogger({
-    $name: sysdefs.eFrameworkModules.EVTLOGGER
-});
-
 
 const _typeEventBusProps = {
     lo: true,         // Indicate local-loop. default is true: all events consumed localy.
@@ -108,13 +101,11 @@ function _initEventBus(props) {
     Object.keys(_typeEventBusProps).forEach(key => {
         let propKey = `_${key}`;
         if (key === 'triggerEvents') {
-            this[propKey] = _parseTriggerEvents(props[key]);
+            this[propKey] = _parseTriggerEvents(props[key] || []);
         } else {
             this[propKey] = props[key] !== undefined ? props[key] : _typeEventBusProps[key];
         }
     });
-    //
-    this._eventLogger = global._$eventLogger;
 }
 
 /**
@@ -130,7 +121,7 @@ function _consumeEvent(rawEvent, options, callback) {
         options = {};
     }
     logger.debug(`Perform consuming event: ${tools.inspect(rawEvent)} - ${tools.inspect(options)}`);
-    let event = (this._lo === true || options.engine === sysdefs.eCacheEngine.Native)? rawEvent : rawEvent.content;
+    let event = (this._lo === true || options.engine === sysdefs.eCacheEngine.Native) ? rawEvent : rawEvent.content;
     let subscribers = this._subscribers[event.code];
     if (tools.isTypeOfArray(subscribers)) {
         subscribers.forEach(moduleName => {
@@ -164,9 +155,9 @@ const _typeTriggerEvent = {
     select: 'string'
 };
 
-function _parseTriggerEventBody (origBody, select) {
+function _parseTriggerEventBody(origBody, select) {
     let body = {};
-    select.split(' ').forEach( key => {
+    select.split(' ').forEach(key => {
         if (origBody[key] !== undefined) {
             body[key] = origBody[key];
         }
@@ -174,7 +165,7 @@ function _parseTriggerEventBody (origBody, select) {
     return body;
 }
 
-function _pubTriggerEvents (evt, options, callback) {
+function _pubTriggerEvents(evt, options, callback) {
     if (!this._triggerEvents || this._triggerEvents.length === 0) {
         return callback();
     }
@@ -189,7 +180,7 @@ function _pubTriggerEvents (evt, options, callback) {
         let event = {
             code: triggerEvent.code,
             headers: evt.headers,
-            body: triggerEvent.select? _parseTriggerEventBody(evt.body, triggerEvent.select) : evt.body
+            body: triggerEvent.select ? _parseTriggerEventBody(evt.body, triggerEvent.select) : evt.body
         }
         logger.debug(`Chained event: ${triggerEvent.code} triggered for ${evt.code}`);
         return this.publish(event, evt.headers.triggerOptions || options, next);
@@ -231,7 +222,7 @@ function _extMqPub(event, options, callback) {
         })
     }
     // Set triggerOptions for publishing triggerEvents
-    event.headers.triggerOptions = {engine, channel, pubKey};
+    event.headers.triggerOptions = { engine, channel, pubKey };
     // Invoke publishing
     return client.publish(pubKey, event, { routingKey: event.code }, callback);
 }
@@ -244,141 +235,52 @@ const _typeRegisterOptions = {
     pubKey: 'pubEvent'
 };
 
-
 /**
- * Initialize the NQueue object
- * @param {Object} props - The prop wrapper
- * @param {string} props.code - The event code
+ * @typedef RegisterOptions
+ * @prop { string[] } subEvents - The 
+ * @prop { string } engine 
+ * @prop { string } channel
+ * @prop { string } pubKey
  */
-function _initQueue(props) {
-    this._code = props.code;
-}
-
-class NQueue extends EventEmitter {
-    constructor(props) {
-        super(props);
-        //
-        _initQueue.call(this, props);
-    }
-}
 
 // Define the EventBus class
-class EventBus extends EventEmitter {
-    constructor(props) {
-        super(props);
-        //
-        _initEventBus.call(this, props);
+class EventBus extends EventModule {
+    constructor(appCtx, props) {
+        super(appCtx, props);
         //
         this._registries = {};
         this._subscribers = {};
         this._queues = {};
         // For external MQ
         this._clients = {};
-        // Implementing methods
-        /**
-         * 
-         * @param {instanceof EventModule} moduleRef 
-         * @param {_typeRegisterOptions} options 
-         * @returns 
-         */
-        this.register = (moduleRef, options) => {
-            if (typeof options === 'function') {
-                callback = options;
-                options = {};
-            }
-            //
-            if (!(moduleRef instanceof EventModule)) {
-                logger.error(`Error: should be EventModule!`);
-                return null;
-            }
-            let moduleName = moduleRef.$name;
-            //logger.debug(`Register ${moduleName} with options - ${tools.inspect(options)}`);
-            if (this._registries[moduleName] === undefined) {
-                this._registries[moduleName] = {
-                    name: moduleName,
-                    status: sysdefs.eStatus.ACTIVE,
-                    moduleRef: moduleRef
-                }
-            }
-            // Update subscriptions
-            let sumEvents = Object.values(eSysEvents).concat(options.subEvents || []);
-            sumEvents.forEach(code => {
-                if (this._subscribers[code] === undefined) {
-                    this._subscribers[code] = [];
-                }
-                if (this._subscribers[code].indexOf(moduleName) === -1) {
-                    this._subscribers[code].push(moduleName);
-                }
-                const q = this._queues[code];
-                if (q === undefined) {
-                    q = new NQueue({code});
-                    this._queues[code] = q;
-                }
-                q.on(code, event => {
-                    moduleRef.emit(code, event);
-                });
-            });
-            // TODO: Append eventTriggers
-            // let engine = options.engine || sysdefs.eEventBusEngine.Native;
-            // if (engine === sysdefs.eEventBusEngine.Native) {
-            //     return null;
-            // }
-            // // Create mq client
-            // let engineConf = config[engine];  // {vhost, connection, ...channelParameters}
-            // // Create rabbitmq-client
-            // let channel = options.channel || _DEFAULT_CHANNEL_;
-            // let clientId = `${channel}@${engine}`;
-            // if (this._clients[clientId] === undefined) {
-            //     // getClient(name, options: {vhost, connection, params})
-            //     this._clients[clientId] = rascalWrapper.getClient(clientId, {
-            //         vhost: engineConf.vhost,
-            //         connection: engineConf.connection,
-            //         params: tools.deepAssign({}, engineConf.base, engineConf[channel] || {})
-            //     });
-            // }
-            return null;
-        };
+        // Define event handler
         this.on('message', (evt, callback) => {
             return _consumeEvent.call(this, evt, callback);
         });
         this.on('client-end', clientId => {
             logger.error(`Client#${clientId} end.`);
         });
-
-        this.pause = (moduleName, callback) => {
-            // TODO: Stop publish and consume events
-        };
-        this.resume = (moduleName) => {
-            // TODO: Resume publish and consume events
-        };
-        /**
-         * 
-         * @param {Object: {code, headers, body}} event 
-         * @param {_typePubOptions} options 
-         * @param {Error, Result} callback 
-         * @returns 
-         */
-        this.publish = (event, options, callback) => {
-            if (typeof options === 'function') {
-                callback = options;
-                options = _typePubOptions;
-            }
-            logger.debug(`Publish event - ${tools.inspect(event)} - ${tools.inspect(options)}`)
-            //
-            if (this._disabledEvents.indexOf(event.code) !== -1) {
-                logger.debug(`Ignore disabled event: ${event.code}`);
-                return callback();
-            }
-            return this._eventLogger.pub(event, options, () => {
-                //
-                if (this._lo === true || options.engine === sysdefs.eEventBusEngine.Native) {
-                    return process.nextTick(_consumeEvent.bind(this, event, options, callback));
-                }
-                return _extMqPub.call(this, event, options, callback);
-            });
+    }
+    init(config, options) {
+        _initEventBus.call(this, config);
+        // Create eventLogger
+        const fn = typeof options.fnEventLogger === 'function' ? options.fnEventLogger : EventLogger;
+        this._eventLogger = new fn(this._appCtx, {
+            $name: sysdefs.eFrameworkModules.EVTLOGGER
+        });
+        if (config.engine !== sysdefs.eEventBusEngine.RabbitMQ) {
+            return null;
         }
-        // Initializing the rabbitmq clients channels
-        if (config.engine === sysdefs.eEventBusEngine.RabbitMQ) {
+        // >>>  Create rabbitmq if necessary <<<
+        try {
+            const { RascalFactory } = require('../libs/common/rascal.wrapper');
+            this._rascalFactory = new RascalFactory(this._appCtx, {
+                $name: _MODULE_NAME,
+                $type: sysdefs.eModuleType.CM,
+                mandatory: true,
+                state: sysdefs.eModuleState.ACTIVE
+            });
+            // Step 2: Create rascal client
             let mqConf = config[config.engine] || {};
             //
             let vhost = mqConf.vhost;
@@ -390,14 +292,103 @@ class EventBus extends EventEmitter {
                     connection: connection,
                     params: mqConf.channels[chn]
                 }
-                this._clients[clientId] = rascalWrapper.getClient(clientId, options);
+                this._clients[clientId] = this._rascalFactory.getClient(clientId, options);
             });
             logger.info(`${this.$name}: rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
+        } catch (ex) {
+            logger.error(`Initialize rascal error! - ${ex.message}`);
         }
+    }
+
+    // Implementing methods
+    /**
+     * 
+     * @param {instanceof EventModule} moduleRef 
+     * @param { RegisterOptions } options 
+     * @returns 
+     */
+    register(moduleRef, options) {
+        if (!(moduleRef instanceof EventModule)) {
+            logger.error(`Error: should be EventModule!`);
+            return null;
+        }
+        let moduleName = moduleRef.$name;
+        //logger.debug(`${this.$name}: Register ${moduleName} with options - ${tools.inspect(options)}`);
+        if (this._registries[moduleName] === undefined) {
+            this._registries[moduleName] = {
+                name: moduleName,
+                status: sysdefs.eStatus.ACTIVE,
+                moduleRef: moduleRef
+            }
+        }
+        // Update subscriptions
+        //let sumEvents = Object.values(eSysEvents).concat(options.subEvents || []);
+        options.subEvents.forEach(code => {
+            if (this._subscribers[code] === undefined) {
+                this._subscribers[code] = [];
+            }
+            if (this._subscribers[code].indexOf(moduleName) === -1) {
+                this._subscribers[code].push(moduleName);
+            }
+        });
+        // TODO: Append eventTriggers
+        // let engine = options.engine || sysdefs.eEventBusEngine.Native;
+        // if (engine === sysdefs.eEventBusEngine.Native) {
+        //     return null;
+        // }
+        // // Create mq client
+        // let engineConf = config[engine];  // {vhost, connection, ...channelParameters}
+        // // Create rabbitmq-client
+        // let channel = options.channel || _DEFAULT_CHANNEL_;
+        // let clientId = `${channel}@${engine}`;
+        // if (this._clients[clientId] === undefined) {
+        //     // getClient(name, options: {vhost, connection, params})
+        //     this._clients[clientId] = rascalWrapper.getClient(clientId, {
+        //         vhost: engineConf.vhost,
+        //         connection: engineConf.connection,
+        //         params: tools.deepAssign({}, engineConf.base, engineConf[channel] || {})
+        //     });
+        // }
+        return null;
+    };
+
+    pause(moduleName, callback) {
+        // TODO: Stop publish and consume events
+    };
+
+    resume(moduleName) {
+        // TODO: Resume publish and consume events
+    };
+    /**
+     * 
+     * @param {Object: {code, headers, body}} event 
+     * @param {_typePubOptions} options 
+     * @param {Error, Result} callback 
+     * @returns 
+     */
+    publish(event, options, callback) {
+        if (typeof options === 'function') {
+            callback = options;
+            options = _typePubOptions;
+        }
+        logger.debug(`Publish event - ${tools.inspect(event)} - ${tools.inspect(options)}`)
+        //
+        if (this._disabledEvents.indexOf(event.code) !== -1) {
+            logger.debug(`Ignore disabled event: ${event.code}`);
+            return callback();
+        }
+        return this._eventLogger.pub(event, options, () => {
+            //
+            if (this._lo === true || options.engine === sysdefs.eEventBusEngine.Native) {
+                return process.nextTick(_consumeEvent.bind(this, event, options, callback));
+            }
+            return _extMqPub.call(this, event, options, callback);
+        });
     }
 }
 
 // Define module
 module.exports = exports = {
-    EventBus
+    EventBus,
+    EventLogger
 };

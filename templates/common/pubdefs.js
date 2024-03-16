@@ -1,9 +1,9 @@
 /**
  * Created by Eric on 2022/05/11
+ * Updated by Eric on 2024/01/18
  */
-let sysdefs = require('@icedeer/rdf4node/include/sysdefs');
 
-sysdefs.customDefinitions = {
+const customDefinitions = {
     one: 1,
     two: 2
 };
@@ -20,6 +20,8 @@ const eAppModules = {
     UserSvc         : 'UsrSvc',
     // TODO: Other services
 };
-sysdefs.eAppModules = eAppModules;
 
-module.exports = exports = sysdefs;
+//
+module.exports = exports = {
+    customDefinitions, eAppModules
+};
