@@ -115,7 +115,7 @@ class EventModule extends EventObject {
             if (err) {
                 return callback(err);
             }
-            return this._triggerEvent(event, options, callback);
+            return _triggerEvent.call(this, event, options, callback);
         });
     }
     pubAsync = util.promisify(this.pubEvent);
