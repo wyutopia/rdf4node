@@ -119,7 +119,17 @@ class EventModule extends EventObject {
             return _triggerEvent.call(this, event, options, callback);
         });
     }
-    pubAsync = util.promisify(this.pubEvent);
+    async pubAsync(event, options) {
+        if (options === undefined) {
+            options = this._eventOptions;
+        }
+        if (event.headers === undefined) {
+            event.headers = {
+                source: this.$name
+            }
+        }
+        return await this._ebus.pubAsync(event, options);
+    }
     // The message process
     async onMessage(msg, ackOrNack) {
         if (typeof ackOrNack !== 'function') {

@@ -106,10 +106,18 @@ function _publishEvents(options, callback) {
             }
         });
     }
-    this.pubEvent(evt, this._eventOptions, err => {
-        if (err) {
-            logger.error(`Publish event: ${tools.inspect(evt)} error! - ${err.code}#${err.message}`);
-        }
+    // Begin old publish method
+    // this.pubEvent(evt, this._eventOptions, err => {
+    //     if (err) {
+    //         logger.error(`Publish event: ${tools.inspect(evt)} error! - ${err.code}#${err.message}`);
+    //     }
+    //     return callback();
+    // });
+    // End
+    this.pubAsync(evt, this._eventOptions).then(() => {
+        return callback();
+    }).catch(err => {
+        logger.error(`Publish event: ${tools.inspect(evt)} error! - ${err.code}#${err.message}`);
         return callback();
     });
 }
