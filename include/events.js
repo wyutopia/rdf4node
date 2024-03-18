@@ -140,6 +140,7 @@ class EventModule extends EventObject {
             return ackOrNack(false);
         }
         try {
+            logger.debug(`>>> [${this.$name}]: Handle ${msg.code} event...`);
             const result = await handler.call(this, msg);
             ackOrNack(result);
             return result;

@@ -33,37 +33,59 @@ class EventLogger extends EventObject {
         this._execPersistent = (options, callback) => {
             return callback();
         };
-        this.pub = (evt, options, callback) => {
-            if (typeof options === 'function') {
-                callback = options;
-                options = {};
-            }
-            let src = tools.safeGetJsonValue(evt, 'headers.source');
-            // if (process.env.NODE_ENV === 'production') {
-            //     logger.info(`Publish event: ${evt.code} - ${src}`);
-            // } else {
-            //     logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)} - ${tools.inspect(options)}`);
-            // }
-            return this._execPersistent({
-                publisher: src,
-                code: evt.code,
-                headers: evt.headers,
-                body: evt.body,
-                options: options
-            }, callback);
-        };
-        this.publish = this.pub;
-        this.con = (evt, consumer, callback) => {
-            let src = tools.safeGetJsonValue(evt, 'headers.source');
-            logger.debug(`Consume event: ${evt.code} - ${src} - ${consumer}`);
-            return this._execPersistent({
-                consumer: consumer,
-                code: evt.code,
-                headers: evt.headers,
-                body: evt.body
-            }, callback);
-        };
-        this.consume = this.con;
+        this._persistentAsync = async (options) => {
+            return true;
+        }
+    }
+    pub(evt, options, callback) {
+        if (typeof options === 'function') {
+            callback = options;
+            options = {};
+        }
+        let src = tools.safeGetJsonValue(evt, 'headers.source');
+        // if (process.env.NODE_ENV === 'production') {
+        //     logger.info(`Publish event: ${evt.code} - ${src}`);
+        // } else {
+        //     logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)} - ${tools.inspect(options)}`);
+        // }
+        return this._execPersistent({
+            publisher: src,
+            code: evt.code,
+            headers: evt.headers,
+            body: evt.body,
+            options: options
+        }, callback);
+    }
+    publish = this.pub;
+    con(evt, consumer, callback) {
+        let src = tools.safeGetJsonValue(evt, 'headers.source');
+        logger.debug(`Consume event: ${evt.code} - ${src} - ${consumer}`);
+        return this._execPersistent({
+            consumer: consumer,
+            code: evt.code,
+            headers: evt.headers,
+            body: evt.body
+        }, callback);
+    }
+    consume = this.con;
+    // Followings are async methods
+    async onPublish(evt, options) {
+        return await this._persistentAsync({
+            publisher: tools.safeGetJsonValue(evt, 'headers.source') || 'Unknown',
+            //
+            code: evt.code,
+            headers: evt.headers,
+            body: evt.body,
+            options: options
+        })
+    }
+    async onConsume(evt, consumer) {
+        return await this._persistentAsync({
+            consumer: consumer,
+            code: evt.code,
+            headers: evt.headers,
+            body: evt.body
+        })
     }
 }
 
@@ -370,11 +392,11 @@ class EventBus extends EventModule {
         }
         try {
             try {
-                await this._eventLogger.onPub(event, options);
+                await this._eventLogger.onPublish(event, options);
             } catch (err) {
                 logger.error(`***! Log event error! - ${err.message}`);
             }
-            let nextFn = (this._lo === true || options.dest === _DEST_LOCAL_)? _consumeAsync : _publishAsync;
+            let nextFn = (this._lo === true || options.dest === _DEST_LOCAL_) ? _consumeAsync : _publishAsync;
             const original = await nextFn.call(this, event, options);
             const chain = await _triggerChainEvents.call(this, event, options);
             return { original, chain };
@@ -437,11 +459,11 @@ async function _triggerChainEvents(originEvent, options) {
             let event = {
                 code: chainEvent.code,
                 headers: originEvent.headers,
-                body: chainEvent.select? _parseChainEventBody(originEvent.body, chainEvent.select) : originEvent.body
+                body: chainEvent.select ? _parseChainEventBody(originEvent.body, chainEvent.select) : originEvent.body
             }
             logger.debug();
             return await this.pubAsync(event, options);
-        } catch(ex) {
+        } catch (ex) {
             logger.error(`***! Publish chainEvent`)
         }
     })
