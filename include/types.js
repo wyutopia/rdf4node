@@ -120,4 +120,46 @@
  * @prop { string } SignedHeaders - The signedHeaders value
  * @prop { string } Signature - The signature value
  */
+
+/**
+ * The ChainEventOptions
+ * @typedef { Object } ChainOptions
+ * @property { string } engine
+ * @property { string } channel
+ */
+
+/**
+ * The event headers
+ * @typedef { Object } EventHeaders
+ * @property { string } source - The source module
+ * @property { string } dsName - The dataSource name
+ * @property { Boolean } isObject - Whether the body is a Mongoose Document Object
+ * @property { ChainOptions } chainOptions
+ */
+
+/**
+ * The event object
+ * @typedef { Object } EventWrapper
+ * @property { string } code - The event code
+ * @property { EventHeaders } headers - The header options
+ * @property { Object } body - The event body
+ */
+
+/**
+ * The publish options
+ * @typedef { Object } PublishOptions
+ * @property { string } engine
+ * @property { string } pubKey
+ * @property { string } channel
+ * @property { string } dest
+ */
+
+/**
+ * The ChainEvent
+ * @typedef { Object } ChainEvent
+ * @property { Object } pattern - The regexp object
+ * @property { string } code - The event code
+ * @property { string[] } ignores  - The ignored event list
+ * @property { string } select - The selected value keys from original event body. eg: 'key1 key2' 
+ */
 module.exports = exports = {};

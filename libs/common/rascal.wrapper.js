@@ -257,6 +257,35 @@ class RascalClient extends CommonObject {
             });
         });
     }
+
+    /**
+     * 
+     * @param { string } pubKey 
+     * @param { Object } data 
+     * @param { Object } options 
+     * @returns 
+     */
+    async pubAsync(pubKey, data, options) {
+        logger.debug(`${this.$name}[${this.state}]: Publish - ${pubKey}, ${tools.inspect(data)}, ${tools.inspect(options)}`);
+        if (this.state !== eClientState.Conn) {
+            throw new Error(`${this.$name}[${this.state}]: Please execute initializing before use.`);
+        }
+        if (!this._pubKeys.includes(pubKey)) {
+            throw new Error(`${this.$name}[${this.state}]: Unrecognized publication - ${pubKey}!`);
+        }
+        const session = this._broker.publish(pubKey, data, options);
+        session.on('error', err => {
+            logger.error(`${this.$name}[${this.state}]: PubSession on [ERROR]! - ${err.message}`);
+        });
+        session.on('success', (msgId) => {
+            logger.debug(`${this.$name}[${this.state}]: PubSession on [SUCCESS] - ${msgId}`);
+        });
+        session.on('return', (message) => {
+            logger.debug(`${this.$name}[${this.state}]: PubSession on [RETURN] - ${tools.inspect(message)}`);
+            //TODO: 
+        });
+        return await session();
+    }
 }
 
 
