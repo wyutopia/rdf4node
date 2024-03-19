@@ -365,7 +365,7 @@ class Application extends EventEmitter {
      * @param mod
      */
     registerModule(mod, options) {
-        logger.info(`New module registry: ${mod.$name} - ${tools.inspect(options)} - ${typeof mod.disposeAsync}`);
+        logger.info(`New module registry: ${mod.$name} - ${tools.inspect(options)} - ${typeof mod.dispose}`);
         if (this._modules[mod.$name] !== undefined) {
             logger.error(`>>>>>> Conflict! ${mod.name} already exists.`)
         } else {

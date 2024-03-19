@@ -93,10 +93,6 @@ function _assembleClientConfig({vhost, connection, params}) {
  * @param {exchanges, queues, bindings, publications, subscriptions} params 
  */
 async function _initRascalClient() {
-    assert(vhost !== undefined);
-    assert(connection !== undefined);
-    assert(params !== undefined);
-    //
     logger.debug(`${this.$name}: Init client with config - ${tools.inspect(this._config)}`);
     this.state = eClientState.Init;
     //

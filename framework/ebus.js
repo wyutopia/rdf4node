@@ -30,9 +30,6 @@ class EventLogger extends EventObject {
         this._appCtx = appCtx;
         initObject.call(this, props);
         // Implenting member methods
-        this._execPersistent = (options, callback) => {
-            return callback();
-        };
         this._persistentAsync = async (options) => {
             return true;
         }
@@ -48,24 +45,24 @@ class EventLogger extends EventObject {
         // } else {
         //     logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)} - ${tools.inspect(options)}`);
         // }
-        return this._execPersistent({
+        this._persistentAsync({
             publisher: src,
             code: evt.code,
             headers: evt.headers,
             body: evt.body,
             options: options
-        }, callback);
+        }).then(() => { return callback(); }).catch(callback);
     }
     publish = this.pub;
     con(evt, consumer, callback) {
         let src = tools.safeGetJsonValue(evt, 'headers.source');
         logger.debug(`Consume event: ${evt.code} - ${src} - ${consumer}`);
-        return this._execPersistent({
+        return this._persistentAsync({
             consumer: consumer,
             code: evt.code,
             headers: evt.headers,
             body: evt.body
-        }, callback);
+        }).then(() => { return callback(); }).catch(callback);
     }
     consume = this.con;
     // Followings are async methods
@@ -491,17 +488,17 @@ async function _triggerChainEvents(originEvent, options) {
  * @param { Types.PublishOptions } options 
  */
 async function _publishAsync(event, options) {
-    let engine = options.engine || sysdefs.eEventBusEngine.RabbitMQ;
+    let engine = sysdefs.eEventBusEngine.RabbitMQ;
     let channel = options.channel || _defaultPubOptions.channel;
     let pubKey = options.pubKey || _defaultPubOptions.pubKey;
     // Find client
     let clientId = `${channel}@${engine}`;
     let client = this._clients[clientId];
     if (!client) {
-        throw new Error('Invalid client by id: ${clientId}');
+        throw new Error(`Invalid client by id: ${clientId}`);
     }
     // Set triggerOptions for publishing triggerEvents
-    event.headers.triggerOptions = { engine, channel, pubKey };
+    //event.headers.triggerOptions = { engine, channel, pubKey };
     // Invoke publishing
     return await client.pubAsync(pubKey, event, { routingKey: event.code });
 }

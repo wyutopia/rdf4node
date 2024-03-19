@@ -128,7 +128,7 @@ class DataSourceFactory extends EventModule {
                     conf: config[dsName].config
                 });
             } else {
-                logger.info(`DataSource: ${dsName} is disabled!`);
+                logger.info(`[${dsName}] is disabled!`);
             }
         });
         //
