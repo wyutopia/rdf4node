@@ -252,7 +252,7 @@ class EventBus extends EventModule {
         // Define event handler
         this.on('rmq-msg', async (evt, ackOrNack) => {
             try {
-                await _consumeAsync(evt.content);
+                await _consumeAsync.call(this, evt.content);
             } catch(ex) {
                 logger.error(`Handle ext-message error! - ${ex.message}`);
             }

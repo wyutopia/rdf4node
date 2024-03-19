@@ -80,8 +80,8 @@ class EventModule extends EventObject {
         // Save event properties
         this._eventHandlers = props.eventHandlers || {};
         this._eventOptions = Object.assign({}, _baseEventOptions, props.eventOptions || {});
-        this.on('message', (msg, ackOrNack) => {
-            setTimeout(this.onMessage.bind(this, msg, ackOrNack), 5);
+        this.on('message', (msg) => {
+            setTimeout(this.onMessage.bind(this, msg), 5);
         });
         // Register the module
         (() => {
@@ -130,18 +130,14 @@ class EventModule extends EventObject {
         return await this._ebus.pubAsync(event, options);
     }
     // The message process
-    async onMessage(msg, ackOrNack) {
-        if (typeof ackOrNack !== 'function') {
-            ackOrNack = tools.noop;
-        }
+    async onMessage(msg) {
         let handler = this._eventHandlers[msg.code];
         if (handler === undefined) {
-            return ackOrNack(false);
+            return false;
         }
         try {
             logger.debug(`>>> [${this.$name}]: Handle ${msg.code} event...`);
             const result = await handler.call(this, msg);
-            ackOrNack(result);
             return result;
         } catch (ex) {
             logger.error(`>>> [${this.$name}]: Handle ${msg.code} error! - ${ex.message}`);
