@@ -35,11 +35,26 @@ module.exports = exports = {
         engine: "native",   // Support engine: rabbitmq
         // engine: "rabbitmq",
         rabbitmq: {
-            vhost: "",
-            connection: "",
+            vhost: "<vhost-name>",
+            connection: {
+                slashes: true,
+                protocol: 'amqp',
+                hostname: '127.0.0.1',
+                user: '<user-name>',
+                password: '<user-password>',
+                port: 5672,
+                options: {
+                    heartbeat: 4,
+                    prefetch: 1
+                }
+            },
             channels: {
                 default: {
-                    
+                    exchanges: {},
+                    queues: {},
+                    bindings: {},
+                    publications: {},
+                    subscriptions: {}
                 }
             }
         }

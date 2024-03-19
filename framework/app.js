@@ -5,6 +5,7 @@
  */
 // Node libs
 const assert = require('assert');
+const async = require('async');
 const appRoot = require('app-root-path');
 const EventEmitter = require('events');
 const fs = require('fs');
@@ -277,28 +278,28 @@ class Application extends EventEmitter {
         }
         const initMethods = {};
         if (config.eventBus) {
-            initMethods['ebus'] = this.ebus.init(config.eventBus, extensions.eventBus || {});
+            initMethods['ebus'] = this.ebus.init.bind(this.ebus, config.eventBus, extensions.eventBus || {});
         }
         if (config.registry) {
-            initMethods['reg'] = this.registry.init(config.registry);
+            initMethods['reg'] = this.registry.init.bind(this.registry, config.registry);
         }
         if (config.upload) {
-            initMethods['upload'] = this.upload.init(config.upload);
+            initMethods['upload'] = this.upload.init.bind(this.upload, config.upload);
         }
         if (config.cache) {
-            initMethods['cache'] = this.cacheFactory.init(config.cache);
+            initMethods['cache'] = this.cacheFactory.init.bind(this.cacheFactory, config.cache);
         }
         if (config.dataSources) {
-            initMethods['ds'] = this.dsFactory.init(config.dataSources);
+            initMethods['ds'] = this.dsFactory.init.bind(this.dsFactory, config.dataSources);
         }
         if (config.dataModels) {
-            initMethods['model'] = this.repoFactory.init(config.dataModels);
+            initMethods['model'] = this.repoFactory.init.bind(this.repoFactory, config.dataModels);
         }
         if (config.distLocker) {
-            initMethods['dlck'] = this.distLocker.init(config.distLocker);
+            initMethods['dlck'] = this.distLocker.init.bind(this.distLocker, config.distLocker);
         }
         if (config.endpoints) {
-            initMethods['ep'] = this.epFactory.init(config.endpoints, extensions.endpoints || {});
+            initMethods['ep'] = this.epFactory.init.bind(this.epFactory, config.endpoints, extensions.endpoints || {});
         }
         //TODO: Add other framework components here ...
         const results = await async.parallel(initMethods);

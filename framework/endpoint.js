@@ -2,6 +2,7 @@
  * Created by Eric on 2023/02/15
  * Updated by Eric on 2024/01/20
  */
+const async = require('async');
 const appRoot = require('app-root-path');
 const http = require('http');
 const util = require('util');

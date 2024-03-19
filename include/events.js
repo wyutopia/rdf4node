@@ -19,8 +19,7 @@ const tools = require('../utils/tools');
 
 //
 const _DEFAULT_CHANNEL_ = 'default';
-const _DEFAULT_PUBKEY_ = 'pubEvents';
-const _DEFAULT_DEST_ = 'local';
+const _DEFAULT_PUBKEY_ = 'pubApp';
 const _DEST_LOCAL_ = 'local';
 
 const eDomainEvent = {
@@ -153,6 +152,6 @@ class EventModule extends EventObject {
 
 // Declaring module exports
 module.exports = exports = {
-    eDomainEvent, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEFAULT_DEST_, _DEST_LOCAL_,
+    eDomainEvent, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEST_LOCAL_,
     EventObject, EventModule,
 };
