@@ -93,10 +93,11 @@ function _assembleClientConfig({vhost, connection, params}) {
  * @param {exchanges, queues, bindings, publications, subscriptions} params 
  */
 async function _initRascalClient() {
-    logger.debug(`${this.$name}: Init client with config - ${tools.inspect(this._config)}`);
     this.state = eClientState.Init;
     //
-    const broker = await Broker.create(this._config);
+    const clientConfig = _assembleClientConfig(this._config);
+    logger.debug(`${this.$name}: Init client with config - ${tools.inspect(this._config)}`);
+    const broker = await Broker.create(clientConfig);
     this.state = eClientState.Conn0;
     broker.on('error', err => {
         logger.error(`${this.$name}[${this.state}]: Broker error! - ${err.message}`);
@@ -104,11 +105,13 @@ async function _initRascalClient() {
         this.$parent.emit('client-end', this.$name, err);
     });
     // Parse publish keys
-    if (this._config.publications !== undefined) {
-        this._pubKeys = Object.keys(this._config.publications);
+    let publications = tools.safeGetJsonValue(this._config, 'params.publications');
+    if (publications !== undefined) {
+        this._pubKeys = Object.keys(publications);
     }
-    if (this._config.subscriptions !== undefined) {
-        await _doSubscribe.call(this, broker, this._config.subscriptions);
+    let subscriptions = tools.safeGetJsonValue(this._config, 'params.subscriptions');
+    if (subscriptions !== undefined) {
+        await _doSubscribe.call(this, broker, subscriptions);
     }    
     this._broker = broker;
     this.state = eClientState.Conn;
@@ -121,7 +124,7 @@ async function _doSubscribe(broker, subscriptions) {
     logger.info(`${this.$name}[${this.state}]: Subscription keys= ${tools.inspect(keys)}`);
     await async.eachLimit(keys, 3, async (confKey) => {
         try {
-            const sub = broker.subscribe(confKey);
+            const sub = await broker.subscribe(confKey);
             sub.on('message', (message, content, ackOrNack) => {
                 logger.debug(`${this.$name}[${this.state}]: Content= ${tools.inspect(content)}`);
                 let evt = {
@@ -142,14 +145,14 @@ async function _doSubscribe(broker, subscriptions) {
                     logger.error(`${this.$name}[${this.state}]: Unrecognized contentType! Should be text/plain or application/json`);
                 }
                 // Processing message
-                this.$ebus.emit('message', evt, ackOrNack);
+                this.$ebus.emit('rmq-msg', evt, ackOrNack);
             }).on('error', (err) => {
                 logger.error(`${this.$name}[${this.state}]: Handle message error! - ${err.code}#${err.message}`);
             });
         } catch(err) {
             let msg = `${this.$name}[${this.state}]: Subscribe key=${confKey} error! - ${err.message}`;
             logger.error(msg);
-            return next();
+            return err.message;
         }
     })
 }
@@ -172,7 +175,7 @@ class RascalClient extends CommonObject {
         this.$parent = props.parent;
         this.$ebus = props.ebus;
         //
-        this._config = _assembleClientConfig(props.options);
+        this._config = props.options; // {vhost, connection, params}
         this._broker = null;
         this._pubKeys = [];
     }
@@ -259,7 +262,7 @@ class RascalClient extends CommonObject {
         if (!this._pubKeys.includes(pubKey)) {
             throw new Error(`${this.$name}[${this.state}]: Unrecognized publication - ${pubKey}!`);
         }
-        const session = this._broker.publish(pubKey, data, options);
+        const session = await this._broker.publish(pubKey, data, options);
         session.on('error', err => {
             logger.error(`${this.$name}[${this.state}]: PubSession on [ERROR]! - ${err.message}`);
         });
@@ -270,7 +273,6 @@ class RascalClient extends CommonObject {
             logger.debug(`${this.$name}[${this.state}]: PubSession on [RETURN] - ${tools.inspect(message)}`);
             //TODO: 
         });
-        return await session();
     }
 }
 

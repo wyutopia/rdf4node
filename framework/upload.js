@@ -96,7 +96,7 @@ class UploadHelper extends CommonObject {
             logger.error('Already initialized.');
             return 0;
         }
-        logger.info(`>>> Init with with config: ${tools.inspect(config)}`);
+        logger.info(`>>> Init with config: ${tools.inspect(config)}`);
         _initSelf.call(this, config);
         this._state = sysdefs.eModuleState.READY;
         return 'ok';

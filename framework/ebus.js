@@ -250,8 +250,15 @@ class EventBus extends EventModule {
         // For external MQs, identified by channel
         this._clients = {};
         // Define event handler
-        this.on('message', async (evt, ackOrNack) => {
-            return await _consumeAsync(evt, ackOrNack);
+        this.on('rmq-msg', async (evt, ackOrNack) => {
+            try {
+                await _consumeAsync(evt.content);
+            } catch(ex) {
+                logger.error(`Handle ext-message error! - ${ex.message}`);
+            }
+            if (typeof ackOrNack === 'function') {
+                ackOrNack(true);
+            }
         });
         this.on('client-end', clientId => {
             logger.error(`Client#${clientId} end.`);
@@ -268,7 +275,7 @@ class EventBus extends EventModule {
         this._eventLogger = new fn(this._appCtx, {
             $name: sysdefs.eFrameworkModules.EVTLOGGER
         });
-        if (config.engine === sysdefs.eEventBusEngine.Native) {
+        if (this._lo === true) { //local loop
             this.state = sysdefs.eModuleState.ACTIVE;
             return true;
         }
@@ -416,9 +423,8 @@ class EventBus extends EventModule {
 /**
  * 
  * @param { Types.EventWrapper } event 
- * @param { Types.PublishOptions } options 
  */
-async function _consumeAsync(event, options) {
+async function _consumeAsync(event) {
     let subscribers = this._subscribers[event.code] || [];
     if (!Array.isArray(subscribers) || subscribers.length === 0) {
         throw new Error('No subscribers!');
