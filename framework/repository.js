@@ -824,13 +824,14 @@ class RepositoryFactory extends EventModule {
         this._repos = {};
         this._state = sysdefs.eModuleState.INIT;
     }
-    init(config) {
+    async init(config) {
         if (this._state !== sysdefs.eModuleState.INIT) {
             logger.error(`!!! Already initialized.`);
-            return 0;
+            return 'ignored';
         }
         _loadDataModels.call(this, config);
         this._state = sysdefs.eModuleState.ACTIVE;
+        return 'ok';
     }
     // Implementing methods
     /**

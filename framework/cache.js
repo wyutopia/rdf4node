@@ -239,12 +239,13 @@ class CacheFactory extends EventModule {
         this._caches = {};
         this._state = sysdefs.eModuleState.INIT;
     }
-    init(config) {
+    async init(config) {
         Object.keys(_typeCacheProps).forEach(key => {
             const propKey = '_' + key;
             this[propKey] = config[key] !== undefined ? config[key] : _typeCacheProps[key];
         });
         this._state = sysdefs.eModuleState.ACTIVE;
+        return 'ok';
     }
     /**
      * 

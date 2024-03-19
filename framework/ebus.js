@@ -253,14 +253,14 @@ class EventBus extends EventModule {
         // For external MQs, identified by channel
         this._clients = {};
         // Define event handler
-        this.on('message', (evt, callback) => {
-            return _consumeEvent.call(this, evt, callback);
+        this.on('message', async (evt, ackOrNack) => {
+            return await _consumeAsync(evt, ackOrNack);
         });
         this.on('client-end', clientId => {
             logger.error(`Client#${clientId} end.`);
         });
     }
-    init(config, options) {
+    async init(config, options) {
         if (this.state !== sysdefs.eModuleState.INIT) {
             logger.warn(`${this.$name}: Already initialized!`);
             return false;
@@ -271,7 +271,7 @@ class EventBus extends EventModule {
         this._eventLogger = new fn(this._appCtx, {
             $name: sysdefs.eFrameworkModules.EVTLOGGER
         });
-        if (config.engine !== sysdefs.eEventBusEngine.RabbitMQ) {
+        if (config.engine === sysdefs.eEventBusEngine.Native) {
             this.state = sysdefs.eModuleState.ACTIVE;
             return true;
         }
@@ -279,7 +279,7 @@ class EventBus extends EventModule {
         try {
             const { RascalFactory } = require('../libs/common/rascal.wrapper');
             this._rascalFactory = new RascalFactory(this._appCtx, {
-                $name: _MODULE_NAME,
+                $name: sysdefs.eFrameworkModules.RascalFactory,
                 $type: sysdefs.eModuleType.CM,
                 mandatory: true,
                 state: sysdefs.eModuleState.ACTIVE
@@ -289,14 +289,20 @@ class EventBus extends EventModule {
             //
             let vhost = mqConf.vhost;
             let connection = mqConf.connection;
-            Object.keys(mqConf.channels).forEach(chn => {
+            Object.keys(mqConf.channels).forEach(async chn => {
                 let clientId = `${chn}@${config.engine}`;
                 let clientOptions = {
                     vhost: vhost,
                     connection: connection,
                     params: mqConf.channels[chn]
                 }
-                this._clients[clientId] = this._rascalFactory.getClient(clientId, clientOptions);
+                try {
+                    let client = this._rascalFactory.getClient(clientId, clientOptions);
+                    await client.init();
+                    this._clients[clientId] = client;
+                } catch(err) {
+                    logger.error(`[${this.$name}]: Create and init rascalClient#${clientId} error! - ${err.message}`);
+                }
             });
             logger.info(`${this.$name}: rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
             this.state = sysdefs.eModuleState.ACTIVE;
@@ -353,32 +359,6 @@ class EventBus extends EventModule {
     /**
      * 
      * @param { Types.EventWrapper } event 
-     * @param { Types.PublishOptions } options 
-     * @param {Error, Result} callback 
-     * @returns 
-     */
-    publish(event, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = _defaultPubOptions;
-        }
-        logger.debug(`Publish event - ${tools.inspect(event)} - ${tools.inspect(options)}`)
-        //
-        if (this._disabledEvents.indexOf(event.code) !== -1) {
-            logger.debug(`Ignore disabled event: ${event.code}`);
-            return callback();
-        }
-        return this._eventLogger.pub(event, options, () => {
-            //
-            if (this._lo === true || options.engine === sysdefs.eEventBusEngine.Native) {
-                return process.nextTick(_consumeEvent.bind(this, event, options, callback));
-            }
-            return _extMqPub.call(this, event, options, callback);
-        });
-    }
-    /**
-     * 
-     * @param { Types.EventWrapper } event 
      * @param { Types.PublishOptions? } options 
      */
     async pubAsync(event, options) {
@@ -404,6 +384,35 @@ class EventBus extends EventModule {
             logger.error(`***! Publish error: ${tools.inspect(event)} - ${ex.message}`);
             return false;
         }
+    }
+    /**
+     * 
+     * @param { Types.EventWrapper } event 
+     * @param { Types.PublishOptions } options 
+     * @param {Error, Result} callback 
+     * @returns 
+     */
+    publish(event, options, callback) {
+        // if (typeof options === 'function') {
+        //     callback = options;
+        //     options = _defaultPubOptions;
+        // }
+        // logger.debug(`Publish event - ${tools.inspect(event)} - ${tools.inspect(options)}`)
+        // //
+        // if (this._disabledEvents.indexOf(event.code) !== -1) {
+        //     logger.debug(`Ignore disabled event: ${event.code}`);
+        //     return callback();
+        // }
+        // return this._eventLogger.pub(event, options, () => {
+        //     //
+        //     if (this._lo === true || options.engine === sysdefs.eEventBusEngine.Native) {
+        //         return process.nextTick(_consumeEvent.bind(this, event, options, callback));
+        //     }
+        //     return _extMqPub.call(this, event, options, callback);
+        // });
+        this.pubAsync(event, options).then(() => {
+            return callback();
+        }).catch(callback);
     }
 }
 
@@ -465,7 +474,7 @@ async function _triggerChainEvents(originEvent, options) {
             let event = {
                 code: chainEvent.code,
                 headers: originEvent.headers,
-                body: chainEvent.select? _buildChainEventBody(originEvent.body, chainEvent.select) : originEvent.body
+                body: chainEvent.select ? _buildChainEventBody(originEvent.body, chainEvent.select) : originEvent.body
             }
             logger.debug();
             return await this.pubAsync(event, options);

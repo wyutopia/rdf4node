@@ -118,7 +118,7 @@ class DataSourceFactory extends EventModule {
             return ackOrNack(true);
         }
     }
-    init(config) {
+    async init(config) {
         Object.keys(config).forEach(dsName => {
             if (config[dsName].enabled === true) {
                 this._ds[dsName] = new DataSource({
@@ -140,6 +140,7 @@ class DataSourceFactory extends EventModule {
                 conf: {}
             })
         }
+        return 'ok';
     }
 }
 

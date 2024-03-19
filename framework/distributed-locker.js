@@ -88,8 +88,9 @@ class DistributedEntityLocker extends CommonObject {
         this._persistant = props.persistant !== undefined? props.persistant : false;
         this._locks = {};
     }
-    init (config) {
+    async init (config) {
         //TODO: initializing ...
+        return 'ok';
     }
     // Implement methods
     /**

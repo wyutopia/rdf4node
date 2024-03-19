@@ -217,17 +217,22 @@ class EndpointFactory extends EventModule {
      * @param { Object? } options.rateLimit - The rateLimit options
      * @param { string? } options.routePath - The route root path
      */
-    init(config) {
+    async init(config) {
         const arr = tools.isTypeOfArray(config) ? config : [config];
-        arr.forEach(item => {
-            const ep = new HttpEndpoint(this._appCtx, { 
-                $name: `ep-${item.name}`,
-                managed: true
-            });
-            this._endpoints[item.name] = ep;
-            //
-            ep.init(item.options);
+        await async.each(arr, async item => {
+            try {
+                const ep = new HttpEndpoint(this._appCtx, { 
+                    $name: `ep-${item.name}`,
+                    managed: true
+                });
+                this._endpoints[item.name] = ep;
+                //
+                ep.init(item.options);
+            } catch(ex) {
+                logger.error(`[${this.$name}]: Create and init endpoint#${item.name} error! - ${ex.message}`);
+            }
         })
+        return 'ok';
     }
     get(name) {
         const ep = this._endpoints[name];

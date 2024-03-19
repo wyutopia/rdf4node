@@ -17,8 +17,8 @@ class Registry extends CommonObject {
         this.ebus = appCtx.ebus;
         this._modules = {};
     }
-    init(options) {
-
+    async init(options) {
+        return 'ok'
     }
     //
     register(moduleRef) {
