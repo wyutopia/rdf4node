@@ -243,7 +243,7 @@ function _appendCache(data, options, callback) {
         options = { mandatory: true };
     }
     if (this.allowCache === false || !data || !_cacheValueUpdated(this.cacheSpec.valueKeys, options)) {
-        logger.debug(`Ignore cache updating dur no cacheValue changed!`);
+        //logger.debug(`Ignore cache updating dur no cacheValue changed!`);
         return callback(null, data);
     }
     logger.debug(`${this.$name}: Update cache with data ${tools.inspect(data)} ...`);

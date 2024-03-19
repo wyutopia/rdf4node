@@ -185,7 +185,7 @@ function _pubTriggerEvents(evt, options, callback) {
         let event = {
             code: chainEvent.code,
             headers: evt.headers,
-            body: chainEvent.select ? _parseChainEvents(evt.body, chainEvent.select) : evt.body
+            body: chainEvent.select ? _buildChainEventBody(evt.body, chainEvent.select) : evt.body
         }
         logger.debug(`Chained event: ${chainEvent.code} triggered for ${evt.code}`);
         return this.publish(event, evt.headers.triggerOptions || options, next);
@@ -434,7 +434,13 @@ async function _consumeAsync(event, options) {
     return results;
 }
 
-function _parseChainEventBody(originBody, select) {
+/**
+ * 
+ * @param { Object } originBody 
+ * @param { string } select - The key list string. ex: 'key1 key2'
+ * @returns 
+ */
+function _buildChainEventBody(originBody, select) {
     let body = {};
     select.split(' ').forEach(key => {
         if (originBody[key] !== undefined) {
@@ -459,7 +465,7 @@ async function _triggerChainEvents(originEvent, options) {
             let event = {
                 code: chainEvent.code,
                 headers: originEvent.headers,
-                body: chainEvent.select ? _parseChainEventBody(originEvent.body, chainEvent.select) : originEvent.body
+                body: chainEvent.select? _buildChainEventBody(originEvent.body, chainEvent.select) : originEvent.body
             }
             logger.debug();
             return await this.pubAsync(event, options);
