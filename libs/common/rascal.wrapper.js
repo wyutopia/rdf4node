@@ -20,7 +20,7 @@ const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
 
 // The rascal client factory 
-class RascalManager extends EventModule {
+class RascalFactory extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props);
         // The member variables
@@ -277,5 +277,5 @@ class RascalClient extends CommonObject {
 
 // Define module
 module.exports = exports = {
-    RascalManager
+    RascalFactory
 };
