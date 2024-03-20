@@ -243,7 +243,7 @@ function _appendCache(data, options, callback) {
         options = { mandatory: true };
     }
     if (this.allowCache === false || !data || !_cacheValueUpdated(this.cacheSpec.valueKeys, options)) {
-        logger.debug(`Ignore cache updating dur no cacheValue changed!`);
+        //logger.debug(`Ignore cache updating dur no cacheValue changed!`);
         return callback(null, data);
     }
     logger.debug(`${this.$name}: Update cache with data ${tools.inspect(data)} ...`);
@@ -824,13 +824,14 @@ class RepositoryFactory extends EventModule {
         this._repos = {};
         this._state = sysdefs.eModuleState.INIT;
     }
-    init(config) {
+    async init(config) {
         if (this._state !== sysdefs.eModuleState.INIT) {
             logger.error(`!!! Already initialized.`);
-            return 0;
+            return 'ignored';
         }
         _loadDataModels.call(this, config);
         this._state = sysdefs.eModuleState.ACTIVE;
+        return 'ok';
     }
     // Implementing methods
     /**

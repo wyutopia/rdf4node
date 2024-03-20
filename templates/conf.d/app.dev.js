@@ -32,7 +32,32 @@ module.exports = exports = {
         persistent: true,
         disabledEvents: [],
         triggerEvents: [],
-        engine: "native",
+        engine: "native",   // Support engine: rabbitmq
+        // engine: "rabbitmq",
+        rabbitmq: {
+            vhost: "<vhost-name>",
+            connection: {
+                slashes: true,
+                protocol: 'amqp',
+                hostname: '127.0.0.1',
+                user: '<user-name>',
+                password: '<user-password>',
+                port: 5672,
+                options: {
+                    heartbeat: 4,
+                    prefetch: 1
+                }
+            },
+            channels: {
+                default: {
+                    exchanges: {},
+                    queues: {},
+                    bindings: {},
+                    publications: {},
+                    subscriptions: {}
+                }
+            }
+        }
     },
     dataSources: {
         default: {
@@ -62,6 +87,7 @@ module.exports = exports = {
             //viewPath: 'views',
             //viewEngine: 'ejs',
             //routePath: 'routes',
+            //trustProxy: <NumberOfProxies>
             payloadLimit: '5mb',
             enableRateLimit: false,
             rateLimit: {

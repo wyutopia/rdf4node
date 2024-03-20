@@ -5,6 +5,7 @@
  */
 // Node libs
 const assert = require('assert');
+const async = require('async');
 const appRoot = require('app-root-path');
 const EventEmitter = require('events');
 const fs = require('fs');
@@ -275,43 +276,34 @@ class Application extends EventEmitter {
                 logger.error(`!!! Load and init redisManager error: ${ex.message}`);
             }
         }
-        if (config.rascal) {
-            try {
-                const { RascalManager } = require('../libs/common/rascal.wrapper');
-                this.rascalManager = new RascalManager(this, {
-                    $name: sysdefs.eFrameworkModules.RASCAL_CM,
-                    $type: sysdefs.eModuleType.CM
-                })
-                this.rascalManager.init(config.rascal);
-            } catch (ex) {
-                logger.error(`!!! Load and init rascalManager error: ${ex.message}`);
-            }
-        }
+        const initMethods = {};
         if (config.eventBus) {
-            this.ebus.init(config.eventBus, extensions.eventBus || {});
+            initMethods['ebus'] = this.ebus.init.bind(this.ebus, config.eventBus, extensions.eventBus || {});
         }
         if (config.registry) {
-            this.registry.init(config.registry);
+            initMethods['reg'] = this.registry.init.bind(this.registry, config.registry);
         }
         if (config.upload) {
-            this.upload.init(config.upload);
+            initMethods['upload'] = this.upload.init.bind(this.upload, config.upload);
         }
         if (config.cache) {
-            this.cacheFactory.init(config.cache);
+            initMethods['cache'] = this.cacheFactory.init.bind(this.cacheFactory, config.cache);
         }
         if (config.dataSources) {
-            this.dsFactory.init(config.dataSources);
+            initMethods['ds'] = this.dsFactory.init.bind(this.dsFactory, config.dataSources);
         }
         if (config.dataModels) {
-            this.repoFactory.init(config.dataModels);
+            initMethods['model'] = this.repoFactory.init.bind(this.repoFactory, config.dataModels);
         }
         if (config.distLocker) {
-            this.distLocker.init(config.distLocker);
+            initMethods['dlck'] = this.distLocker.init.bind(this.distLocker, config.distLocker);
         }
         if (config.endpoints) {
-            this.epFactory.init(config.endpoints, extensions.endpoints || {});
+            initMethods['ep'] = this.epFactory.init.bind(this.epFactory, config.endpoints, extensions.endpoints || {});
         }
         //TODO: Add other framework components here ...
+        const results = await async.parallel(initMethods);
+        logger.debug(`>>> The init results: ${tools.inspect(results)}`);
         this._state = sysdefs.eModuleState.READY;
         return 'ok';
     }
@@ -373,7 +365,7 @@ class Application extends EventEmitter {
      * @param mod
      */
     registerModule(mod, options) {
-        logger.info(`New module registry: ${mod.$name} - ${tools.inspect(options)} - ${typeof mod.disposeAsync}`);
+        logger.info(`New module registry: ${mod.$name} - ${tools.inspect(options)} - ${typeof mod.dispose}`);
         if (this._modules[mod.$name] !== undefined) {
             logger.error(`>>>>>> Conflict! ${mod.name} already exists.`)
         } else {

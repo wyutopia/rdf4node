@@ -91,15 +91,15 @@ class UploadHelper extends CommonObject {
         this._state = sysdefs.eModuleState.INIT;
     }
     // Implementing methods
-    init(config) {
+    async init(config) {
         if (this._state !== sysdefs.eModuleState.INIT) {
             logger.error('Already initialized.');
             return 0;
         }
-        logger.info(`>>> Init with with config: ${tools.inspect(config)}`);
+        logger.info(`>>> Init with config: ${tools.inspect(config)}`);
         _initSelf.call(this, config);
         this._state = sysdefs.eModuleState.READY;
-        return 1;
+        return 'ok';
     }
     getUpload (absDir, options) {
         let destDir = absDir || this._hostPath;
