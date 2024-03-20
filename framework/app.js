@@ -208,7 +208,7 @@ class Application extends EventEmitter {
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
         this.cacheFactory = new CacheFactory(this, { $name: sysdefs.eFrameworkModules.CACHE });
         this.taskFactory = new TaskFactory(this, { $name: sysdefs.eFrameworkModules.XTASK });
-        this.distLocker = new DistributedEntityLocker({ $name: sysdefs.eFrameworkModules.DLOCKER });
+        this.distLocker = new DistributedEntityLocker(this, { $name: sysdefs.eFrameworkModules.DLOCKER });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.epFactory = new EndpointFactory(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
     }
@@ -296,7 +296,7 @@ class Application extends EventEmitter {
             initMethods['model'] = this.repoFactory.init.bind(this.repoFactory, config.dataModels);
         }
         if (config.distLocker) {
-            initMethods['dlck'] = this.distLocker.init.bind(this.distLocker, config.distLocker);
+            initMethods['dlck'] = this.distLocker.init.bind(this.distLocker, config.distLocker || {});
         }
         if (config.endpoints) {
             initMethods['ep'] = this.epFactory.init.bind(this.epFactory, config.endpoints, extensions.endpoints || {});

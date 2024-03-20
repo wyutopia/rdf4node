@@ -82,15 +82,37 @@ function _ttlRemoveLock (key) {
 
 // The class
 class DistributedEntityLocker extends CommonObject {
-    constructor(props) {
+    constructor(appCtx, props) {
         super(props);
+        //
+        this._appCtx = appCtx;
+        this._state = sysdefs.eModuleState.INIT;
+        this._LastError = null;
         //
         this._persistant = props.persistant !== undefined? props.persistant : false;
         this._locks = {};
+        this._redisClient = null;
     }
     async init (config) {
-        //TODO: initializing ...
-        return 'ok';
+        if (this._state !== sysdefs.eModuleState.INIT) {
+            logger.warn(`[${this.$name}]: already initialized.`)
+            return true;
+        }
+        this._engine = config.engine || sysdefs.eCacheEngine.Native;
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            this._state = sysdefs.eModuleState.ACTIVE;
+            return true;
+        }
+        // Init redis client
+        try {
+            this._redisClient = this._appCtx.redisManager.createClient(`def@${this.$name}`, 'default', config.options);
+            this._state = sysdefs.eModuleState.ACTIVE;
+            return true;
+        } catch (ex) {
+            logger.error(`[${this.$name}]: Create redis-client error! - ${ex.message}`);
+            this.lastError = ex.message;
+            return false;
+        }
     }
     // Implement methods
     /**
@@ -104,15 +126,35 @@ class DistributedEntityLocker extends CommonObject {
             callback = options;
             options = {};
         }
-        let key = _packKey(entity);
-        if (this._locks[key] !== undefined) {
+        if (this._state !== sysdefs.eModuleState.ACTIVE) {
             return callback({
-                code: eRetCodes.CONFLICT,
-                message: `Specified entity has been locked by ${this._locks[key].caller}`
+                code: eRetCodes.SERVICE_UNAVAILABLE,
+                message: this.lastError
             })
         }
-        this._locks[key] = _createLock.call(this, options);
-        return callback(null, key);
+        let key = _packKey(entity);
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            if (this._locks[key] !== undefined) {
+                this.lastError = `Specified entity has been locked by ${this._locks[key].caller}`;
+                return callback({
+                    code: eRetCodes.CONFLICT,
+                    message: this.lastError
+                })
+            }
+            this._locks[key] = _createLock.call(this, options);
+            return callback(null, key);
+        }
+        this._redisClient.execAsync('set', key, 1, 'EX', 5, 'NX')
+            .then(r => { 
+                if (r === 1) {
+                    return callback(null, true);
+                }
+                return callback({
+                    code: eRetCodes.CONFLICT,
+                    message: `locked!`
+                }); 
+            })
+            .catch(err => {return callback(err); })
     }
     lockOneAsync = util.promisify(this.lockOne)
     /**
