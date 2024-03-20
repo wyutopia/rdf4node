@@ -133,7 +133,7 @@
  * @typedef { Object } EventHeaders
  * @property { string } source - The source module
  * @property { string } dsName - The dataSource name
- * @property { Boolean } isObject - Whether the body is a Mongoose Document Object
+ * @property { Boolean? } isDoc - Whether the body is a Mongoose Document Object, default: false
  * @property { ChainOptions } chainOptions
  */
 
