@@ -636,7 +636,7 @@ class Repository extends EventObject {
                     message: msg
                 });
             }
-            logger.debug(`Aggregate ${this.$name} results: ${tools.inspect(results)}`);
+            //logger.debug(`Aggregate ${this.$name} results: ${tools.inspect(results)}`);
             return callback(null, results);
         });
     }

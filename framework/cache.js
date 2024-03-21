@@ -1,8 +1,9 @@
 /**
  * Created by Eric on 2023/02/25
  */
-const path = require('path');
 const appRoot = require('app-root-path');
+const path = require('path');
+const util = require('util');
 //
 const Types = require('../include/types');
 const sysdefs = require('../include/sysdefs')
@@ -161,6 +162,13 @@ class Cache extends EventModule {
         }
         return this._client.execute('SET', [key, this._json ? JSON.stringify(val) : val], callback);
     }
+    setAsync = util.promisify(this.set);
+    /**
+     * 
+     * @param { string } key - key
+     * @param {*} callback 
+     * @returns 
+     */
     get(key, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
             return _getvalue.call(this, key, callback);
@@ -178,6 +186,13 @@ class Cache extends EventModule {
             return callback(null, this._json ? JSON.parse(result) : result);
         });
     }
+    getAsync = util.promisify(this.get)
+    /**
+     * 
+     * @param { string } key 
+     * @param {*} callback 
+     * @returns 
+     */
     unset(key, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
             return _unsetValue.call(this, key, callback);
@@ -190,6 +205,7 @@ class Cache extends EventModule {
         }
         return this._client.execute('DEL', [key], callback);
     }
+    unsetAsync = util.promisify(this.unset)
     /**
      * Set multiply KVs
      * @param { Object } data - The JSON value
@@ -211,20 +227,35 @@ class Cache extends EventModule {
                 message: 'Redis server not connected.'
             });
         }
+        // Pack redis command args
         let args = [];
         Object.keys(data).forEach(key => {
             args.push(key);
             args.push(data[key].toString());
         });
-        args.push(callback);
-        return this._client.invokeApply('mset', args);
+        return this._client.execute('MSET', args, callback);
     };
+    msetAsync = util.promisify(this.mset);
+    /**
+     * 
+     * @param { string[] } keys 
+     * @param {*} callback 
+     * @returns 
+     */
     mget(keys, callback) {
-        return callback({
-            code: eRetCodes.REDIS_METHOD_NOTEXISTS,
-            message: 'Method not available!'
-        });
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return _getMultiValues.call(this, keys, callback);
+        }
+        // Retrieve from redis
+        if (!this._client) {
+            return callback({
+                code: eRetCodes.REDIS_ERR,
+                message: 'Redis server not connected!'
+            })
+        }
+        return this._client.execute('MGET', keys, callback);
     }
+    mgetAsync = util.promisify(this.mget)
 }
 
 const _typeCacheProps = {
