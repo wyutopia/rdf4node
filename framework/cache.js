@@ -159,7 +159,7 @@ class Cache extends EventModule {
                 message: 'Redis server not connected.'
             });
         }
-        return this._client.execute('set', key, this._json ? JSON.stringify(val) : val, callback);
+        return this._client.execute('SET', [key, this._json ? JSON.stringify(val) : val], callback);
     }
     get(key, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
@@ -171,7 +171,7 @@ class Cache extends EventModule {
                 message: 'Redis server not connected.'
             });
         }
-        this._client.execute('get', key, (err, result) => {
+        this._client.execute('GET', [key], (err, result) => {
             if (err) {
                 return callback(err);
             }
@@ -188,7 +188,7 @@ class Cache extends EventModule {
                 message: 'Redis server not connected.'
             });
         }
-        return this._client.execute('unset', key, callback);
+        return this._client.execute('DEL', [key], callback);
     }
     /**
      * Set multiply KVs

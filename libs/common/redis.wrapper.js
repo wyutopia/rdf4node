@@ -157,8 +157,14 @@ class RedisClient extends EventObject {
     getClient () {
         return this._client;
     }
-    execute (method, ...args) {
-        let callback = args[args.length - 1];
+    /**
+     * 
+     * @param { string } method 
+     * @param { string[] } args 
+     * @param { function } callback 
+     * @returns 
+     */
+    execute (method, args, callback) {
         if (!this.isConnected()) {
             let msg = `${this.$name}[${this.state}]: client disconnected.`;
             logger.error(msg);
@@ -167,8 +173,8 @@ class RedisClient extends EventObject {
                 message: msg
             });
         }
-        let func = this._client[method];
-        if (typeof func !== 'function') {
+        let fn = this._client[method];
+        if (typeof fn !== 'function') {
             let msg = `${this.$name}[${this.state}]: Invalid method - ${method}`;
             logger.error(msg);
             return callback({
@@ -176,28 +182,9 @@ class RedisClient extends EventObject {
                 message: msg
             });
         }
-        return this._client[method](...args);
+        return fn.apply(this._client, args);
     }
-    async execAsync(method, ...args) {
-        if (!this.isConnected()) {
-            this.lastError = `${this.$name}[${this.state}]: client disconnected.`;
-            logger.error(this.lastError);
-            return Promise.reject({
-                code: eRetCodes.REDIS_CONN_ERR,
-                message: this.lastError
-            });
-        }
-        let func = this._client[method];
-        if (typeof func !== 'function') {
-            this.lastError = `${this.$name}[${this.state}]: Invalid method - ${method}`;
-            logger.error(this.lastError);
-            return Promise.reject({
-                code: eRetCodes.REDIS_METHOD_NOTEXISTS,
-                message: this.lastError
-            });
-        }
-        return await this._client[method](...args);
-    }
+    execAsync = util.promisify(this.execute)
     async dispose () {
         if (this.isConnected()) {
             logger.info(`${this.$name}[${this.state}]: disconnecting...`);

@@ -80,16 +80,39 @@ function _ttlRemoveLock (key) {
     delete this._locks[key];
 }
 
+function _lockOneImpl(key, options, callback) {
+    if (this._engine === sysdefs.eCacheEngine.Native) {
+        if (this._locks[key] !== undefined) {
+            return callback({
+                code: eRetCodes.CONFLICT,
+                message: `Entity#[${key}] ahs been locked by ${this._locks[key].caller || ''}`
+            })
+        }
+        this._locks[key] = _createLock.call(this, options);
+        return callback(null, key);
+    }
+    return this._redisClient.execute('SET', [key, '1', 'EX', this._ttl, 'NX'], (err, result) => {
+        if (err || result !== 'OK') {
+            return callback({
+                code: eRetCodes.CONFLICT,
+                messsage: err? err.message : `Entity#[${key}] has been locked or client error! `
+            })
+        }
+        return callback(null, key);
+    })
+}
+
 // The class
 class DistributedEntityLocker extends CommonObject {
     constructor(appCtx, props) {
         super(props);
         //
+        this.LastError = null;
         this._appCtx = appCtx;
         this._state = sysdefs.eModuleState.INIT;
-        this._LastError = null;
         //
         this._persistant = props.persistant !== undefined? props.persistant : false;
+        this._ttl = props.ttl || 10;
         this._locks = {};
         this._redisClient = null;
     }
@@ -133,28 +156,15 @@ class DistributedEntityLocker extends CommonObject {
             })
         }
         let key = _packKey(entity);
-        if (this._engine === sysdefs.eCacheEngine.Native) {
-            if (this._locks[key] !== undefined) {
-                this.lastError = `Specified entity has been locked by ${this._locks[key].caller}`;
-                return callback({
-                    code: eRetCodes.CONFLICT,
-                    message: this.lastError
-                })
+        _lockOneImpl.call(this, key, options, err => {
+            if (err) {
+                logger.debug(`*** Lock - ${key} acquire error. - ${err.message}]`);
+                this.lastError = err.message;
+                return callback(err);
             }
-            this._locks[key] = _createLock.call(this, options);
+            logger.debug(`>>> Lock - ${key} acquired.`);
             return callback(null, key);
-        }
-        this._redisClient.execAsync('set', key, 1, 'EX', 5, 'NX')
-            .then(r => { 
-                if (r === 1) {
-                    return callback(null, true);
-                }
-                return callback({
-                    code: eRetCodes.CONFLICT,
-                    message: `locked!`
-                }); 
-            })
-            .catch(err => {return callback(err); })
+        })
     }
     lockOneAsync = util.promisify(this.lockOne)
     /**
@@ -162,12 +172,24 @@ class DistributedEntityLocker extends CommonObject {
      * @param { string } key - The key of a lock
      */
     unlockOne (key, callback) {
-        let locker = this._locks[key];
-        if (locker.hTimeout) {
-            clearTimeout(locker.hTimeout);
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            let lck = this._locks[key];
+            if (lck.hTimeout) {
+                clearTimeout(lck.hTimeout);
+            }
+            delete this._locks[key];
+            logger.debug(`>>> Lock - ${key} released.`);
+            return callback(null, key);
         }
-        delete this._locks[key];
-        return callback(null, key);
+        return this._redisClient.execute('DEL', [key], (err, result) => {
+            if (err || result !== 'OK') {
+                return callback({
+                    code: eRetCodes.CONFLICT,
+                    messsage: err? err.message : `Entity#[${key}] has been locked or client error! `
+                })
+            }
+            return callback(null, key);
+        })
     }
     unlockOneAsync = util.promisify(this.unlockOne)
 
