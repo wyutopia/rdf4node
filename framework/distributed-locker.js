@@ -17,7 +17,7 @@ const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 const _DEFAULT_TTL = sysdefs.eInterval._5_MIN;
-
+const _OP_SUCCESS = 'OK';
 /**
  * @typedef { Object } LockEntity
  * @prop { ObjectId } id - The entity id
@@ -85,21 +85,75 @@ function _lockOneImpl(key, options, callback) {
         if (this._locks[key] !== undefined) {
             return callback({
                 code: eRetCodes.CONFLICT,
-                message: `Entity#[${key}] ahs been locked by ${this._locks[key].caller || ''}`
+                message: `Entity#[${key}] has been locked!`
             })
         }
         this._locks[key] = _createLock.call(this, options);
         return callback(null, key);
     }
-    return this._redisClient.execute('SET', [key, '1', 'EX', this._ttl, 'NX'], (err, result) => {
-        if (err || result !== 'OK') {
+    return this._redisClient.execute('SET', [key, '1', 'EX', options.ttl || this._ttl, 'NX'], (err, result) => {
+        if (err || result !== _OP_SUCCESS) {
             return callback({
                 code: eRetCodes.CONFLICT,
-                messsage: err? err.message : `Entity#[${key}] has been locked or client error! `
+                message: err? err.message : `Entity#[${key}] has been locked or redis error! `
             })
         }
         return callback(null, key);
     })
+}
+
+function _lockManyImpl(entities, options, callback) {
+    if (this._engine === sysdefs.eCacheEngine.Native) {
+        // Check all entites
+        let locks = {};
+        let err = null;
+        for (let i = 0; i < entities.length && !err; i++) {
+            let key = _packKey(entities[i]);
+            if (this._locks[key] !== undefined) {
+                err = {
+                    code: eRetCodes.CONFLICT,
+                    message: `One of the specified entity: ${key} has beed locked.`
+                }
+                break;
+            } else {
+                locks[key] = _createLock.call(this, options);
+            }
+        }
+        if (err) {
+            // Stop timeout callbacks and delete them
+            Object.keys(locks).forEach(lck => {
+                if (lck.hTimeout) {
+                    clearTimeout(lck.hTimeout);
+                }
+            })
+            delete locks;
+            return callback(err);
+        }
+        let keys = Object.keys(locks);
+        keys.forEach(key => {
+            this._locks[key] = locks[key];
+        });
+        return callback(null, keys);
+    }
+    // Pack multiple KVs
+    const keys = [];
+    const args = [];
+    const ts = new Date().valueOf();
+    entities.forEach(ett => {
+        let key = _packKey(ett);
+        keys.push(key);
+        args.push(key, ts);
+    })
+    // Perform mset command
+    this._redisClient.execute('MSET', args, (err, result) => {
+        if (err || result !== _OP_SUCCESS) {
+            return callback( {
+                code: eRetCodes.CONFLICT,
+                message: err? err.message : 'One of the entities has been locked!'
+            })
+        }
+        return callback(null, keys);
+    });
 }
 
 // The class
@@ -158,11 +212,11 @@ class DistributedEntityLocker extends CommonObject {
         let key = _packKey(entity);
         _lockOneImpl.call(this, key, options, err => {
             if (err) {
-                logger.debug(`*** Lock - ${key} acquire error. - ${err.message}]`);
+                logger.error(`*** lock[${key}] acquire error. - ${err.message}]`);
                 this.lastError = err.message;
                 return callback(err);
             }
-            logger.debug(`>>> Lock - ${key} acquired.`);
+            logger.debug(`>>> lock[${key}] acquired.`);
             return callback(null, key);
         })
     }
@@ -174,19 +228,24 @@ class DistributedEntityLocker extends CommonObject {
     unlockOne (key, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
             let lck = this._locks[key];
-            if (lck.hTimeout) {
-                clearTimeout(lck.hTimeout);
+            if (lck) {
+                if (lck.hTimeout) {
+                    clearTimeout(lck.hTimeout);
+                }
+                delete this._locks[key];
+                logger.debug(`>>> lock[${key}] released.`);
+            } else {
+                logger.warn(`*** lock[${key}] not found.`);
             }
-            delete this._locks[key];
-            logger.debug(`>>> Lock - ${key} released.`);
             return callback(null, key);
         }
         return this._redisClient.execute('DEL', [key], (err, result) => {
-            if (err || result !== 'OK') {
-                return callback({
-                    code: eRetCodes.CONFLICT,
-                    messsage: err? err.message : `Entity#[${key}] has been locked or client error! `
-                })
+            if (err) {
+                logger.error(`*** Release lock[${key}] error! - ${err.message}`);
+            } else if (result > 0) {
+                logger.debug(`>>> lock[${key}] released.`);
+            } else {
+                logger.warn(`*** lock[${key}] not found.`);
             }
             return callback(null, key);
         })
@@ -205,28 +264,14 @@ class DistributedEntityLocker extends CommonObject {
             options = {};
         }
         const entities = tools.isTypeOfArray(args)? args : _parseLockEntities(args);
-        // Check all entites
-        let locks = {};
-        let err = null;
-        for (let i = 0; i < entities.length && !err; i++) {
-            let key = _packKey(entities[i]);
-            if (this._locks[key] !== undefined) {
-                err = {
-                    code: eRetCodes.CONFLICT,
-                    message: `One of the specified entity: ${key} has beed locked by ${this._locks[key].caller}}`
-                }
-            } else {
-                locks[key] = _createLock.call(this, options);
+        _lockManyImpl.call(this, entities, options, (err, keys) => {
+            if (err) {
+                logger.error(`*** Lock many keys error! - ${err.message}`);
+                this.lastError = err.message;
+                return callback(err);
             }
-        }
-        if (err) {
-            return callback(err);
-        }
-        let keys = Object.keys(locks);
-        keys.forEach(key => {
-            this._locks[key] = locks[key];
+            return callback(null, keys);
         });
-        return callback(null, keys);
     }
     lockManyAsync = util.promisify(this.lockMany);
     /**
@@ -236,21 +281,36 @@ class DistributedEntityLocker extends CommonObject {
      * @returns 
      */
     unlockMany (keys, callback) {
-        keys.forEach(key => {
-            let lock = this._locks[key];
-            if (lock.hTimeout) { // Stop timer if exists
-                clearTimeout(lock.hTimeout);
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            keys.forEach(key => {
+                let lck = this._locks[key];
+                if (lck) {
+                    if (lck.hTimeout) { // Stop timer if exists
+                        clearTimeout(lck.hTimeout);
+                    }
+                    delete this._locks[key];
+                }
+            });
+            return callback(null, keys);
+        }
+        // Remove kv from redis
+        return this._redisClient.execute('DEL', keys, (err, result) => {
+            if (err) {
+                logger.error(`*** Release many locks error! - ${err.message}`);
+            } else if (result > 0) {
+                logger.debug(`>>> Many locks released.`);
+            } else {
+                logger.warn(`*** Lock(s) not found.`);
             }
-            delete this._locks[key];
-        });
-        return callback(null, keys);
+            return callback(null, keys);
+        })
     }
     unlockManyAsync = util.promisify(this.unlockMany);
     
     /**
      * Pagination list lockers - list all currently
      * @param {*} param0 
-     * @param {*} callback 
+     * @param {*} callback
      * @returns 
      */
     list ({pageSize, pageNum, page}, callback) {

@@ -182,6 +182,7 @@ class RedisClient extends EventObject {
                 message: msg
             });
         }
+        args.push(callback);
         return fn.apply(this._client, args);
     }
     execAsync = util.promisify(this.execute)
