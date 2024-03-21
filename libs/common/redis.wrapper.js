@@ -98,6 +98,7 @@ class RedisClient extends EventObject {
         this.maxRetryTimes = props.config.maxRetryTimes || 100;
         this.retryInterval = props.config.retryInterval || 1000;
         //
+        this.lastError = null;
         this.state = eClientState.Null;
         this._client = null;
         //
@@ -156,8 +157,14 @@ class RedisClient extends EventObject {
     getClient () {
         return this._client;
     }
-    execute (method, ...args) {
-        let callback = args[args.length - 1];
+    /**
+     * 
+     * @param { string } method 
+     * @param { string[] } args 
+     * @param { function } callback 
+     * @returns 
+     */
+    execute (method, args, callback) {
         if (!this.isConnected()) {
             let msg = `${this.$name}[${this.state}]: client disconnected.`;
             logger.error(msg);
@@ -166,8 +173,8 @@ class RedisClient extends EventObject {
                 message: msg
             });
         }
-        let func = this._client[method];
-        if (typeof func !== 'function') {
+        let fn = this._client[method];
+        if (typeof fn !== 'function') {
             let msg = `${this.$name}[${this.state}]: Invalid method - ${method}`;
             logger.error(msg);
             return callback({
@@ -175,8 +182,10 @@ class RedisClient extends EventObject {
                 message: msg
             });
         }
-        return this._client[method](...args);
+        args.push(callback);
+        return fn.apply(this._client, args);
     }
+    execAsync = util.promisify(this.execute)
     async dispose () {
         if (this.isConnected()) {
             logger.info(`${this.$name}[${this.state}]: disconnecting...`);
