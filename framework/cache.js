@@ -160,7 +160,12 @@ class Cache extends EventModule {
                 message: 'Redis server not connected.'
             });
         }
-        return this._client.execute('SET', [key, this._json ? JSON.stringify(val) : val], callback);
+        //
+        const args = [key, typeof val === 'string'? val : JSON.stringify(val)];
+        if (options.ttl) {
+            args.push('EX', options.ttl)
+        }
+        return this._client.execute('SET', args, callback);
     }
     setAsync = util.promisify(this.set);
     /**
