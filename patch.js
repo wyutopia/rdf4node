@@ -20,10 +20,10 @@ async function bootstrap() {
     const patcher = new Patcher();
     // Do init
     if (config.dataSources) {
-        patcher.dsFactory.init(config.dataSources);
+        await patcher.dsFactory.init(config.dataSources);
     }
     if (config.dataModels) {
-        patcher.repoFactory.init(config.dataModels);
+        await patcher.repoFactory.init(config.dataModels);
     }
     return patcher;
 }
