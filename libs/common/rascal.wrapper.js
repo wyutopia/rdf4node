@@ -71,7 +71,7 @@ class RascalFactory extends EventModule {
 
 
 const _configKeys = ['exchanges', 'queues', 'bindings', 'publications', 'subscriptions'];
-function _assembleClientConfig({vhost, connection, params}) {
+function _assembleClientConfig({ vhost, connection, params }) {
     let vhosts = {};
     vhosts[vhost] = {
         connection: connection
@@ -104,19 +104,33 @@ async function _initRascalClient() {
         this.state = eClientState.Null;
         this.$parent.emit('client-end', this.$name, err);
     });
-    // Parse publish keys
+    // Parse and save publication keys
     let publications = tools.safeGetJsonValue(this._config, 'params.publications');
     if (publications !== undefined) {
         this._pubKeys = Object.keys(publications);
     }
+    // Do subscriptions
     let subscriptions = tools.safeGetJsonValue(this._config, 'params.subscriptions');
     if (subscriptions !== undefined) {
         await _doSubscribe.call(this, broker, subscriptions);
-    }    
+    }
     this._broker = broker;
     this.state = eClientState.Conn;
     logger.debug(`${this.$name}[${this.state}]: broker created.`);
     return 'ok'
+}
+
+function _parseEvent(message, content) {
+    let event = null;
+    // Parsing content to JSON
+    if (message.properties.contentType === 'text/plain') {
+        event = JSON.parse(content);
+    } else if (message.properties.contentType === 'application/json') {
+        event = content
+    } else {
+        throw new Error('Unrecognized contentType! Should be text/plain or application/json.');
+    }
+    return event;
 }
 
 async function _doSubscribe(broker, subscriptions) {
@@ -126,30 +140,20 @@ async function _doSubscribe(broker, subscriptions) {
         try {
             const sub = await broker.subscribe(confKey);
             sub.on('message', (message, content, ackOrNack) => {
-                logger.debug(`${this.$name}[${this.state}]: Content= ${tools.inspect(content)}`);
-                let evt = {
-                    msgId: message.properties.messageId,
-                    primitive: message.fields.routingKey,
-                    content: null
-                };
-                // Parsing content to JSON
-                if (message.properties.contentType === 'text/plain') {
-                    try {
-                        evt.content = JSON.parse(content);
-                    } catch (ex) {
-                        logger.error(`${this.$name}[${this.state}]: Parsing content error! - Should be json - ${content}`);
-                    }
-                } else if (message.properties.contentType === 'application/json') {
-                    evt.content = content
-                } else {
-                    logger.error(`${this.$name}[${this.state}]: Unrecognized contentType! Should be text/plain or application/json`);
-                }
+                //logger.debug(`${this.$name}[${this.state}]: Content= ${tools.inspect(content)}`);
                 // Processing message
-                this.$ebus.emit('rmq-msg', evt, ackOrNack);
+                try {
+                    let event = _parseEvent(message, content);
+                    this.$ebus.emit('rmq-msg', event);
+                    ackOrNack();
+                } catch (ex) {
+                    logger.error(`*** ${this.$name}[${this.state}]: Parsing content error! - ${ex.message}`);
+                    ackOrNack(ex);
+                }
             }).on('error', (err) => {
                 logger.error(`${this.$name}[${this.state}]: Handle message error! - ${err.code}#${err.message}`);
             });
-        } catch(err) {
+        } catch (err) {
             let msg = `${this.$name}[${this.state}]: Subscribe key=${confKey} error! - ${err.message}`;
             logger.error(msg);
             return err.message;
@@ -180,29 +184,33 @@ class RascalClient extends CommonObject {
         this._pubKeys = [];
     }
     async init() {
+        if (this.state !== eClientState.Null) {
+            logger.warn(`*** ${this.$name}[${this.state}]: already initialized.`);
+            return this.state;
+        }
         try {
             await _initRascalClient.call(this);
             return this.state;
         } catch (ex) {
-            logger.error(`[${this.$name}]: init error! - ${ex.message}`);
+            logger.error(`*** [${this.$name}]: init error! - ${ex.message}`);
             return ex.message;
         }
     }
     // Implementing methods
     async dispose() {
         if (this._broker === null || this.state !== eClientState.Conn) {
-            return `${this.$name}: closed.`;
+            return `>>> ${this.$name}: already closed.`;
         }
         this.state = eClientState.Closing;
-        this._broker.shutdown(err => {
-            if (err) {
-                logger.error(`${this.$name}[${this.state}]: shutdown error! - ${err.message}`);
-            } else {
-                logger.info(`${this.$name}[${this.state}]: shutdown succeed.`);
-                this.state = eClientState.Null;
-            }
-            return callback();
-        });
+        try {
+            await this._broker.shutdown();
+            this._broker = null;
+            this.state = eClientState.Closed;
+            return `>>> ${this.$name}: shutdown succeed.`;
+        } catch (ex) {
+            logger.error(`*** ${this.$name}[${this.state}]: shutdown error! - ${ex.message}`);
+            return `${this.$name}: ${ex.message}`
+        }
     }
     // Perform publishing
     publish(pubKey, data, options, callback) {

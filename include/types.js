@@ -162,4 +162,24 @@
  * @property { string[] } ignores  - The ignored event list
  * @property { string } select - The selected value keys from original event body. eg: 'key1 key2' 
  */
+
+/**
+ * The RabbitMQ Message Properties
+ * @typedef { Object } RmqMsgProps
+ * @property { string } messageId
+ */
+
+/**
+ * The RabbitMQ Message Fields
+ * @typedef { Object } RmqMsgFields
+ * @property { string } routingKey
+ */
+/**
+ * The RabbitMQ Message
+ * @typedef { Object } RmqMessage
+ * @property { RmqMsgProps } properties
+ * @property { RmqMsgFields } fields
+ * @property { Object | string } content
+ */
+
 module.exports = exports = {};

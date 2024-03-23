@@ -250,15 +250,9 @@ class EventBus extends EventModule {
         // For external MQs, identified by channel
         this._clients = {};
         // Define event handler
-        this.on('rmq-msg', async (evt, ackOrNack) => {
-            try {
-                await _consumeAsync.call(this, evt.content);
-            } catch(ex) {
-                logger.error(`Handle ext-message error! - ${ex.message}`);
-            }
-            if (typeof ackOrNack === 'function') {
-                ackOrNack(true);
-            }
+        this.on('rmq-msg', async (evt) => {
+            const results = await _consumeAsync.call(this, evt);
+            logger.debug(`${this.$name}: Consuming rmq-msg results - ${tools.inspect(results)}`);
         });
         this.on('client-end', clientId => {
             logger.error(`Client#${clientId} end.`);
@@ -427,7 +421,7 @@ class EventBus extends EventModule {
 async function _consumeAsync(event) {
     let subscribers = this._subscribers[event.code] || [];
     if (!Array.isArray(subscribers) || subscribers.length === 0) {
-        throw new Error('No subscribers!');
+        throw new Error('No consumers!');
     }
     const results = {};
     subscribers.forEach(name => {
