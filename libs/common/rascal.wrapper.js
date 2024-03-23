@@ -2,10 +2,10 @@
  * Created by Eric on 2022/01/02
  * To replace amqp.wrapper in the future
  */
+const async = require('async');
 const util = require('util');
 const _MODULE_NAME = 'AMQP_MNG';
 // System libs
-const async = require('async');
 const assert = require('assert');
 const Broker = require('rascal').BrokerAsPromised;
 // Framework libs
@@ -54,18 +54,15 @@ class RascalFactory extends EventModule {
         return this._clients[name];
     }
     async dispose() {
-        try {
-            const promises = [];
-            const clientKeys = Object.keys(this._clients);
-            clientKeys.forEach(key => {
-                promises.push(this._clients[key].dispose());
-            });
-            logger.info(`${this.$name}: Destroy ${clientKeys.length} rascal clients ...`);
-            return await Promise.all(promises);
-        } catch (ex) {
-            logger.error(`!!! Dispose client error! - ${ex.message}`);
-            return 0;
-        }
+        const clientKeys = Object.keys(this._clients);
+        logger.info(`${this.$name}: Dispose ${clientKeys.length} rascal clients ...`);
+        
+        const asyncItrs = {};
+        clientKeys.forEach(key => {
+            let client = this._clients[key];
+            asyncItrs[client.$name] = client.dispose.bind(client); 
+        })
+        return await async.parallel(asyncItrs);
     }
 }
 
@@ -199,14 +196,14 @@ class RascalClient extends CommonObject {
     // Implementing methods
     async dispose() {
         if (this._broker === null || this.state !== eClientState.Conn) {
-            return `>>> ${this.$name}: already closed.`;
+            return `${this.$name}: already closed.`;
         }
         this.state = eClientState.Closing;
         try {
             await this._broker.shutdown();
             this._broker = null;
             this.state = eClientState.Closed;
-            return `>>> ${this.$name}: shutdown succeed.`;
+            return `${this.$name}: shutdown succeed.`;
         } catch (ex) {
             logger.error(`*** ${this.$name}[${this.state}]: shutdown error! - ${ex.message}`);
             return `${this.$name}: ${ex.message}`

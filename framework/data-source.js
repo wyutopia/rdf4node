@@ -19,14 +19,15 @@ const _DS_DEFAULT = 'default';
  * @prop { Object? } modification
  */
 
-function _initMongoConnection(config) {
+async function _initMongoConnection(config) {
     const options = {
         useUnifiedTopology: true,
         useNewUrlParser: true
     };
     let uri = tools.packMongoUri(config);
-    logger.info(`>>> Create mongodb connection with ${uri}`);
-    this._conn = mongoose.createConnection(uri, options);
+    logger.debug(`>>> Create mongodb connection with ${uri}`);
+    this._conn = mongoose.createConnection(uri, options).asPromise();
+    await this._conn();
     this.isConnected = true;
 }
 
@@ -47,23 +48,28 @@ class DataSource extends EventObject {
         this.conf = props.conf || {};
         // Declaring member variables
         this.isConnected = false;
+        this._conn = null;
         this._models = {};
-        //
-        (() => {
-            switch (this.dbType) {
-                case sysdefs.eDbType.NATIVE:
-                    _initProcMemoryStorage.call(this, this.conf);
-                    break;
-                case sysdefs.eDbType.MONGO:
-                    _initMongoConnection.call(this, this.conf);
-                    break;
-                case sysdefs.eDbType.MYSQL:
-                    _initMySqlConnection.call(this, this.conf);
-                    break;
-                default:
-                    break;
-            }
-        })();
+    }
+    async init() {
+        let fn = null;
+        switch (this.dbType) {
+            case sysdefs.eDbType.NATIVE:
+                fn = _initProcMemoryStorage.bind(this, this.conf);
+                break;
+            case sysdefs.eDbType.MONGO:
+                fn = _initMongoConnection.bind(this, this.conf);
+                break;
+            case sysdefs.eDbType.MYSQL:
+                fn = _initMySqlConnection.bind(this, this.conf);
+                break;
+            default:
+                break;
+        }
+        if (!fn) {
+            throw new Error(`Unrecognized database type: ${this.dbType}`);
+        }
+        await fn();
     }
     // Implenting member methods
     /**
@@ -119,23 +125,33 @@ class DataSourceFactory extends EventModule {
         }
     }
     async init(config) {
-        Object.keys(config).forEach(dsName => {
-            if (config[dsName].enabled === true) {
-                this._ds[dsName] = new DataSource({
-                    name: dsName,
-                    //
-                    dbType: config[dsName].type,
-                    conf: config[dsName].config
-                });
-            } else {
-                logger.info(`[${dsName}] is disabled!`);
+        let keys = Object.keys(config);
+        await async.eachSeries(keys, async (dsName) => {
+            let options = config[dsName];
+            if (!options.enabled) {
+                logger.warn(`*** [${dsName}] is disabled!`);
+                return false;
             }
-        });
+            try {
+                let ds = new DataSource({
+                    $name: `${dsName}@ds`,
+                    //
+                    dbType: options.type,
+                    conf: options.config
+                });
+                await ds.init();
+                this._ds[dsName] = ds;
+                return true;
+            } catch(ex) {
+                logger.error(`*** Create [${dsName}] error! - ${ex.message}`);
+                return false;
+            }
+        })
         //
         if (this._ds[_DS_DEFAULT] === undefined) {
-            logger.error(`>>> Set default data-source to in-memory storage! <<<`);
+            logger.warn(`>>> Set default data-source to in-memory storage! <<<`);
             this._ds[_DS_DEFAULT] = new DataSource({
-                name: _DS_DEFAULT,
+                $name: `${_DS_DEFAULT}@ds`,
                 dbType: sysdefs.eDbType.NATIVE,
                 conf: {}
             })

@@ -223,7 +223,7 @@ class EndpointFactory extends EventModule {
         await async.each(arr, async item => {
             try {
                 const ep = new HttpEndpoint(this._appCtx, { 
-                    $name: `ep-${item.name}`,
+                    $name: `${item.name}@${this.$name}`,
                     managed: true
                 });
                 this._endpoints[item.name] = ep;
