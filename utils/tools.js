@@ -429,13 +429,14 @@ exports.addToSet = function (arr, item) {
  * @param { Object } doc - The document object
  * @returns { ObjectId }
  */
-function _purifyObjectId (doc) {
+function _plainObjectId (doc) {
     if (!doc || doc instanceof ObjectId) {
         return doc;
     }
     if (ObjectId.isValid(doc)) {
         return new ObjectId(doc);
     }
-    return _purifyObjectId(doc._id);
+    return _plainObjectId(doc._id);
 }
-exports.purifyObjectId = _purifyObjectId;
+exports.plainObjectId = _plainObjectId;
+exports.purifyObjectId = _plainObjectId;
