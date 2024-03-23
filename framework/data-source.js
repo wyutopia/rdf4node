@@ -25,9 +25,8 @@ async function _initMongoConnection(config) {
         useNewUrlParser: true
     };
     let uri = tools.packMongoUri(config);
-    logger.debug(`>>> Create mongodb connection with ${uri}`);
-    this._conn = mongoose.createConnection(uri, options).asPromise();
-    await this._conn();
+    this._conn = mongoose.createConnection(uri, options);
+    logger.debug(`>>> ${this.$name}: mongodb://${config.host} connected.`);
     this.isConnected = true;
 }
 

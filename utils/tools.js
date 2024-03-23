@@ -402,6 +402,7 @@ function _packMongoUri (config) {
     })(config);
     let uri = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}`
             + `@${host}/${config.db || ''}?${params}`;
+    config.host = host;
     return uri;
 }
 exports.packMongoUri = _packMongoUri;
