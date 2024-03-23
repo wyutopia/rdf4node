@@ -1,7 +1,7 @@
 /**
  * Created by Eric on 2023/02/08
  */
-const assert = require('assert');
+const async = require('async');
 const mongoose = require('mongoose');
 //
 const sysdefs = require('../include/sysdefs');
@@ -79,7 +79,6 @@ class DataSource extends EventObject {
      * @returns 
      */
     getModel(modelName, modelSchema, modification) {
-        assert(modelName !== undefined && modelSchema !== undefined);
         if (!this.isConnected) {
             return null;
         }
