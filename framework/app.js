@@ -271,9 +271,10 @@ class Application extends EventEmitter {
                     $name: sysdefs.eFrameworkModules.REDIS_CM,
                     $type: sysdefs.eModuleType.CM
                 });
-                this.redisManager.init(config.redis);
+                const r = await this.redisManager.init(config.redis);
+                logger.info(`>>> Init redisManager ${r}.`);
             } catch (ex) {
-                logger.error(`!!! Load and init redisManager error: ${ex.message}`);
+                logger.error(`*** Create and init redisManager error: ${ex.message}`);
             }
         }
         const initMethods = {};

@@ -823,19 +823,16 @@ class EntityController extends ControllerBase {
             }
         };
         this.logicDeleteOne = {
-            val: {
-                tenant: {
-                    type: 'ObjectId',
-                    required: true
-                },
-                id: {
-                    type: 'ObjectId',
-                    required: true
-                },
-                comment: {
-                    type: 'String'
-                }
-            },
+            val: (() => {
+                let validator = tools.deepAssign({
+                    id: {
+                        type: 'ObjectId',
+                        required: true
+                    }
+                }, this._delVal);
+                _setMandatoryKeys(this._mandatoryDelKeys, validator);
+                return validator;
+            }).call(this),
             fn: (req, res) => {
                 const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                 const repo = this.getRepo(this.modelName, dsName);

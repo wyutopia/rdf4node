@@ -238,9 +238,9 @@ class RedisManager extends EventModule {
             }
         });
     }
-    init(config) {
+    async init(config) {
         if (this._state !== sysdefs.eModuleState.INIT) {
-            logger.error(`!!! Already initialzied.`)
+            logger.warn(`*** ${this.$name} already initialzied.`)
             return null;
         }
         Object.keys(_defaultRedisManagerProps).forEach(key => {
@@ -248,6 +248,7 @@ class RedisManager extends EventModule {
             this[propKey] = config[key] !== undefined? config[key] : _defaultRedisManagerProps[key];
         })
         this._state = sysdefs.eModuleState.ACTIVE;
+        return 'ok'
     }
     // Implementing member methods
     /**
@@ -285,7 +286,7 @@ class RedisManager extends EventModule {
         if (this._state !== sysdefs.eModuleState.ACTIVE) {
             return `inactive.`;
         }
-        this.state = sysdefs.eModuleState.STOP_PENDING;
+        this._state = sysdefs.eModuleState.STOP_PENDING;
         let keys = Object.keys(this._clients);
         const promises = [];
         keys.forEach(key => {
