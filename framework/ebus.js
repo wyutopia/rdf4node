@@ -252,7 +252,7 @@ class EventBus extends EventModule {
         // Define event handler
         this.on('rmq-msg', async (evt) => {
             const results = await _consumeAsync.call(this, evt);
-            logger.debug(`${this.$name}: Consuming rmq-msg results - ${tools.inspect(results)}`);
+            logger.debug(`>>> Consuming rmq-msg results - ${tools.inspect(results)}`);
         });
         this.on('client-end', clientId => {
             logger.error(`Client#${clientId} end.`);
@@ -260,7 +260,7 @@ class EventBus extends EventModule {
     }
     async init(config, options) {
         if (this.state !== sysdefs.eModuleState.INIT) {
-            logger.warn(`${this.$name}: Already initialized!`);
+            logger.warn(`>>> Already initialized!`);
             return false;
         }
         _initEventBus.call(this, config);
@@ -299,14 +299,14 @@ class EventBus extends EventModule {
                     await client.init();
                     this._clients[clientId] = client;
                 } catch(err) {
-                    logger.error(`[${this.$name}]: Create and init rascalClient#${clientId} error! - ${err.message}`);
+                    logger.error(`>>> Create and init rascalClient#${clientId} error! - ${err.message}`);
                 }
             });
-            logger.info(`${this.$name}: rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
+            logger.info(`>>>>>> rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
             this.state = sysdefs.eModuleState.ACTIVE;
             return true;
         } catch (ex) {
-            logger.error(`${this.$name}: Initialize rabbitmq(rascal lib) error! - ${ex.message}`);
+            logger.error(`>>> Initialize rabbitmq(rascal lib) error! - ${ex.message}`);
             this.state = sysdefs.eModuleState.SUSPEND;
             this.lastError = ex.message;
             return false;
@@ -473,7 +473,6 @@ async function _triggerChainEvents(originEvent, options) {
                 headers: originEvent.headers,
                 body: chainEvent.select ? _buildChainEventBody(originEvent.body, chainEvent.select) : originEvent.body
             }
-            logger.debug();
             return await this.pubAsync(event, options);
         } catch (ex) {
             logger.error(`***! Publish chainEvent`)
