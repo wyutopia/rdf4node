@@ -740,6 +740,12 @@ function _deepGetModelRefs(modelSpecs, key, totalRefs) {
     });
 }
 
+/**
+ * 
+ * @param { Types.CacheOptions } resident - The options from database model 
+ * @param { Types.CacheOptions } config - The options from configuration
+ * @returns { Types.CacheOptions }
+ */
 function _mergeCacheOptions(resident, config) {
     const options = {};
     options.enabled = config.enabled || resident.enabled || false;

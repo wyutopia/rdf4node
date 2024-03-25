@@ -149,7 +149,7 @@ class Cache extends EventModule {
     set(key, val, options, callback) {
         if (typeof options === 'function') {
             callback = options;
-            options = undefined;
+            options = {};
         }
         if (this._engine === sysdefs.eCacheEngine.Native) {
             return _setValue.call(this, key, val, options, callback);
