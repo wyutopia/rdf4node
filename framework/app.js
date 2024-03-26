@@ -277,33 +277,32 @@ class Application extends EventEmitter {
                 logger.error(`*** Create and init redisManager error: ${ex.message}`);
             }
         }
-        const initMethods = {};
+        const results = {};
         if (config.eventBus) {
-            initMethods['ebus'] = this.ebus.init.bind(this.ebus, config.eventBus, extensions.eventBus || {});
+            results['ebus'] = await this.ebus.init(config.eventBus, extensions.eventBus || {});
         }
         if (config.registry) {
-            initMethods['reg'] = this.registry.init.bind(this.registry, config.registry);
+            results['reg'] = await this.registry.init(config.registry);
         }
         if (config.upload) {
-            initMethods['upload'] = this.upload.init.bind(this.upload, config.upload);
+            results['upload'] = await this.upload.init(config.upload);
         }
         if (config.cache) {
-            initMethods['cache'] = this.cacheFactory.init.bind(this.cacheFactory, config.cache);
+            results['cache'] = await this.cacheFactory.init(config.cache);
         }
         if (config.dataSources) {
-            initMethods['ds'] = this.dsFactory.init.bind(this.dsFactory, config.dataSources);
+            results['ds'] = await this.dsFactory.init(config.dataSources);
         }
         if (config.dataModels) {
-            initMethods['model'] = this.repoFactory.init.bind(this.repoFactory, config.dataModels);
+            results['model'] = await this.repoFactory.init(config.dataModels);
         }
         if (config.distLocker) {
-            initMethods['dlck'] = this.distLocker.init.bind(this.distLocker, config.distLocker || {});
+            results['dlck'] = await this.distLocker.init(config.distLocker);
         }
         if (config.endpoints) {
-            initMethods['ep'] = this.epFactory.init.bind(this.epFactory, config.endpoints, extensions.endpoints || {});
+            results['ep'] = await this.epFactory.init(config.endpoints, extensions.endpoints || {});
         }
         //TODO: Add other framework components here ...
-        const results = await async.parallel(initMethods);
         logger.debug(`>>> The init results: ${tools.inspect(results)}`);
         this._state = sysdefs.eModuleState.READY;
         return 'ok';
