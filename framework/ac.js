@@ -236,7 +236,10 @@ function _validateParameter(field, validator, argv) {
         case 'Date':
             errMsg = _validateDate(field, validator, argv);
             break;
-    }
+        case 'EmbeddedObject':
+            errMsg = _validateEmbeddedObject(field, validator, [argv]);
+            break;
+        }
     return errMsg;
 }
 
