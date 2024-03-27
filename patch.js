@@ -3,6 +3,7 @@
  */
 const sysdefs = require('./include/sysdefs');
 const config = require('./include/config');
+const tools = require('./utils/tools');
 const { RepositoryFactory } = require('./framework/repository');
 const { CacheFactory } = require('./framework/cache');
 const { DataSourceFactory } = require('./framework/data-source');

@@ -16,6 +16,7 @@ const { v4: uuidv4 } = require('uuid');
 const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes.js');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
+const exp = require('constants');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'tools');
 
 function _noop() {}
@@ -440,3 +441,22 @@ function _plainObjectId (doc) {
 }
 exports.plainObjectId = _plainObjectId;
 exports.purifyObjectId = _plainObjectId;
+
+
+
+async function _asyncParallel (promiseObject) {
+    const promises = [];
+    const keys = Object.keys(promiseObject);
+    for (let i = 0; i < keys.length; i++) {
+        let key = keys[i];
+        promises.push(promiseObject[key]);
+    }
+    const results = await Promise.all(promises);
+    const result = {};
+    for (let j = 0; j < keys.length; j++) {
+        let key = keys[j];
+        result[key] = results[j];
+    }
+    return result;
+}
+exports.asyncParallel = _asyncParallel;
