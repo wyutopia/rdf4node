@@ -1,19 +1,26 @@
 /**
  * Created by Eric on 2021/09/09
  */
+// The nodejs libs
 const assert = require('assert');
 const crypto = require('crypto');
-const ObjectId = require('mongoose').Types.ObjectId;
-const request = require('request');
 const spawn = require('child_process').spawn;
 const util = require("util");
 const { networkInterfaces } = require("os");
+// The 3rd-party libs
+const axios = require('axios');
+const { ObjectId } = require('bson');
+const request = require('request');
 const { v4: uuidv4 } = require('uuid');
-
-const pubdefs = require('../include/sysdefs');
+// The framework libs
+const sysdefs = require('../include/sysdefs');
 const eRetCodes = require('../include/retcodes.js');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
+const exp = require('constants');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'tools');
+
+function _noop() {}
+exports.noop = _noop;
 
 function _inspect(obj) {
     return util.inspect(obj, { showHidden: false, depth: null });
@@ -68,12 +75,17 @@ exports.isTypeOfDate = function (obj) {
     return '[object Date]' === Object.prototype.toString.call(obj);
 };
 
+const gPrimitiveTypes = ['undefined', 'boolean', 'number', 'bigint', 'string'];
+exports.isTypeOfPrimitive = function (v) {
+    return gPrimitiveTypes.indexOf(typeof v) !== -1;
+}
+
 exports.uuidv4 = function () {
     return uuidv4().replace(/-/g, '');
 };
 
 exports.safeGetJsonValue = function (json, path) {
-    if (typeof json !== 'object' || typeof path !== 'string') {
+    if (!json || typeof json !== 'object' || typeof path !== 'string') {
         return null;
     }
     if (path.length === 0) {
@@ -144,9 +156,9 @@ exports.getSortedString = _getSortedString;
 
 /**
  * The default parser for RESTful API's response body
- * @param {*} body 
- * @param {*} callback 
- * @returns 
+ * @param {*} body
+ * @param {*} callback
+ * @returns
  */
 exports.defaultBodyParser = function (body, callback) {
     if (!body) {
@@ -176,12 +188,12 @@ function _getFlowToken(options, callback) {
 
 /**
  * The http request wrapper based on request@2.88.2
- * @param {*} options 
- * @param {*} callback 
+ * @param {*} options
+ * @param {*} callback
  */
 exports.invokeHttpRequest = function (options, callback) {
     if (options.timeout === undefined) {
-        options.timeout = pubdefs.eInterval._5_SEC;
+        options.timeout = sysdefs.eInterval._5_SEC;
     }
     let bodyParser = options.bodyParser;
     if (typeof bodyParser === 'function') {
@@ -189,7 +201,6 @@ exports.invokeHttpRequest = function (options, callback) {
     } else {
         bodyParser = null;
     }
-
     //logger.debug(`Invoke options: ${_inspect(options)}`);
     _getFlowToken(options, (err, token) => {
         if (err) {
@@ -202,6 +213,9 @@ exports.invokeHttpRequest = function (options, callback) {
                     code: eRetCodes.INTERNAL_SERVER_ERR,
                     message: `Http invoke error! - ${err.code}#${err.message}`
                 });
+            }
+            if (options.rawResponse === true) {
+                return callback(null, rsp);
             }
             if ([eRetCodes.SUCCESS, eRetCodes.CREATED].indexOf(rsp.statusCode) === -1) {
                 let msg = rsp.body || rsp.statusMessage || 'Server error!';
@@ -223,152 +237,49 @@ exports.invokeHttpRequest = function (options, callback) {
     });
 };
 
+function _bodyParser(body) {
+    if (!body) {
+        throw new Error('Invalid response');
+    }
+    if (body.code !== eRetCodes.SUCCESS) {
+        throw new Error(`${body.code}#${body.message}`);
+    }
+    return body.data;
+}
 /**
- * The parameter parser for http request
- * @param {json object} params 
- * @param {mandatory, optional} options 
- * @param {*} callback 
- * @returns 
+ * 
+ * @param {*} options 
+ * @param { function? } bodyParser 
  */
-exports.parseParameters = function (params, options, callback) {
-    logger.info(`Input parameters: ${_inspect(params)}`);
-    // Step 1: Preparing the input parameters
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
+exports.httpAsync = async function (options, bodyParser) {
+    const fnFlowCtl = options.fnFlowCtl;
+    if (typeof fnFlowCtl === 'function') {
+        delete options.fnFlowCtl;
+        await fnFlowCtl(options);
     }
-    if (!params) {
-        return callback({
-            code: eRetCodes.BAD_REQUEST,
-            message: 'Null parameters'
-        });
+    const rsp = await axios(options);
+    if (bodyParser === undefined) { // null means return raw data body
+        bodyParser = _bodyParser;
     }
-    if (_isTypeOfArray(options)) {
-        options = {
-            mandatory: options,
-            optional: []
-        }
-    } else {
-        if (!options.mandatory) {
-            options.mandatory = [];
-        }
-        if (!options.optional) {
-            options.optional = [];
-        }
+    if (typeof bodyParser === 'function') {
+        return bodyParser(rsp.data);
     }
-    let args = {};
-    let errMsg = null;
-    // Step 2: Parsing mandatory parameters
-    for (let i in options.mandatory) {
-        let key = options.mandatory[i];
-        if (!params[key]) {
-            errMsg = `Missing parameter(s): ${key}`;
-            break;
-        }
-        if (options.checkObjectId === true && key === '_id' && !ObjectId.isValid(params[key])) {
-            errMsg = `Invalid ObjectId value: ${params[key]}`;
-            break;
-        }
-        args[key] = params[key];
-    }
-    if (errMsg !== null) {
-        logger.error(errMsg);
-        return callback({
-            code: eRetCodes.BAD_REQUEST,
-            message: errMsg
-        });
-    }
-    // Step 3: Parsing optional parameters
-    for (let j in options.optional) {
-        let key = options.optional[j];
-        // Note: Exclude duplicate keys from mandatory
-        if (options.mandatory.indexOf(key) === -1 && params[key] !== undefined) {
-            if (options.checkObjectId === true && key === '_id' && !ObjectId.isValid(params[key])) {
-                errMsg = `Invalid ObjectId value format: ${params[key]}`;
-                break;
-            }
-            args[key] = params[key];
-        }
-    }
-    return callback(errMsg, args);
-};
-
-function _validateParameter(field, validator, argv) {
-    let errMsg = null;
-    if (validator.enum) {
-        let enumValues = _isTypeOfArray(validator.enum)? validator.enum : Object.values(validator.enum);
-        if (enumValues.indexOf(argv) === -1) {
-            errMsg = `${field} value not allowed! - Should be one of ${_inspect(enumValues)}`;
-        }
-    }
-    if (errMsg !== null) {
-        return errMsg;
-    }
-    switch(validator.type) {
-        case 'ObjectId':
-            if (!ObjectId.isValid(argv)) {
-                errMsg = `Invalid ObjectId value: ${field}!`;
-            }
-            break;
-        case 'Number':
-            if (Number.isNaN(argv)) {
-                errMsg = `Should be Number for ${field}!`;
-            }
-            break;
-        case 'String':
-            break;
-        case 'Boolean':
-            if (typeof argv !== 'boolean') {
-                errMsg = `Should be Boolean for ${field}`;
-            }
-            break;
-    }
-    return errMsg;
+    return rsp;
 }
 
-exports.parseParameter2 = function (args, validator, callback) {
-    logger.debug(`Parsing: ${_inspect(args)}`);
-    if (typeof validator === 'function') {
-        callback = options;
-        validator = {};
-    }
-    let fields = Object.keys(validator);
-    if (fields.length === 0) {  // No validator provided or all arguments are validated
-        return callback(null, args);
-    }
-    // Only validated arguments will be parsed
-    let params = {};
-    let errMsg = null;
-    for (let i = 0; i < fields.length; i++) {
-        let field = fields[i];
-        let v = validator[field];
-        let argv = args[field];
-
-        if (argv === undefined) {
-            if (v.required === true) {
-                errMsg = `Missing parameter(s): ${field}!`;
-                break;
-            }
-            continue;
+function _extractProps (args, propNames) {
+    let props = {};
+    let keys = Array.isArray(propNames)? propNames : Object.keys(propNames);
+    keys.forEach(key => {
+        if (args[key]) {
+            props[key] = args[key];
         }
-        // Perform validation for exist field ...
-        errMsg = _validateParameter(field, v, argv);
-        if (errMsg !== null) {
-            break;
-        }         
-        // Copy directly
-        params[field] = argv;
-    }
-    if (errMsg) {
-        return callback({
-            code: eRetCodes.BAD_REQUEST,
-            message: errMsg
-        })
-    }
-    return callback(null, params);
-};
+    });
+    return props;
+}
+exports.extractProps = _extractProps;
 
-exports.checkSign = function (req, res, next) { 
+exports.checkSign = function (req, res, next) {
     return next();
 };
 
@@ -448,17 +359,104 @@ exports.sha1Sign = function() {
     return crypto.createHash('sha1').update(seed).digest('hex');
 };
 
-exports.isEmail = function(email) {
+function _isEmail (email) {
     let re = new RegExp(/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
     return re.test(email);
-};
+}
+exports.isEmail = _isEmail;
 
-exports.isMobile = function(mobile) {
+function _isMobile(mobile) {
     let r = new RegExp(/^1[3-9][0-9]\d{8}$/);
     return r.test(mobile);
-};
+}
+exports.isMobile = _isMobile;
 
-exports.isIpAddr = function(ip) {
+function _isIpAddr (ip) {
     let re = new RegExp(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/);
     return re.test(ip);
+}
+exports.isIpAddr = _isIpAddr;
+
+function _deepAssign () {
+    let target = arguments[0];
+    for (i = 1; i < arguments.length; i++) {
+        Object.keys(arguments[i]).forEach(key => {
+            target[key] = structuredClone(arguments[i][key]);
+        });
+    }
+    return target;
+}
+exports.deepAssign = _deepAssign;
+
+function _packMongoUri (config) {
+    let host = config.host || `${config.ip}:${config.port}`;
+    let params = ((conf) => {
+        let p = [];
+        let keys = Object.keys(conf.parameters || {});
+        if (keys.indexOf('authSource') === -1) {
+            p.push(`authSource=${conf.authSource || conf.db}`);
+        }
+        keys.forEach( key => {
+            p.push(`${key}=${conf.parameters[key]}`);
+        });
+        return p.join('&');
+    })(config);
+    let uri = `mongodb://${config.user}:${encodeURIComponent(config.pwd)}`
+            + `@${host}/${config.db || ''}?${params}`;
+    config.host = host;
+    return uri;
+}
+exports.packMongoUri = _packMongoUri;
+
+exports.deleteFromArray = function (arr, item) {
+    if (!Array.isArray(arr) || item === undefined) {
+        return null;
+    }
+    let index = arr.indexOf(item);
+    if (index !== -1) {
+        arr.splice(index, 1);
+    }
+    return null;
 };
+
+exports.addToSet = function (arr, item) {
+    if (arr.indexOf(item) === -1) {
+        arr.push(item);
+    }
+}
+
+/**
+ * Get pure ObjectId from Doc object recursivly
+ * @param { Object } doc - The document object
+ * @returns { ObjectId }
+ */
+function _plainObjectId (doc) {
+    if (!doc || doc instanceof ObjectId) {
+        return doc;
+    }
+    if (ObjectId.isValid(doc)) {
+        return new ObjectId(doc);
+    }
+    return _plainObjectId(doc._id);
+}
+exports.plainObjectId = _plainObjectId;
+exports.purifyObjectId = _plainObjectId;
+
+
+
+async function _asyncParallel (promiseObject) {
+    const promises = [];
+    const keys = Object.keys(promiseObject);
+    for (let i = 0; i < keys.length; i++) {
+        let key = keys[i];
+        promises.push(promiseObject[key]);
+    }
+    const results = await Promise.all(promises);
+    const result = {};
+    for (let j = 0; j < keys.length; j++) {
+        let key = keys[j];
+        result[key] = results[j];
+    }
+    return result;
+}
+exports.asyncParallel = _asyncParallel;

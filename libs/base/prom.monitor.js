@@ -2,22 +2,21 @@
  * Created by Eric 2021/06/16
  */
 const assert = require('assert');
+const { eMetricType } = require('../../include/sysdefs');
 const client = require('prom-client');
-const theApp = require('../../bootstrap');
-const pubdefs = require('../../include/sysdefs');
-
 const register = client.register;
 
-const collectDefaultMetrics = client.collectDefaultMetrics;
-collectDefaultMetrics({
-    register: register
-});
-
-const defaultLabels = {
-    service: theApp.getRegistry(),
-    instance: theApp.getInstance()
-};
-register.setDefaultLabels(defaultLabels);
+exports.init = function (appCtx) {
+    const collectDefaultMetrics = client.collectDefaultMetrics;
+    collectDefaultMetrics({
+        register: register
+    });
+    const defaultLabels = {
+        service: appCtx.getName(),
+        instance: appCtx.getInstance()
+    };
+    register.setDefaultLabels(defaultLabels);
+}
 
 function _regCounter(name, help, labelNames) {
     return new client.Counter({
@@ -55,9 +54,9 @@ exports.regMetrics = function (options) {
         let name = `${prefix}_${metric.name}`
         let help = metric.help || `${name}_help`;
         let labelNames = metric.labelNames || [];
-        if (metric.type === pubdefs.eMetricType.COUNTER) {
+        if (metric.type === eMetricType.Counter) {
             collectors[metric.name] = _regCounter(name, help, labelNames);
-        } else if (metric.type === pubdefs.eMetricType.GAUGE) {
+        } else if (metric.type === eMetricType.Gauge) {
             if (metric.fnCollectAsync) {
                 _regGaugeAsync(name, help, labelNames, metric.fnCollectAsync);
             } else {
@@ -69,11 +68,17 @@ exports.regMetrics = function (options) {
 };
 
 //Exposed API for prometheus monitoring
-exports.getMetrics = async function (req, res) {
-    let metrics = await register.metrics();
-    res.send(metrics);
+exports.getMetrics = {
+    val: {},
+    fn: async function (req, res) {
+        let metrics = await register.metrics();
+        res.send(metrics);
+    }
 };
 
-exports.checkHealth = function (req, res) {
-    res.sendStatus(200);
+exports.checkHealth = {
+    val: {},
+    fn: function (req, res) {
+        res.sendStatus(200);
+    }
 };

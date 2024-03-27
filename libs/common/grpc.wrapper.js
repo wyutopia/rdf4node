@@ -1,15 +1,14 @@
 /**
  * Created by Eric 2021/11/10
  */
-// Global modules
+// System libs
 const assert = require('assert');
 const async = require('async');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 // Project modules
-const pubdefs = require("../../include/sysdefs");
-const theApp = require("../../bootstrap");
-const {grpc: config} =  require('../base/config');
+const sysdefs = require("../../include/sysdefs");
+const {grpc: config} =  require('../../include/config');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'grpc');
@@ -29,14 +28,14 @@ const metricsCollector = mntService.regMetrics({
     metrics: [{
         name: eMetricCounters.pd,
         help: 'Number of ProtocolDescriptors',
-        type: pubdefs.eMetricType.GAUGE,
+        type: sysdefs.eMetricType.Gauge,
         fnCollectAsync: async () => {
             return Object.keys(gDescriptors).length;
         }
     }, {
         name: eMetricCounters.clientActive,
         help: 'Number of active gRpc clients',
-        type: pubdefs.eMetricType.GAUGE,
+        type: sysdefs.eMetricType.Gauge,
         fnCollectAsync: async () => {
             let count = 0;
             Object.keys(gDescriptors).forEach( key => {
@@ -46,7 +45,7 @@ const metricsCollector = mntService.regMetrics({
         }
     }, {
         name: eMetricCounters.clientTotal,
-        type: pubdefs.eMetricType.COUNTER
+        type: sysdefs.eMetricType.Counter
     }]
 });
 
@@ -64,8 +63,8 @@ class ProtoDescriptor {
         logger.info(`Create new protobuf: ${tools.inspect(options)}`);
         let pkgDef = protoLoader.loadSync(options.file, LOAD_OPTIONS);
         // Declaring member variables
-        this.id = options.key;
-        this.name = `${MODULE_NAME_PREFIX}_${this.id}`;
+        this.$id = options.key;
+        this.$name = `${MODULE_NAME_PREFIX}_${this.$id}`;
         this.mandatory = false;
         //
         this.pd = grpc.loadPackageDefinition(pkgDef);
@@ -94,12 +93,12 @@ class ProtoDescriptor {
             });
         }
         this.destroyServer = (port) => {
-            logger.info(this.id, `Destroy server with listening port: ${port}`);
+            logger.info(`${this.$name}: Destroy server with listening port: ${port}`);
             let s = this.servers[options.port];
             if (s !== undefined) {
                 s.close();
             } else {
-                logger.error(this.id, `Server not exists! port=${port}`);
+                logger.error(`${this.$name}: Server not exists! port=${port}`);
             }
         }
         /**
@@ -127,7 +126,7 @@ class ProtoDescriptor {
             return client;
         }
         this.dispose = (callback) => {
-            logger.info(this.name, 'Start cleaning...');
+            logger.info(this.$name, 'Start cleaning...');
             async.parallel([
                 // Stop server
                 (next) => {
@@ -137,7 +136,7 @@ class ProtoDescriptor {
                 (next) => {
                     let keys = Object.keys(this.clients);
                     let count = 0;
-                    logger.info(this.name, 'Total', keys.length, 'clients need to be closed.');
+                    logger.info(this.$name, 'Total', keys.length, 'clients need to be closed.');
                     async.each(keys, (key, cb) => {
                         let client = this.clients[key];
                         client.service.close();
@@ -149,18 +148,18 @@ class ProtoDescriptor {
                         count++;
                         return process.nextTick(cb);
                     }, () => {
-                        logger.info(this.name, count, 'clients has been closed.');
+                        logger.info(this.$name, count, 'clients has been closed.');
                         return next();
                     })
                 }
             ], () => {
-                logger.info(this.name, 'Cleaning succeed.');
+                logger.info(this.$name, 'Cleaning succeed.');
                 return callback();
             });
         }
         //
         (() => {
-            theApp.regModule(this);
+            global._$theApp.regModule(this);
         })();
     }
 }
@@ -172,13 +171,13 @@ function _onClientTtlTimeout(target) {
             client.service.close();
             client.tm = null;
             delete this.clients[target];
-            logger.debug(`${this.id}: ${target} client closed due to ttl!`);
+            logger.debug(`${this.$name}: ${target} client closed due to ttl!`);
         } else { // Restart ttl timer
             client.tm = setTimeout(_onClientTtlTimeout.bind(this, target), client.ttl);
-            logger.info(`${this.id}: ${target} client timer reset. - ${client.refCount} - ${client.lastActiveTime}`);
+            logger.info(`${this.$name}: ${target} client timer reset. - ${client.refCount} - ${client.lastActiveTime}`);
         }
     } else {
-        logger.error(`${this.id}: ${target} client not exists!`);
+        logger.error(`${this.$name}: ${target} client not exists!`);
     }
 }
 
