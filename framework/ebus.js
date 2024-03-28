@@ -258,17 +258,17 @@ class EventBus extends EventModule {
             logger.error(`Client#${clientId} end.`);
         });
     }
-    async init(config, options) {
+    async init(config) {
         if (this.state !== sysdefs.eModuleState.INIT) {
             logger.warn(`>>> Already initialized!`);
             return false;
         }
         _initEventBus.call(this, config);
         // Create eventLogger
-        const fn = typeof options.fnEventLogger === 'function' ? options.fnEventLogger : EventLogger;
-        this._eventLogger = new fn(this._appCtx, {
-            $name: sysdefs.eFrameworkModules.EVTLOGGER
-        });
+        // const fn = typeof options.fnEventLogger === 'function' ? options.fnEventLogger : EventLogger;
+        // this._eventLogger = new fn(this._appCtx, {
+        //     $name: sysdefs.eFrameworkModules.EVTLOGGER
+        // });
         if (this._lo === true) { //local loop
             this.state = sysdefs.eModuleState.ACTIVE;
             return true;

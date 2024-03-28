@@ -187,6 +187,53 @@ function _recursiveLoadDaemons(rootPath, subPath, options) {
     });
     return loaded;
 }
+function _recursiveLoadExtensions(rootPath, subPath, options) {
+    let results = [];
+    let currentDir = path.join(rootPath, subPath);
+    logger.info(`> Load extensions from dir: ${currentDir}`);
+    let entries = fs.readdirSync(currentDir, {
+        withFileTypes: true
+    });
+    entries.forEach(dirent => {
+        if (_reSysFile.test(dirent.name)) { // Ignore macOS system file
+            return null;
+        }
+        const entryPath = path.join(subPath, dirent.name);
+        if (dirent.isDirectory()) { // Recursively
+            if (dirent.name !== 'libs') { // Ignore libs folders
+                results = results.concat(_recursiveLoadDaemons.call(this, rootPath, entryPath, options));
+            }
+            return null;
+        }
+        if (options.disabled.includes(entryPath) || (options.enabled !== '*' && !options.enabled.includes(entryPath))) { // Ignore disabled service
+            return null;
+        }
+        let filePath = path.join(currentDir, dirent.name);
+        let result = {
+            file: filePath,
+            message: null
+        }
+        try {
+            let ext = require(filePath);
+            if (typeof ext.start === 'function') {
+                try {
+                    ext.start();  // With potential configuration identified by name
+                    result.message = 'started';
+                } catch (ex) {
+                    logger.error(`!!! Call start() of ${name} error! - ${ex.message}`);
+                    result.message = ex.message;
+                }
+            } else {
+                result.message = 'loaded';
+            }
+        } catch (ex) {
+            logger.error(`!!! Load extensions from: ${filePath} error! - ${ex.message}`);
+            result.message = ex.message;
+        }
+        results.push(result);
+    });
+    return results;
+}
 
 // The application class
 class Application extends EventEmitter {
@@ -212,7 +259,7 @@ class Application extends EventEmitter {
         this.distLocker = new DistributedEntityLocker(this, { $name: sysdefs.eFrameworkModules.DLOCKER });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.epFactory = new EndpointFactory(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
-        this.licenseManger = new LicenseManager(this, {$name: sysdefs.eFrameworkModules.LICENSE });
+        this.licenseManager = new LicenseManager(this, {$name: sysdefs.eFrameworkModules.ENDPOINT });
     }
     getVersion() {
         if (this._version === null) {
@@ -257,7 +304,7 @@ class Application extends EventEmitter {
      * @param { Object? } config.eventBus
      * @returns
      */
-    async initFramework(config, extensions) {
+    async initFramework(config) {
         if (this._state !== sysdefs.eModuleState.INIT) {
             return Promise.reject({
                 code: eRetCodes.INTERNAL_SERVER_ERR,
@@ -281,7 +328,7 @@ class Application extends EventEmitter {
         }
         const results = {};
         if (config.eventBus) {
-            results['ebus'] = await this.ebus.init(config.eventBus, extensions.eventBus || {});
+            results['ebus'] = await this.ebus.init(config.eventBus);
         }
         if (config.registry) {
             results['reg'] = await this.registry.init(config.registry);
@@ -302,10 +349,10 @@ class Application extends EventEmitter {
             results['dlck'] = await this.distLocker.init(config.distLocker);
         }
         if (config.license) {
-            results['lm'] = await this.licenseManger.init(config.license, extensions.license || {});
+            results['lm'] = await this.licenseManger.init(config.license);
         }
         if (config.endpoints) {
-            results['ep'] = await this.epFactory.init(config.endpoints, extensions.endpoints || {});
+            results['ep'] = await this.epFactory.init(config.endpoints);
         }
         //TODO: Add other framework components here ...
         logger.debug(`>>> The init results: ${tools.inspect(results)}`);
@@ -319,16 +366,23 @@ class Application extends EventEmitter {
         if (options.disabled === undefined) {
             options.disabled = [];
         }
-        // for (let i = 0; i < options.enabledServices.length; i++) {
-        //     options.enabledServices[i] = path.join(options.servicePath, options.enabledServices[i])
-        // }
-        //
         logger.info(`>>> Loading daemons with options: ${tools.inspect(options)} ...`);
         let loaded = _recursiveLoadDaemons.call(this, path.join(appRoot.path, options.pathName || 'daemons'), '', options);
         logger.debug(`>>> Loaded daemons: ${tools.inspect(loaded)}`);
         return loaded;
     }
-
+    loadExtensions(options) {
+        if (options.enabled === undefined) {
+            options.enabled = '*';
+        }
+        if (options.disabled === undefined) {
+            options.disabled = [];
+        }
+        logger.info(`>>> Loading extensions with options: ${tools.inspect(options)} ...`);
+        let result = _recursiveLoadExtensions.call(this, path.join(appRoot.path, options.pathName || 'extensions'), '', options);
+        logger.debug(`>>> Loaded extensions: ${tools.inspect(result)}`);
+        return result;
+    }
     //
     // Fire alarm
     async fireAlarm(args, options) {
