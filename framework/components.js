@@ -16,6 +16,7 @@ const tools = require('../utils/tools');
 const { paginationVal, _DS_DEFAULT_ } = require('./repository');
 const { _DEFAULT_PUBKEY_, _DEFAULT_CHANNEL_ } = require('./ebus');
 const { CommonObject } = require('../include/base');
+const session = require('express-session');
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
 
@@ -110,7 +111,7 @@ async function _publishEvents(options) {
     }
 }
 
-const eSessionCacheKey = {
+const eSessionCacheResource = {
     LicenseReservation        : 'licRsv',
     DistributedLock           : 'distLock'
     // Additional key goes here ...
@@ -120,6 +121,7 @@ class SessionCache extends CommonObject {
     constructor(props) {
         super(props);
         this._repo = {};
+        this._index = 0;
     }
     isEmpty() {
         return Object.keys(this._repo).length === 0;
@@ -127,15 +129,21 @@ class SessionCache extends CommonObject {
     keys() {
         return Object.keys(this._repo);
     }
+    count() {
+        return Object.keys(this._repo).length;
+    }
     /**
-     * @param { string } k 
-     * @param { * } v 
+     * @param { string } rc
+     * @param { * } ett
+     * @param { string } op
      */
-    set(k, v) {
+    append(rc, ett, op) {
         if (this._repo[k] !== undefined) {
             throw new Error(`${k} already exists!`);
         }
-        this._repo[k] = v;
+        this._repo[this._index++] = {
+            rc, ett, op
+        }
     }
     /**
      * @param { string } k 
@@ -149,11 +157,12 @@ class SessionCache extends CommonObject {
         }
         return v;
     }
-    unset(k) {
-        delete this._repo[k];
+    remove(index) {
+        delete this._repo[index];
     }
     clear() {
         this._repo = {};
+        this._index = 0;
     }
 }
 
@@ -199,7 +208,7 @@ const _defaultCtlSpec = {
     afterFindMany: async function (req, docs) { return docs; },     // For one or array results
     afterFindPartial: async function (req, results) { return results; },  // For pagination results
     //
-    allowAdd: async function (req) { return true; },
+    allowAdd: async function (req, sessionCache) { return true; },
     beforeAdd: async function (req) { return req.$args; },
     beforeInsert: async function (req) {
         return {
@@ -250,29 +259,30 @@ const _defaultCtlSpec = {
     beforeDeleteOne: tools.noop,
     afterDeleteOne: async function (req, doc) { return doc; },
     //
-    cleanup: async function (sc) {
-        if (sc.isEmpty()) {
+    cleanup: async function (sessionCache) {
+        if (sessionCache.isEmpty()) {
             return 0;
         }
-        const data = {};
-        sc.keys().forEach(k => {
-            switch(k) {
-                case eSessionCacheKey.LicenseReservation:
-                    data[k] = tools.noop();
+        const promiseMap = {};
+        Object.keys(sessionCache).forEach(k => {
+            const { rc, ett, op } = sessionCache.get(k);
+            switch(rc) {
+                case eSessionCacheResource.LicenseReservation:
+                    promiseMap[`${rc}#${k}`] = op === sysdefs.eResourceOp.Apply? this._appCtx.licenseManager.applyLicense(ett) : this._appCtx.licenseManager.refundLicense(ett);
                     break;
-                case eSessionCacheKey.DistributedLock:
-                    data[k] = tools.noop();
+                case eSessionCacheResource.DistributedLock:
+                    promiseMap[`${rc}#${k}`] = op === sysdefs.eResourceOp.Free || op === sysdefs.eResourceOp.Unlock? this._appCtx.distLocker.UnlockOneAsync(ett) : Promise.resolve('ignored');
                     break;
                 default:
-                    logger.warn(`*** ${this.$name}: Unrecognized key - ${k}`);
+                    logger.warn(`*** ${this.$name}: Unrecognized cache resource - ${rc}`);
                     break;
             }
         })
-        if (Object.keys(data).length === 0) {
+        if (Object.keys(promiseMap).length === 0) {
             return -1;
         }
         try {
-            const result = await tools.asyncParallel(data);
+            const result = await tools.asyncParallel(promiseMap);
             logger.debug(`>>> ${this.$name}: Cleanup - ${tools.inspect(result)}}]`);
             return 0;
         } catch (ex) {
@@ -825,7 +835,7 @@ class EntityController extends ControllerBase {
                 dryrun: {}
             },
             fn: async (req, res) => {
-                let sc = new SessionCache();
+                let sessionCache = new SessionCache();
                 try {
                     const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                     const repo = this.getRepo(this.modelName, dsName);
@@ -843,7 +853,7 @@ class EntityController extends ControllerBase {
                 } catch (err) {
                     return res.sendRsp(err.code, err.message);
                 } finally {
-                    await this._cleanup(sc);
+                    await this._cleanup(sessionCache);
                 }
             }
         }
@@ -860,7 +870,7 @@ class ServiceBase extends EventModule {
 
 // Declaring module exports
 module.exports = exports = {
-    eSessionCacheKey,
+    eSessionCacheResource,
     ControllerBase: ControllerBase,
     EntityController: EntityController,
     ServiceBase: ServiceBase,

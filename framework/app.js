@@ -32,6 +32,7 @@ const { RepositoryFactory } = require('./repository');
 const { CacheFactory } = require('./cache');
 const { EndpointFactory } = require('./endpoint');
 const { DistributedEntityLocker } = require('./distributed-locker');
+const { LicenseManager } = require('./license-manager');
 const { TaskFactory } = require('./xtask');
 const { UploadHelper } = require('./upload');
 
@@ -211,6 +212,7 @@ class Application extends EventEmitter {
         this.distLocker = new DistributedEntityLocker(this, { $name: sysdefs.eFrameworkModules.DLOCKER });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.epFactory = new EndpointFactory(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
+        this.licenseManger = new LicenseManager(this, {$name: sysdefs.eFrameworkModules.LICENSE });
     }
     getVersion() {
         if (this._version === null) {
@@ -298,6 +300,9 @@ class Application extends EventEmitter {
         }
         if (config.distLocker) {
             results['dlck'] = await this.distLocker.init(config.distLocker);
+        }
+        if (config.license) {
+            results['lm'] = await this.licenseManger.init(config.license, extensions.license || {});
         }
         if (config.endpoints) {
             results['ep'] = await this.epFactory.init(config.endpoints, extensions.endpoints || {});
