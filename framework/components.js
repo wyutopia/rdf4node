@@ -15,6 +15,7 @@ const tools = require('../utils/tools');
 //
 const { paginationVal, _DS_DEFAULT_ } = require('./repository');
 const { _DEFAULT_PUBKEY_, _DEFAULT_CHANNEL_ } = require('./ebus');
+const { CommonObject } = require('../include/base');
 /////////////////////////////////////////////////////////////////////////
 // Define the ControllerBase
 
@@ -74,52 +75,86 @@ const _reNotAllowed = new RegExp(/^-/);
  * @param { Object } options.headers
  * @param { string } options.dsName
  * @param { Object } options.data
- * @param { Callback } callback 
+
  * @returns 
  */
-function _publishEvents(options, callback) {
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
+async function _publishEvents(options) {
+    try {
+        let mode = options.mode || 0;
+        let method = options.method;
+        if (method === undefined) {
+            return null;
+        }
+        let domainEvent = this._domainEvents[method];
+        if (domainEvent === undefined) {
+            return null;
+        }
+        let evt = tools.deepAssign({
+            headers: Object.assign({
+                source: this.$name,
+                modelName: this.modelName,
+                dsName: options.dsName || _DS_DEFAULT_
+            }, options.headers),
+            body: options.data
+        }, domainEvent.success);
+        if (typeof domainEvent.select === 'string') { // Remove not-allowed properties
+            domainEvent.select.split(' ').forEach(key => {
+                if (_reNotAllowed.test(key)) {
+                    delete evt.body[key.slice(1)]
+                }
+            });
+        }
+        await this.pubAsync(evt, this._eventOptions);
+    } catch (ex) {
+        logger.error(`*** ${this.$name}: ${ex.message}`);
     }
-    let mode = options.mode || 0;
-    let method = options.method;
-    if (method === undefined) {
-        return callback();
+}
+
+const eSessionCacheKey = {
+    LicenseReservation        : 'licRsv',
+    DistributedLock           : 'distLock'
+    // Additional key goes here ...
+}
+
+class SessionCache extends CommonObject {
+    constructor(props) {
+        super(props);
+        this._repo = {};
     }
-    let domainEvent = this._domainEvents[method];
-    if (domainEvent === undefined) {
-        return callback();
+    isEmpty() {
+        return Object.keys(this._repo).length === 0;
     }
-    let evt = tools.deepAssign({
-        headers: Object.assign({
-            source: this.$name,
-            modelName: this.modelName,
-            dsName: options.dsName || _DS_DEFAULT_
-        }, options.headers),
-        body: options.data
-    }, domainEvent.success);
-    if (typeof domainEvent.select === 'string') { // Remove not-allowed properties
-        domainEvent.select.split(' ').forEach(key => {
-            if (_reNotAllowed.test(key)) {
-                delete evt.body[key.slice(1)]
-            }
-        });
+    keys() {
+        return Object.keys(this._repo);
     }
-    // Begin old publish method
-    // this.pubEvent(evt, this._eventOptions, err => {
-    //     if (err) {
-    //         logger.error(`Publish event: ${tools.inspect(evt)} error! - ${err.code}#${err.message}`);
-    //     }
-    //     return callback();
-    // });
-    // End
-    this.pubAsync(evt, this._eventOptions).then(() => {
-        return callback();
-    }).catch(err => {
-        logger.error(`Publish event: ${tools.inspect(evt)} error! - ${err.code}#${err.message}`);
-        return callback();
-    });
+    /**
+     * @param { string } k 
+     * @param { * } v 
+     */
+    set(k, v) {
+        if (this._repo[k] !== undefined) {
+            throw new Error(`${k} already exists!`);
+        }
+        this._repo[k] = v;
+    }
+    /**
+     * @param { string } k 
+     * @param { boolean } autoClean - Default true
+     * @returns 
+     */
+    get(k, autoClean = true) {
+        let v = this._repo[k];
+        if (autoClean) {
+            delete this._repo[k];
+        }
+        return v;
+    }
+    unset(k) {
+        delete this._repo[k];
+    }
+    clear() {
+        this._repo = {};
+    }
 }
 
 class ControllerBase extends EventModule {
@@ -151,33 +186,34 @@ const _defaultCtlSpec = {
     select: null,               // For select 
     deleteOptions: null,        // For additional delete criterias
     briefSelect: 'name',        // For brief query
+    shortSelect: 'name',        // For short query
     // For publish events
     pubKey: _DEFAULT_PUBKEY_,
     channel: _DEFAULT_CHANNEL_,
     // For overridable query operations
-    beforeFind: function (req, baseOptions, callback) {
-        return callback(null, baseOptions);
+    beforeFind: async function (req, baseOptions) {
+        return baseOptions;
     },
     //
-    afterFindOne: function (req, doc, callback) { return callback(null, doc); },      // For only one document
-    afterFindMany: function (req, docs, callback) { return callback(null, docs); },     // For one or array results
-    afterFindPartial: function (req, results, callback) { return callback(null, results); },  // For pagination results
+    afterFindOne: async function (req, doc) { return doc; },      // For only one document
+    afterFindMany: async function (req, docs) { return docs; },     // For one or array results
+    afterFindPartial: async function (req, results) { return results; },  // For pagination results
     //
-    allowAdd: function (req, callback) { return callback(); },
-    beforeAdd: function (req, callback) { return callback(null, req.$args); },
-    beforeInsert: function (req, callback) {
-        return callback(null, {
+    allowAdd: async function (req) { return true; },
+    beforeAdd: async function (req) { return req.$args; },
+    beforeInsert: async function (req) {
+        return {
             filter: req.$args,
             updates: req.$args
-        });
+        };
     },
-    afterAdd: function (req, doc, callback) { return callback(null, doc); },
+    afterAdd: async function (req, doc) { return doc; },
     //
-    beforeUpdate: function (req, callback) {
+    beforeUpdate: async function (req) {
         let setData = tools.deepAssign({}, req.$args);
         delete setData.id;
         if (Object.keys(setData).length === 0) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.ACCEPTED,
                 message: 'Empty updates!'
             });
@@ -200,19 +236,50 @@ const _defaultCtlSpec = {
         if (this._select) {
             params.select = this._select;
         }
-        return callback(null, params);
+        return params;
     },
     //    beforeUpdateOne: tools.noop,
-    afterUpdateOne: function (req, doc, callback) { return callback(null, doc); },
+    afterUpdateOne: async function (req, doc) { return doc; },
     //
-    allowDelete: function (req, id, callback) {
-        return callback({
+    allowDelete: async function (req, id) {
+        return Promise.reject({
             code: eRetCodes.METHOD_NOT_ALLOWED,
             message: 'Not allowed!'
-        });
+        })
     },
     beforeDeleteOne: tools.noop,
-    afterDeleteOne: function (req, doc, callback) { return callback(null, doc); }
+    afterDeleteOne: async function (req, doc) { return doc; },
+    //
+    cleanup: async function (sc) {
+        if (sc.isEmpty()) {
+            return 0;
+        }
+        const data = {};
+        sc.keys().forEach(k => {
+            switch(k) {
+                case eSessionCacheKey.LicenseReservation:
+                    data[k] = tools.noop();
+                    break;
+                case eSessionCacheKey.DistributedLock:
+                    data[k] = tools.noop();
+                    break;
+                default:
+                    logger.warn(`*** ${this.$name}: Unrecognized key - ${k}`);
+                    break;
+            }
+        })
+        if (Object.keys(data).length === 0) {
+            return -1;
+        }
+        try {
+            const result = await tools.asyncParallel(data);
+            logger.debug(`>>> ${this.$name}: Cleanup - ${tools.inspect(result)}}]`);
+            return 0;
+        } catch (ex) {
+            logger.error(`*** ${this.$name}: ${ex.message}`);
+            return -1;
+        }
+    }
 };
 function _initCtlSpec(ctlSpec) {
     Object.keys(_defaultCtlSpec).forEach(key => {
@@ -224,9 +291,8 @@ function _initCtlSpec(ctlSpec) {
 /**
  * Pack the base options for a find operation
  * 2. Add select, populate and sort from model spec.
- * @param { Object } req - The express request
- * @param {*} callback 
- * @returns 
+ * @param { Object } req - The express request 
+ * @returns { Types.QueryOptions }
  */
 function _prepareFindOptions(req) {
     const options = {};
@@ -400,29 +466,18 @@ class EntityController extends ControllerBase {
                 _setMandatoryKeys(this._mandatorySearchKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
+            fn: async (req, res) => {
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    const baseOptions = _prepareFindOptions.call(this, req);
+                    const options = await this._beforeFind(req, baseOptions);
+                    const docs = await repo.findManyAsync(options);
+                    const results = await this._afterFindMany(req, docs);
+                    return res.sendSuccess(results);
+                } catch (err) {
+                    return res.sendRsp(err.code, err.message);
                 }
-                const baseOptions = _prepareFindOptions.call(this, req);
-                this._beforeFind(req, baseOptions, (err, options) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
-                    }
-                    repo.findMany(options, (err, docs) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        this._afterFindMany(req, docs, (err, results) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            return res.sendSuccess(results);
-                        });
-                    });
-                });
             }
         };
         this.findOne = {
@@ -431,30 +486,19 @@ class EntityController extends ControllerBase {
                 _setMandatoryKeys(this._mandatorySearchKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                const baseOptions = _prepareFindOptions.call(this, req);
-                this._beforeFind(req, baseOptions, (err, options) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
-                    }
+            fn: async (req, res) => {
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    const baseOptions = _prepareFindOptions.call(this, req);
+                    const options = await this._beforeFind(req, baseOptions);
                     this.emit('before_find_one', req, options);
-                    repo.findOne(options, (err, doc) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        this._afterFindOne(req, doc, (err, result) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            return res.sendSuccess(result);
-                        });
-                    });
-                });
+                    const doc = await repo.findOneAsync(options);
+                    const result = await this._afterFindOne(req, doc);
+                    return res.sendSuccess(result);
+                } catch (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
             }
         };
         this.findPartial = {
@@ -463,31 +507,19 @@ class EntityController extends ControllerBase {
                 _setMandatoryKeys(this._mandatorySearchKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                const baseOptions = _prepareFindOptions.call(this, req);
-                this._beforeFind(req, baseOptions, (err, options) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
-                    }
+            fn: async (req, res) => {
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    const baseOptions = _prepareFindOptions.call(this, req);
+                    const options = await this._beforeFind(req, baseOptions);
                     this.emit('before_find_partial', req, options);
-                    repo.findPartial(options, (err, result) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        this._afterFindPartial(req, result, (err, outcomes) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            return res.sendSuccess(outcomes);
-                        });
-                    });
-
-                });
+                    const result = await repo.findPartialAsync(options);
+                    const outcomes = await this._afterFindPartial(req, result);
+                    return res.sendSuccess(outcomes);
+                } catch(err) {
+                    return res.sendRsp(err.code, err.message);
+                }
             }
         };
         // 
@@ -502,30 +534,19 @@ class EntityController extends ControllerBase {
                 _setMandatoryKeys(this._mandatorySearchKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                const baseOptions = _prepareFindOptions.call(this, req);
-                this._beforeFind(req, baseOptions, (err, options) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
-                    }
+            fn: async (req, res) => {
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    const baseOptions = _prepareFindOptions.call(this, req);
+                    const options = await this._beforeFind(req, baseOptions);
                     this.emit('before_findby_id', req, options);
-                    repo.findOne(options, (err, doc) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        this._afterFindOne(req, doc, (err, result) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            return res.sendSuccess(result);
-                        });
-                    });
-                });
+                    const doc = await repo.findOneAsync(options);
+                    const result = await this._afterFindOne(req, doc);
+                    return res.sendSuccess(result);
+                } catch (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
             }
         };
         this.findByProject = {
@@ -535,40 +556,29 @@ class EntityController extends ControllerBase {
                         type: 'ObjectId',
                         required: true
                     },
-                    brief: {}
+                    brief: {},
+                    short: {}
                 });
                 _setMandatoryKeys(this._mandatorySearchKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                const baseOptions = _prepareFindOptions.call(this, req);
-                this._beforeFind(req, baseOptions, (err, options) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
-                    }
+            fn: async (req, res) => {
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    const baseOptions = _prepareFindOptions.call(this, req);
+                    const options = await this._beforeFind(req, baseOptions);
                     this.emit('before_findby_project', req, options);
-                    repo.findMany(options, (err, docs) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        _publishEvents.call(this, {
-                            method: 'findByProject',
-                            data: docs
-                        }, () => {
-                            this._afterFindMany(req, docs, (err, results) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                return res.sendSuccess(results);
-                            });
-                        });
-                    });
-                });
+                    const docs = await repo.findManyAsync(options);
+                    await _publishEvents.call(this, {
+                        method: 'findByProject',
+                        data: docs
+                    })
+                    const results = await this._afterFindMany(req, docs);
+                    return res.sendSuccess(results);
+                } catch (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
             }
         };
         this.findByUser = {
@@ -582,30 +592,19 @@ class EntityController extends ControllerBase {
                 _setMandatoryKeys(this._mandatorySearchKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                const baseOptions = _prepareFindOptions.call(this, req);
-                this._beforeFind(req, baseOptions, (err, options) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
-                    }
+            fn: async (req, res) => {
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    const baseOptions = _prepareFindOptions.call(this, req);
+                    const options = await this._beforeFind(req, baseOptions);
                     this.emit('before_findby_user', req, options);
-                    repo.findMany(options, (err, docs) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        this._afterFindMany(req, docs, (err, results) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            return res.sendSuccess(results);
-                        });
-                    });
-                });
+                    const docs = await repo.findManyAsync(options);
+                    const results = await this._afterFindMany(req, docs);
+                    return res.sendSuccess(results);
+                } catch(err) {
+                    return res.sendRsp(err.code, err.message);
+                }
             }
         };
         this.findByGroup = {
@@ -615,35 +614,25 @@ class EntityController extends ControllerBase {
                         type: 'ObjectId',
                         required: true
                     },
-                    brief: {}
+                    brief: {},
+                    short: {}
                 });
                 _setMandatoryKeys(this._mandatorySearchKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                const baseOptions = _prepareFindOptions.call(this, req);
-                this._beforeFind(req, baseOptions, (err, options) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
-                    }
+            fn: async (req, res) => {
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    const baseOptions = _prepareFindOptions.call(this, req);
+                    const options = await this._beforeFind(req, baseOptions);
                     this.emit('before_findby_group', req, options);
-                    repo.findMany(options, (err, docs) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        this._afterFindMany(req, docs, (err, results) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            return res.sendSuccess(results);
-                        });
-                    });
-                });
+                    const docs = await repo.findManyAsync(options);
+                    const results = await this._afterFindMany(req, docs);
+                    return res.sendSuccess(results);
+                } catch (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
             }
         };
         // Create one new entity
@@ -657,43 +646,30 @@ class EntityController extends ControllerBase {
                 _setMandatoryKeys(this._mandatoryAddKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                this._allowAdd(req, (err) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
+            fn: async (req, res) => {
+                let sessionCache = new SessionCache();
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    await this._allowAdd(req, sessionCache);
+                    const data = await this._beforeAdd(req);
+                    if (data._id === undefined && req.$args.oid !== undefined) {
+                        data._id = req.$args.oid; // Using client provided id
                     }
-                    this._beforeAdd(req, (err, data) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        if (data._id === undefined && req.$args.oid !== undefined) {
-                            data._id = req.$args.oid;
-                        }
-                        repo.create(data, (err, doc) => {
-                            if (err) {
-                                return res.sendRsp(err.code, err.message);
-                            }
-                            let obj = doc.toObject();
-                            _publishEvents.call(this, {
-                                method: 'addOne',
-                                data: obj,
-                                mode: req.$args.mode || 0
-                            }, () => {
-                                this._afterAdd(req, doc, (err, result) => {
-                                    if (err) {
-                                        return res.sendRsp(err.code, err.message);
-                                    }
-                                    return res.sendSuccess(result);
-                                });
-                            });
-                        });
+                    const doc = await repo.createAsync(data);
+                    let obj = doc.toObject();
+                    await _publishEvents.call(this, {
+                        method: 'addOne',
+                        data: obj,
+                        mode: req.$args.mode || 0
                     });
-                });
+                    const result = await this._afterAdd(req, doc);
+                    return res.sendSuccess(result);
+                } catch (err) {
+                    return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this._cleanup(sessionCache);
+                }
             }
         };
         // FindOneAndUpdate with upsert=true
@@ -703,34 +679,22 @@ class EntityController extends ControllerBase {
                 _setMandatoryKeys(this._mandatoryAddKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                this._beforeInsert(req, (err, options) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
-                    }
-                    repo.insert(options, (err, doc) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        let obj = doc.toObject();
-                        _publishEvents.call(this, {
-                            method: 'inertOne',
-                            data: obj
-                        }, () => {
-                            this._afterAdd(req, doc, (err, result) => {
-                                if (err) {
-                                    return res.sendRsp(err.code, err.message);
-                                }
-                                return res.sendSuccess(result);
-                            });
-                        });
+            fn: async (req, res) => {
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    const options = await this._beforeInsert(req);
+                    const doc = await repo.insertAsync(options);
+                    let obj = doc.toObject();
+                    await _publishEvents.call(this, {
+                        method: 'inertOne',
+                        data: obj
                     });
-                });
+                    const result = await this._afterAdd(req, doc);
+                    return res.sendSuccess(result);
+                } catch (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
             }
         };
         this.updateOne = {
@@ -744,35 +708,26 @@ class EntityController extends ControllerBase {
                 _setMandatoryKeys(this._mandatoryUpdateKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                this._beforeUpdate(req, (err, params) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
-                    }
+            fn: async (req, res) => {
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    const params = await this._beforeUpdate(req);
                     this.emit('before_update_one', req, params);
-                    repo.updateOne(params, (err, doc) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
+                    const doc = await repo.updateOneAsync(params);
+                    let obj = doc.toObject();
+                    await _publishEvents.call(this, {
+                        method: 'updateOne',
+                        data: obj,
+                        headers: {
+                            updatedKeys: _findUpdatedKeys.call(this, obj, req.$args, params.options)
                         }
-                        let obj = doc.toObject();
-                        _publishEvents.call(this, {
-                            method: 'updateOne',
-                            data: obj,
-                            headers: {
-                                updatedKeys: _findUpdatedKeys.call(this, obj, req.$args, params.options)
-                            }
-                        }, () => {
-                            this._afterUpdateOne(req, doc, (err, result) => {
-                                return res.sendSuccess(result);
-                            });
-                        });
                     });
-                });
+                    const result = await this._afterUpdateOne(req, doc);
+                    return res.sendSuccess(result);
+                } catch (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
             }
         };
         this.deleteOne = {
@@ -786,40 +741,31 @@ class EntityController extends ControllerBase {
                 _setMandatoryKeys(this._mandatoryDelKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                this._allowDelete(req, req.$args.id, (err) => {
-                    if (err) {
-                        return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
-                    }
-                    //
+            fn: async (req, res) => {
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    const id = req.$args.id;
+                    await this._allowDelete(req, id);
                     let options = {
                         filter: Object.assign({
-                            _id: req.$args.id
+                            _id: id
                         }, this._deleteOptions || {})
                     }
-                    this._beforeDeleteOne(options);
-                    repo.delete(options, (err, doc) => {
-                        if (err) {
-                            return res.sendRsp(err.code, err.message);
-                        }
-                        if (!doc) {
-                            return res.sendRsp(eRetCodes.ACCEPTED, 'No document deleted!');
-                        }
-                        _publishEvents.call(this, {
-                            method: 'deleteOne',
-                            data: doc.toObject()
-                        }, () => {
-                            this._afterDeleteOne(req, doc, () => {
-                                return res.sendSuccess(doc);
-                            })
-                        });
+                    await this._beforeDeleteOne(options);
+                    const doc = await repo.deleteAsync(options);
+                    if (!doc) {
+                        return res.sendRsp(eRetCodes.ACCEPTED, `#${id} not found!`);
+                    }
+                    await _publishEvents.call(this, {
+                        method: 'deleteOne',
+                        data: doc.toObject()
                     });
-                });
+                    const result = await this._afterDeleteOne(req, doc);
+                    return res.sendSuccess(result);
+                } catch (err) {
+                    return res.sendRsp(err.code, err.message);
+                }
             }
         };
         this.logicDeleteOne = {
@@ -833,18 +779,13 @@ class EntityController extends ControllerBase {
                 _setMandatoryKeys(this._mandatoryDelKeys, validator);
                 return validator;
             }).call(this),
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                this._allowDelete(req, req.$args.id, (err) => {
-                    if (err) {
-                        return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
-                    }
+            fn: async (req, res) => {
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    await this._allowDelete(req, req.$args.id);
                     //
-                    repo.updateOne({
+                    const doc = await repo.updateOneAsync({
                         filter: {
                             _id: req.$args.id,
                             status: sysdefs.eStatus.ACTIVE
@@ -857,23 +798,19 @@ class EntityController extends ControllerBase {
                             }
                         },
                         allowEmpty: true
-                    }, (err, doc) => {
-                        if (err) {
-                            return res.sendRsp(err.code, 'Fake delete error!');
-                        }
-                        if (!doc) {
-                            return res.sendRsp(eRetCodes.DB_DELETE_ERR, `${req.$args.id} already deleted!`);
-                        }
-                        _publishEvents.call(this, {
-                            method: 'deleteOne',
-                            data: doc.toObject()
-                        }, () => {
-                            this._afterDeleteOne(req, doc, () => {
-                                return res.sendSuccess(doc);
-                            })
-                        });
+                    })
+                    if (!doc) {
+                        return res.sendRsp(eRetCodes.DB_DELETE_ERR, `${req.$args.id} already deleted!`);
+                    }
+                    await _publishEvents.call(this, {
+                        method: 'deleteOne',
+                        data: doc.toObject()
                     });
-                });
+                    const result = await this._afterDeleteOne(req, doc);
+                    return res.sendSuccess(result);
+                } catch (err) {
+                    return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
+                }
             }
         };
         this.patchOne = {
@@ -884,30 +821,30 @@ class EntityController extends ControllerBase {
                 },
                 jsonPatch: {
                     required: true
-                }
+                },
+                dryrun: {}
             },
-            fn: (req, res) => {
-                const dsName = req.dataSource.dsName || _DS_DEFAULT_;
-                const repo = this.getRepo(this.modelName, dsName);
-                if (!repo) {
-                    return res.sendRsp(eRetCodes.DB_ERROR, sysdefs.eErrMsg.INVALID_DS);
-                }
-                let options = _beforePatch.call(this, req);
-                if (options.noop) {
-                    return res.sendRsp(eRetCodes.ACCEPTED, options.noop);
-                }
-                repo.updateOne(options, (err, doc) => {
-                    if (err) {
-                        return res.sendRsp(err.code, err.message);
+            fn: async (req, res) => {
+                let sc = new SessionCache();
+                try {
+                    const dsName = req.dataSource.dsName || _DS_DEFAULT_;
+                    const repo = this.getRepo(this.modelName, dsName);
+                    const options = await _beforePatch.call(this, req);
+                    if (options.noop) {
+                        return res.sendRsp(eRetCodes.ACCEPTED, options.noop);
                     }
-                    _publishEvents.call(this, {
+                    const doc = await repo.updateOneAsync(options);
+                    await _publishEvents.call(this, {
                         method: 'patchOne',
                         data: doc
-                    }, () => {
-                        this._afterPatchOne(doc);
-                        return res.sendSuccess(doc);
                     });
-                });
+                    await this._afterPatchOne(doc);
+                    return res.sendSuccess(doc);
+                } catch (err) {
+                    return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this._cleanup(sc);
+                }
             }
         }
     }
@@ -923,6 +860,7 @@ class ServiceBase extends EventModule {
 
 // Declaring module exports
 module.exports = exports = {
+    eSessionCacheKey,
     ControllerBase: ControllerBase,
     EntityController: EntityController,
     ServiceBase: ServiceBase,
