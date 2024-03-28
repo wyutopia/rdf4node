@@ -138,11 +138,16 @@ class SessionCache extends CommonObject {
      * @param { string } op
      */
     append(rc, ett, op) {
-        if (this._repo[k] !== undefined) {
-            throw new Error(`${k} already exists!`);
-        }
+        let id = this._index;
         this._repo[this._index++] = {
             rc, ett, op
+        }
+        return id;
+    }
+    updateOp(id, op) {
+        let data = this._repo[id];
+        if (data) {
+            data.op = op;
         }
     }
     /**
@@ -157,8 +162,8 @@ class SessionCache extends CommonObject {
         }
         return v;
     }
-    remove(index) {
-        delete this._repo[index];
+    remove(id) {
+        delete this._repo[id];
     }
     clear() {
         this._repo = {};
