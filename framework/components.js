@@ -119,7 +119,7 @@ const eSessionCacheResource = {
 
 class SessionCache extends CommonObject {
     constructor(props) {
-        super(props);
+        super(props || {});
         this._repo = {};
         this._index = 0;
     }
@@ -155,12 +155,8 @@ class SessionCache extends CommonObject {
      * @param { boolean } autoClean - Default true
      * @returns 
      */
-    get(k, autoClean = true) {
-        let v = this._repo[k];
-        if (autoClean) {
-            delete this._repo[k];
-        }
-        return v;
+    get(k) {
+        return this._repo[k];
     }
     remove(id) {
         delete this._repo[id];
@@ -269,7 +265,7 @@ const _defaultCtlSpec = {
             return 0;
         }
         const promiseMap = {};
-        Object.keys(sessionCache).forEach(k => {
+        sessionCache.keys().forEach(k => {
             const { rc, ett, op } = sessionCache.get(k);
             switch(rc) {
                 case eSessionCacheResource.LicenseReservation:

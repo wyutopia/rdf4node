@@ -25,16 +25,8 @@ class LicenseManager extends CommonObject {
     reserveLicense = async function() { return null; }
     applyLicense = async function () { return false; }
     refundLicense = async function () { return false; }    
-    async init(config, options) {
-        if (typeof options.reserveLicesne === 'function') {
-            this.reserveLicense = extension.reserveLicense;
-        }
-        if (typeof options.applyLicense === 'function') {
-            this.applyLicense = options.applyLicense;
-        }
-        if (typeof options.refundLicense === 'function') {
-            this.refundLicense = options.refundLicense;
-        }
+    async init(config) {
+        // TODO:...
         return true;
     }
 }
