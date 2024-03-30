@@ -35,7 +35,7 @@ exports.listDir = {
                 let fullPathFile = path.join(logDir, file);
                 try {
                     const stats = await fs.stat(fullPathFile)
-                    logger.info(`${file} - stat: ${stats.size}`);
+                    //logger.info(`${file} - stat: ${stats.size}`);
                     result.num++;
                     result.size += stats.size;
                     result.manifest.push({
@@ -47,7 +47,7 @@ exports.listDir = {
                     logger.error(`*** Stat file: ${fullPathFile} error! - ${ex.message}`);
                 }
             })
-            logger.info(`Scan result: ${tools.inspect(result)}`);
+            //logger.info(`Scan result: ${tools.inspect(result)}`);
             return res.sendSuccess(result);
         } catch (err) {
             return res.sendRsp(err.code, err.message);

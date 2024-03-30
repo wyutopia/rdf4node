@@ -43,7 +43,7 @@ class TaskManager extends EventModule {
         logger.debug(`>>> Create new background task: ${name}`);
         const t = this._tasks[name];
         if (t !== undefined) {
-            logger.error(`${this.$name}: Task ${name} already exists!`);
+            logger.error(`${this.alias}: Task ${name} already exists!`);
             return null;
         }
         if (typeof fn === 'function') {
@@ -61,7 +61,7 @@ class TaskManager extends EventModule {
     }
     async dispose() {
         const taskNames = Object.keys(this._tasks);
-        logger.info(`${this.$name}: Stop ${taskNames.length} backgroud tasks ...`);
+        logger.info(`${this.alias}: Stop ${taskNames.length} backgroud tasks ...`);
         //
         const promises = [];
         taskNames.forEach(key => {
@@ -72,10 +72,10 @@ class TaskManager extends EventModule {
         })
         try {
             const results = await Promise.all(promises);
-            logger.info(`${this.$name}: All backgroud tasks stopped.`);
+            logger.info(`${this.alias}: All backgroud tasks stopped.`);
             return results;
         } catch (ex) {
-            logger.error(`${this.$name}: Stop tasks error! - ${tools.inspect(ex)}`);
+            logger.error(`${this.alias}: Stop tasks error! - ${tools.inspect(ex)}`);
             return 0;
         }
     }
@@ -91,7 +91,7 @@ class XTask extends CommonObject {
         assert(props !== undefined);
         super(props);
         // Class meta-info
-        this._run = true;
+        this._run = false;
         this._id = tools.uuidv4();
         this._isAbstract = props.isAbstract !== undefined;
         this._mutex = false;
@@ -135,11 +135,11 @@ class XTask extends CommonObject {
     async doWork() {
         //logger.debug(this.alias, 'Start working...');
         if (!this._run) {
-            logger.debug(`${this.$name}: stopped.`);
+            logger.debug(`${this.alias}: stopped.`);
             return false;
         }
         if (this._mutex) {
-            logger.error(`${this.$name}: loop conflict!`);
+            logger.error(`${this.alias}: loop conflict!`);
             return false;
         }
         this._mutex = true;
@@ -149,7 +149,7 @@ class XTask extends CommonObject {
             await this.afterWork();
             return true;
         } catch (ex) {
-            logger.error(`*** ${this.$name}: ${ex.message}`);
+            logger.error(`*** ${this.alias}: ${ex.message}`);
             return false;
         } finally {
             this._mutex = false;
@@ -171,7 +171,7 @@ class XTask extends CommonObject {
         }
         if (this._hTask === null) {
             this._mutex = false;
-            this._hTask = this.startup === 'ONCE' ? setTimeout(this.doWork, this.interval) : setInterval(this.doWork, this.interval);
+            this._hTask = this.startup === 'ONCE' ? setTimeout(this.doWork.bind(this), this.interval) : setInterval(this.doWork.bind(this), this.interval);
             logger.info(`${this.alias}: started. - ${this.startup} - ${this.interval}`);
         } else {
             logger.error(`${this.alias}: already exists.`);
@@ -204,8 +204,10 @@ class XTask extends CommonObject {
     // Startup script
     bootstrap() {
         if (this.startup === 'AUTO' || this.startup === 'ONCE') {
+            this._run = true;
             this.start();
         } else if (this.startup === 'SCHEDULE' && this.cronExp !== undefined) {
+            this._run = true;
             logger.info(`${this.alias}: Schedule task with cron: ${this.cronExp}`);
             schedule.scheduleJob(this.cronExp, this.doWork.bind(this));
         }
