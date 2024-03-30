@@ -3,7 +3,7 @@
  */
 const appRoot = require('app-root-path');
 const async = require('async');
-const fs = require('fs');
+const fs = require('fs/promises');
 const path = require('path');
 const moment = require('moment');
 
@@ -23,24 +23,19 @@ function _isExclude(filename) {
 
 exports.listDir = {
     val: {},
-    fn: function (req, res) {
-        _realReadDir(logDir, function (err, files) {
-            if (err) {
-                return res.sendRsp(err.code, err.message);
-            }
+    fn: async function (req, res) {
+        try {
+            const files = await fs.readdir(logDir);
             //logger.info(logDir, ': ', files);
             let result = {
                 num: 0,
                 size: 0,
                 manifest: []
             };
-            async.eachLimit(files, 2, function (file, callback) {
+            await async.eachLimit(files, 3, async function (file) {
                 let fullPathFile = path.join(logDir, file);
-                fs.stat(fullPathFile, (err, stats) => {
-                    if (err) {
-                        logger.error(`Stat file: ${file} - ${err.message}`);
-                        return callback();
-                    }
+                try {
+                    const stats = await fs.stat(fullPathFile)
                     logger.info(`${file} - stat: ${stats.size}`);
                     result.num++;
                     result.size += stats.size;
@@ -48,155 +43,138 @@ exports.listDir = {
                         file: file,
                         size: stats.size,
                         mtime: new Date(stats.mtimeMs)
-                    });
-                    return callback();
-                })
-            }, function () {
-                logger.info(`Scan result: ${tools.inspect(result)}`);
-                return res.sendSuccess(result);
-            });
-        });
+                    })
+                } catch(ex) {
+                    logger.error(`*** Stat file: ${fullPathFile} error! - ${ex.message}`);
+                }
+            })
+            logger.info(`Scan result: ${tools.inspect(result)}`);
+            return res.sendSuccess(result);
+        } catch (err) {
+            return res.sendRsp(err.code, err.message);
+        }
     }
 };
 
 let cleanMutex = false;
 exports.cleanDir = {
     val: {},
-    fn: function (req, res) {
+    fn: async function (req, res) {
         if (cleanMutex === true) {
             return res.sendRsp(eRetCodes.CONFLICT, 'Cleaning...');
         }
         cleanMutex = true;
-        _cleanLogDir((err, num) => {
-            cleanMutex = false;
-            if (err) {
-                return res.sendRsp(err.code, err.message);
-            }
+        try {
+            const n = await _cleanLogDir();
             return res.sendSuccess({
                 removedFileNum: num
             });
-        });
+        } catch(err) {
+            return res.sendRsp(err.code, err.message);
+        } finally {
+            cleanMutex = false;
+        }
     }
 };
 
-function _cleanLogDir(lastModTime, callback) {
-    if (typeof lastModTime === 'function') {
-        callback = lastModTime;
+async function _cleanLogDir(lastModTime) {
+    if (!lastModTime) {
         lastModTime = new Date(moment().format('YYYY-MM-DD')).valueOf();
     }
-    _realReadDir(logDir, function (err, files) {
-        if (err) {
-            cleanMutex = false;
-            return res.sendRsp(err.code, err.message);
-        }
+    try {
+        const files = await fs.readdir(logDir);
         logger.debug(`${logDir}: ${tools.inspect(files)}`);
-        return _safeRemoveFiles(files, lastModTime, callback);
-    });
+        await _safeRemoveFiles(files, lastModTime);
+    } catch (ex) {
+        logger.error(`*** Clean log-dir error! - ${ex.message}`);
+    }
 }
 
 class ScheduledCleanTask extends XTask {
     constructor(options) {
         super(options);
         //
-        this.beforeWork = (callback) => {
+        this.beforeWork = async () => {
             if (cleanMutex === true) {
-                return callback({
+                return Promise.reject({
                     code: eRetCodes.CONFLICT,
                     message: 'Cleaning'
-                });
+                })
             }
             cleanMutex = true;
-            return callback();
+            return true;
         };
-        this.realWork = _cleanLogDir.bind(this, new Date(moment().add(-7, 'd').format('YYYY-MM-DD')).valueOf());
-        this.afterWork = (callback) => {
+        this.realWork = async () => {
+            return _cleanLogDir.call(this, new Date(moment().add(-7, 'd').format('YYYY-MM-DD')).valueOf());
+        }
+        this.afterWork = async () => {
             cleanMutex = false;
-            return callback();
+            return true;
         };
     }
 }
 
-
 exports.init = function (appCtx) {
-    appCtx.taskFactory.create('weeklyCleaner', ScheduledCleanTask, {
+    new ScheduledCleanTask({
         alias: 'WeeklyLogFilesCleaner',
         startup: 'SCHEDULE',
         // second minute hour dayOfMonth month dayOfWeek
         cronExp: '0 0 8 * * 1'
-    });
+    })
 }
 
 exports.removeFiles = {
-    val: {},
-    fn: function (req, res) {
-        parseParameters(req.body, {
-            mandatory: ['files']
-        }, (err, args) => {
-            if (err) {
-                return res.sendRsp(err.code, err.message);
-            }
-            if (typeof args.files !== 'string') {
-                return res.sendRsp(eRetCodes.BAD_REQUEST, 'Invalid parameters: files! - Should be string!');
-            }
-            _safeRemoveFiles(args.files.split(','), new Date(moment().format('YYYY-MM-DD')).valueOf(), (err, num) => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                return res.sendSuccess({
-                    removedFileNum: num
-                });
-            });
-        });
+    val: {
+        files: {
+            type: 'String',
+            required: true
+        }
+    },
+    fn: async function (req, res) {
+        try {
+            const n = await _safeRemoveFiles(args.files.split(','), new Date(moment().format('YYYY-MM-DD')).valueOf());
+            return res.sendSuccess({
+                removedFileNum: n
+            })
+        } catch(err) {
+            return res.sendRsp(err.code, err.message);
+        }
     }
 };
 
-function _safeRemoveFiles(files, lastModTime, callback) {
+async function _safeRemoveFiles(files, lastModTime) {
     logger.debug(`Remove files: ${tools.inspect(files)}`);
     if (!tools.isTypeOfArray(files)) {
-        return callback({
+        return Promise.reject({
             code: eRetCodes.BAD_REQUEST,
             message: 'Parameter: files is not array!'
-        });
+        })
     }
     let num = 0;
-    async.eachLimit(files, 4, (file, next) => {
+    await async.eachLimit(files, 3, async (file) => {
         let fullPathFile = path.join(logDir, file);
-        fs.stat(fullPathFile, (err, stats) => {
-            if (err) {
-                logger.error(`Stat file error! - ${err.message}`);
-                return next(err);
-            }
+        try {
+            const stats = await fs.stat(fullPathFile);
             if (stats.mtimeMs >= lastModTime) { // Ignore
                 logger.info(`Ignore in use log file: ${file}`);
-                return next();
+                return null;
             }
-            fs.unlink(fullPathFile, (err) => {
-                if (err) {
-                    logger.error(`Remove file error! - ${file} - ${err.code} - ${err.message}`);
-                    return next(err);
-                }
+            try {
+                await fs.unlink(fullPathFile);
                 num++;
-                logger.info(`File: ${file} removed.`);
-                return next();
-            });
-        });
-    }, function (err) {
-        if (err) {
-            return callback(err);
+                logger.info(`File: ${file} removed.`);    
+            } catch(err) {
+                logger.error(`Remove file error! - ${file} - ${err.code} - ${err.message}`);
+            }
+        } catch(ex) {
+            logger.error(`*** Stat file: ${fullPathFile} error! - ${ex.message}`);
         }
-        return callback(null, num);
-    });
+    })
+    return num;
 }
 
-function _realReadDir(dir, callback) {
-    fs.readdir(dir, function (err, files) {
-        if (err) {
-            logger.error(`Read logDir error! - ${err.code} - ${err.message}`);
-            return callback(err);
-        }
-        logger.debug(`Exist log files: ${tools.inspect(files)}`);
-        return callback(null, files);
-    });
+async function _realReadDir(dir) {
+    return fs.readdir(dir);
 }
 
 /**
@@ -205,21 +183,20 @@ function _realReadDir(dir, callback) {
  * @returns 
  */
 exports.downloadFile = {
-    val: {},
-    fn: function (req, res) {
-        let file = req.params.filename;
-        if (file === undefined) {
-            return res.sendRsp(eRetCodes.BAD_REQUEST, 'Invalid file name!');
+    val: {
+        filename: {
+            type: 'String',
+            required: true
         }
-        let fullPath = path.join(logDir, file);
-        logger.info(`Download file: ${fullPath}`);
-        if (!fs.existsSync(fullPath)) {
-            return res.sendStatus(eRetCodes.NOT_FOUND);
+    },
+    fn: async function (req, res) {
+        const filename = req.$args.filename;
+        const fullPath = path.join(logDir, filename);
+        try {
+            logger.info(`Download file: ${fullPath}`);
+            res.download(fullPath, filename);
+        } catch(ex) {
+            return res.sendRsp(eRetCodes.OP_FAILED, ex.message);
         }
-        res.download(fullPath, (err) => {
-            if (err) {
-                logger.error(err.code, err.message);
-            }
-        });
     }
-};
+}

@@ -33,7 +33,7 @@ const { CacheFactory } = require('./cache');
 const { EndpointFactory } = require('./endpoint');
 const { DistributedEntityLocker } = require('./distributed-locker');
 const { LicenseManager } = require('./license-manager');
-const { TaskFactory } = require('./xtask');
+const { TaskManager } = require('./xtask');
 const { UploadHelper } = require('./upload');
 
 //
@@ -96,7 +96,7 @@ async function _fireStartupAlarm() {
             content: 'This is a startup alarm test!'
         }
         await this.fireAlarm(options);
-    } catch(err) {
+    } catch (err) {
         logger.error(`*** Fire startup alarm error! - ${err.message}`)
     }
 }
@@ -108,7 +108,7 @@ async function _fireExitAlarm() {
             content: 'This is a graceful-exit alarm test!'
         }
         await this.fireAlarm(options);
-    } catch(err) {
+    } catch (err) {
         logger.error(`*** Fire exit alarm error! - ${err.message}`)
     }
 }
@@ -261,11 +261,11 @@ class Application extends EventEmitter {
         this.registry = new Registry(this, { $name: sysdefs.eFrameworkModules.REGISTRY });
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
         this.cacheFactory = new CacheFactory(this, { $name: sysdefs.eFrameworkModules.CACHE });
-        this.taskFactory = new TaskFactory(this, { $name: sysdefs.eFrameworkModules.XTASK });
+        this.taskManager = new TaskManager(this, { $name: sysdefs.eFrameworkModules.XTASK });
         this.distLocker = new DistributedEntityLocker(this, { $name: sysdefs.eFrameworkModules.DLOCKER });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.epFactory = new EndpointFactory(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
-        this.licenseManager = new LicenseManager(this, {$name: sysdefs.eFrameworkModules.ENDPOINT });
+        this.licenseManager = new LicenseManager(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
     }
     getVersion() {
         if (this._version === null) {
