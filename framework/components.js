@@ -112,8 +112,8 @@ async function _publishEvents(options) {
 }
 
 const eSessionCacheResource = {
-    LicenseReservation        : 'licRsv',
-    DistributedLock           : 'distLock'
+    LicenseReservation: 'licRsv',
+    DistributedLock: 'distLock'
     // Additional key goes here ...
 }
 
@@ -264,25 +264,25 @@ const _defaultCtlSpec = {
         if (sessionCache.isEmpty()) {
             return 0;
         }
-        const promiseMap = {};
-        sessionCache.keys().forEach(k => {
-            const { rc, ett, op } = sessionCache.get(k);
-            switch(rc) {
-                case eSessionCacheResource.LicenseReservation:
-                    promiseMap[`${rc}#${k}`] = op === sysdefs.eResourceOp.Apply? this._appCtx.licenseManager.applyLicense(ett) : this._appCtx.licenseManager.refundLicense(ett);
-                    break;
-                case eSessionCacheResource.DistributedLock:
-                    promiseMap[`${rc}#${k}`] = op === sysdefs.eResourceOp.Free || op === sysdefs.eResourceOp.Unlock? this._appCtx.distLocker.UnlockOneAsync(ett) : Promise.resolve('ignored');
-                    break;
-                default:
-                    logger.warn(`*** ${this.$name}: Unrecognized cache resource - ${rc}`);
-                    break;
-            }
-        })
-        if (Object.keys(promiseMap).length === 0) {
-            return -1;
-        }
         try {
+            const promiseMap = {};
+            sessionCache.keys().forEach(k => {
+                const { rc, ett, op } = sessionCache.get(k);
+                switch (rc) {
+                    case eSessionCacheResource.LicenseReservation:
+                        promiseMap[`${rc}#${k}`] = op === sysdefs.eResourceOp.Apply ? this._appCtx.licenseManager.applyLicense(ett) : this._appCtx.licenseManager.refundLicense(ett);
+                        break;
+                    case eSessionCacheResource.DistributedLock:
+                        promiseMap[`${rc}#${k}`] = op === sysdefs.eResourceOp.Free || op === sysdefs.eResourceOp.Unlock ? this._appCtx.distLocker.UnlockOneAsync(ett) : Promise.resolve('ignored');
+                        break;
+                    default:
+                        logger.warn(`*** ${this.$name}: Unrecognized cache resource - ${rc}`);
+                        break;
+                }
+            })
+            if (Object.keys(promiseMap).length === 0) {
+                return -1;
+            }
             const result = await tools.asyncParallel(promiseMap);
             logger.debug(`>>> ${this.$name}: Cleanup - ${tools.inspect(result)}}]`);
             return 0;
@@ -487,6 +487,7 @@ class EntityController extends ControllerBase {
                     const results = await this._afterFindMany(req, docs);
                     return res.sendSuccess(results);
                 } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -508,6 +509,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterFindOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -528,7 +530,8 @@ class EntityController extends ControllerBase {
                     const result = await repo.findPartialAsync(options);
                     const outcomes = await this._afterFindPartial(req, result);
                     return res.sendSuccess(outcomes);
-                } catch(err) {
+                } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -556,6 +559,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterFindOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -588,6 +592,7 @@ class EntityController extends ControllerBase {
                     const results = await this._afterFindMany(req, docs);
                     return res.sendSuccess(results);
                 } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -613,7 +618,8 @@ class EntityController extends ControllerBase {
                     const docs = await repo.findManyAsync(options);
                     const results = await this._afterFindMany(req, docs);
                     return res.sendSuccess(results);
-                } catch(err) {
+                } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -642,6 +648,7 @@ class EntityController extends ControllerBase {
                     const results = await this._afterFindMany(req, docs);
                     return res.sendSuccess(results);
                 } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -677,6 +684,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterAdd(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
                     await this._cleanup(sessionCache);
@@ -704,6 +712,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterAdd(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -737,6 +746,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterUpdateOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -775,6 +785,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterDeleteOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -820,6 +831,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterDeleteOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                 }
             }
@@ -852,6 +864,7 @@ class EntityController extends ControllerBase {
                     await this._afterPatchOne(doc);
                     return res.sendSuccess(doc);
                 } catch (err) {
+                    logger.error(`*** ${this.$name}: ${ex.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
                     await this._cleanup(sessionCache);

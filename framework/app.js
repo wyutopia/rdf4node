@@ -84,27 +84,33 @@ async function _deregService() {
         logger.info(`${this._name}: De-register from consul succeed.`);
         return result;
     } catch (ex) {
-        logger.error(`${this._name}: De-register from consul failed.`);
+        logger.error(`${this._name}: De-register from consul failed. - ${ex.message}`);
         return 0;
     }
 }
 
-function _fireStartupAlarm(callback) {
-    let options = {
-        eventId: sysdefs.eAlarmCode.SERVICE_STARTUP,
-        content: 'This is a startup alarm test!'
+async function _fireStartupAlarm() {
+    try {
+        let options = {
+            eventId: sysdefs.eAlarmCode.SERVICE_STARTUP,
+            content: 'This is a startup alarm test!'
+        }
+        await this.fireAlarm(options);
+    } catch(err) {
+        logger.error(`*** Fire startup alarm error! - ${err.message}`)
     }
-    return this.fireAlarm(options, callback);
 }
 
 async function _fireExitAlarm() {
-    // let options = {
-    //     eventId: sysdefs.eAlarmCode.GRACEFUL_EXIT,
-    //     content: 'This is a graceful-exit alarm test!'
-    // }
-    // return this.fireAlarm(options, callback);
-    logger.info(`[${this._name}]: TODO - fire exit alarm ...`)
-    return 0;
+    try {
+        let options = {
+            eventId: sysdefs.eAlarmCode.GRACEFUL_EXIT,
+            content: 'This is a graceful-exit alarm test!'
+        }
+        await this.fireAlarm(options);
+    } catch(err) {
+        logger.error(`*** Fire exit alarm error! - ${err.message}`)
+    }
 }
 
 function _buildModuleArch() {
@@ -220,7 +226,7 @@ function _recursiveLoadExtensions(rootPath, subPath, options) {
                     ext.start();  // With potential configuration identified by name
                     result.message = 'started';
                 } catch (ex) {
-                    logger.error(`!!! Call start() of ${name} error! - ${ex.message}`);
+                    logger.error(`!!! Call start() of error! - ${ex.message}`);
                     result.message = ex.message;
                 }
             } else {
@@ -285,9 +291,6 @@ class Application extends EventEmitter {
     }
     getState() {
         return this._state;
-    }
-    fetchServices(callback) {
-        return _consulClient.listServices(callback);
     }
     getDataSource(...args) {
         return this.dsFactory.getDataSource(...args);
@@ -386,10 +389,6 @@ class Application extends EventEmitter {
     //
     // Fire alarm
     async fireAlarm(args, options) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
         return false;
         // if (process.env.NODE_ENV !== 'production' && !options.alwaysSend) {
         //     logger.debug(`Ignore fire alarm on development env.`);
@@ -473,14 +472,14 @@ class Application extends EventEmitter {
     getSecurity() {
         return this._security;
     }
-    setDebugLevel(args, callback) {
+    async setDebugLevel(args) {
         if (['info', 'debug', 'error'].indexOf(args.level) === -1) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.BAD_REQUEST,
                 message: 'Invalid level!'
             })
         }
-        return logger.setRotateFileLevel(args.level, callback);
+        await logger.setRotateFileLevel(args.level);
     }
 
     async createEndpoints() {
