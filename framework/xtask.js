@@ -11,6 +11,7 @@ const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.XTASK;
 const { CommonObject } = require('../include/base');
+const { EventModule } = require('../include/events');
 const mntService = require('../libs/base/prom.monitor');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'xtask');

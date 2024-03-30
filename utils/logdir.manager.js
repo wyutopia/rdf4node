@@ -12,7 +12,6 @@ const tools = require('./tools.js');
 const { XTask } = require('../framework/xtask.js');
 const { WinstonLogger } = require('../libs/base/winston.wrapper.js');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'logdir');
-const { parseParameters } = require('../framework/ac.js');
 let logDir = process.env.LOG_DIR || path.join(appRoot.path, 'logs');
 console.log(`>>>>>> Log directory: ${logDir}`);
 
@@ -67,7 +66,7 @@ exports.cleanDir = {
         try {
             const n = await _cleanLogDir();
             return res.sendSuccess({
-                removedFileNum: num
+                removedFileNum: n
             });
         } catch(err) {
             return res.sendRsp(err.code, err.message);
