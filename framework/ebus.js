@@ -253,7 +253,7 @@ class EventBus extends EventModule {
         this.on('rmq-msg', async (evt) => {
             try {
                 const results = await _consumeAsync.call(this, evt);
-                logger.debug(`>>> Consuming rmq-msg results - ${tools.inspect(results)}`);
+                logger.debug(`>>> Handle ${evt.code} results - ${tools.inspect(results)}`);
             } catch(ex) {
                 logger.error(`*** Handle ${evt.code} error! - ${ex.message}`);
             }
