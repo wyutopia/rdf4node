@@ -251,8 +251,12 @@ class EventBus extends EventModule {
         this._clients = {};
         // Define event handler
         this.on('rmq-msg', async (evt) => {
-            const results = await _consumeAsync.call(this, evt);
-            logger.debug(`>>> Consuming rmq-msg results - ${tools.inspect(results)}`);
+            try {
+                const results = await _consumeAsync.call(this, evt);
+                logger.debug(`>>> Consuming rmq-msg results - ${tools.inspect(results)}`);
+            } catch(ex) {
+                logger.error(`*** Handle ${evt.code} error! - ${ex.message}`);
+            }
         });
         this.on('client-end', clientId => {
             logger.error(`Client#${clientId} end.`);
@@ -421,7 +425,8 @@ class EventBus extends EventModule {
 async function _consumeAsync(event) {
     let subscribers = this._subscribers[event.code] || [];
     if (!Array.isArray(subscribers) || subscribers.length === 0) {
-        throw new Error('No consumers!');
+        logger.warn(`### No consumers.`);
+        return -1;
     }
     const results = {};
     subscribers.forEach(name => {

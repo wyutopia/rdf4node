@@ -145,7 +145,11 @@ class XTask extends CommonObject {
         this._mutex = true;
         try {
             await this.beforeWork();
-            await this.realWork();
+            try {
+                await this.realWork();
+            } catch(err) {
+                logger.error(`*** ${this.alias} peform realWork error! - ${err.message}`);
+            }
             await this.afterWork();
             return true;
         } catch (ex) {
