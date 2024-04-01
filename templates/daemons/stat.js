@@ -4,5 +4,5 @@
 
 
 module.exports = exports = {
-    $name: 'StatDaemon'
+    $name: 'statd'
 }

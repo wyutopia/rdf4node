@@ -7,9 +7,9 @@ const {
     tools, WinstonLogger, bootstrap
 } = require('../app');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
-//const extensions = require('../common/extensions');
 
-bootstrap({}).then(result => {
+//
+bootstrap().then(result => {
     logger.info(`>>> Bootstrap result: ${tools.inspect(result)}`);
 }).catch(err => {
     logger.error(`!!! Bootstrap error! - `, err);

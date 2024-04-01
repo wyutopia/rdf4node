@@ -4,11 +4,14 @@
 const { pubdefs } = require('../../app');
 const usrCtl = require('../../controllers/users');
 
-module.exports = exports = [
-    {
-        path: '/:id',
-        method: 'GET',
-        authType: pubdefs.eRequestAuthType.JWT,
-        handler: usrCtl.findOne
-    }
-];
+module.exports = exports = {
+    scope: pubdefs.eResourceScope.Public,
+    routes: [
+        {
+            path: '/:id',
+            method: 'GET',
+            authType: 'none',
+            handler: usrCtl.findOne
+        }
+    ]
+}

@@ -68,7 +68,7 @@ module.exports = exports = {
                 ip: "127.0.0.1",
                 port: 27017,
                 user: "dbo",
-                pwd: "123456",
+                pwd: "Dev#2024",
                 db: "demo",
                 authSource: "demo"
             },
@@ -115,7 +115,7 @@ module.exports = exports = {
         //enabled: '*',
         //disabled: [],
         // Customized options by name
-        UserSvc: {
+        statd: {
             key: 'aaa'
         }
     },

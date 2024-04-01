@@ -4,6 +4,12 @@
  */
 const sysdefs = require('@icedeer/rdf4node/include/sysdefs');
 
+sysdefs.eResourceScope = {
+    Public     : 'public',
+    System     : 'system',
+    User       : 'user'
+};
+
 sysdefs.customDefinitions = {
     one: 1,
     two: 2

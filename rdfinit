@@ -89,7 +89,6 @@ echo "Folder daemons created."
 # Step 10: Modify routes
 cd routes
 rm -f users.js
-cp -f "${TEMP_DIR}/routes/index.js" .
 cp -f "${TEMP_DIR}/routes/monitor.js" .
 mkdir -p v1
 cd v1

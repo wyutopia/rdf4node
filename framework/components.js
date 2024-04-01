@@ -487,7 +487,7 @@ class EntityController extends ControllerBase {
                     const results = await this._afterFindMany(req, docs);
                     return res.sendSuccess(results);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -509,7 +509,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterFindOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -531,7 +531,7 @@ class EntityController extends ControllerBase {
                     const outcomes = await this._afterFindPartial(req, result);
                     return res.sendSuccess(outcomes);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -559,7 +559,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterFindOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -592,7 +592,7 @@ class EntityController extends ControllerBase {
                     const results = await this._afterFindMany(req, docs);
                     return res.sendSuccess(results);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -619,7 +619,7 @@ class EntityController extends ControllerBase {
                     const results = await this._afterFindMany(req, docs);
                     return res.sendSuccess(results);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -648,7 +648,7 @@ class EntityController extends ControllerBase {
                     const results = await this._afterFindMany(req, docs);
                     return res.sendSuccess(results);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -684,7 +684,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterAdd(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
                     await this._cleanup(sessionCache);
@@ -712,7 +712,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterAdd(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -746,7 +746,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterUpdateOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -785,7 +785,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterDeleteOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 }
             }
@@ -831,7 +831,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterDeleteOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
                 }
             }
@@ -864,7 +864,7 @@ class EntityController extends ControllerBase {
                     await this._afterPatchOne(doc);
                     return res.sendSuccess(doc);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${ex.message}`);
+                    logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
                     await this._cleanup(sessionCache);
