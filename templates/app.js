@@ -4,18 +4,7 @@
  * Updated by Eric on 2024/01/21
  */
 // Definitions
-const sysdefs= require('@icedeer/rdf4node/include/sysdefs');
-// Merge application definitions
-const pubdefs = require('./common/pubdefs');
-exports.pubdefs = ((...args) => {
-    const result = {};
-    args.forEach(arg => {
-        Object.keys(arg).forEach(key => {
-            result[key] = Object.assign(result[key] || {}, arg[key])
-        });
-    })
-    return result;
-})(sysdefs, pubdefs);
+exports.pubdefs = require('./common/pubdefs');
 //
 exports.eRetCodes = require('@icedeer/rdf4node/include/retcodes');
 exports.base = require('@icedeer/rdf4node/include/base');

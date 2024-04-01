@@ -42,7 +42,6 @@ mkdir -p common
 cd common
 cp "${TEMP_DIR}/common/pubdefs.js" .
 cp "${TEMP_DIR}/common/app-events.js" .
-cp "${TEMP_DIR}/common/extensions.js" .
 cd ..
 echo "Folder common created."
 
@@ -56,30 +55,38 @@ sed -i $BACK_FILE "s/rdf4node/${PRJ_NAME}/g" version.json
 
 rm -f *.bak
 cd ..
-echo "Folder conf created."
+echo "Folder conf.d created."
 
-# Step 5: Add models folder
+# Step 5: Add extensions folder
+mkdir -p extensions
+echo "Folder extensions created."
+
+# Step 6: Add data models folder
 mkdir -p models
 cd models
 cp "${TEMP_DIR}/models/user.js" .
 cd ..
 echo "Folder models created."
 
-# Step 6: Add controllers folder
+# Step 7: Add controllers folder
 mkdir -p controllers
 cd controllers
 cp "${TEMP_DIR}/controllers/users.js" .
 cd ..
 echo "Folder controllers created."
 
-# Step 7: Add services folder
+# Step 8: Add services folder
 mkdir -p services
 cd services
 cp "${TEMP_DIR}/services/user.js" .
 cd ..
 echo "Folder services created."
 
-# Step 8: Modify routes
+# Step 9: Add daemons folder
+mkdir -p daemons
+echo "Folder daemons created."
+
+# Step 10: Modify routes
 cd routes
 rm -f users.js
 cp -f "${TEMP_DIR}/routes/index.js" .
@@ -92,13 +99,13 @@ cd ..
 cd ..
 echo "Folder routes modified."
 
-# Step 9: Copy views
+# Step 11: Copy views
 cd views
 cp -f "${TEMP_DIR}/views/api.ejs" .
 cd ..
 echo "Folder views modified."
 
-# Step 10: Create application entry
+# Step 12: Create application entry
 mkdir -p applications
 echo "Folder applications created."
 

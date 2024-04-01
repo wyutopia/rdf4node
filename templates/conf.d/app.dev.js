@@ -27,6 +27,8 @@ module.exports = exports = {
             port: 8500
         }
     },
+    caches: {},
+    distLocker: {},
     eventBus: {
         lo: true,
         persistent: true,
@@ -116,5 +118,8 @@ module.exports = exports = {
         UserSvc: {
             key: 'aaa'
         }
+    },
+    extensions: {
+        //pathName: 'extensions'
     }
 }
