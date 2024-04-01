@@ -10,7 +10,11 @@ const logger = WinstonLogger(process.env.SRV_ROLE || 'usr');
 const _MODULE_NAME = pubdefs.eAppModules.UserCtl;
 
 // Import model 
-const { modelName, modelSchema, modelRefs, ctlSpec } = require('../models/user');
+const { modelName, modelSchema, modelRefs, validators, queryOptions } = require('../models/user');
+const _ctlSpec = Object.assign({
+    // Overrides methods ...
+}, validators, queryOptions);
+
 
 // Declaring the class 
 class UserController extends EntityController {
@@ -27,5 +31,5 @@ module.exports = exports = new UserController({
     modelSchema: modelSchema,
     modelRefs: modelRefs,
     //
-    ctlSpec: ctlSpec
+    ctlSpec: _ctlSpec
 });

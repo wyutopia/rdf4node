@@ -11,7 +11,7 @@ module.exports = exports = {
             path: '/:id',
             method: 'GET',
             authType: 'none',
-            handler: usrCtl.findOne
+            handler: usrCtl.findById
         }
     ]
 }

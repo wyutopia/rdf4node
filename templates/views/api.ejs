@@ -1,7 +1,54 @@
-<ul>
-    <% routes.forEach(function(r) { %>
-       <li>
-           <%- r.method + '    ' + r.path  + '    ' + r.authType %>
-       </li>
-    <% })%>
-</ul>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+       <meta charset="UTF-8">
+       <meta http-equiv="X-UA-Compatible" content="IE=edge">
+       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+       <title>Document</title>
+       <script>
+              function showNotify () {
+                     window.electronAPI.showNotifier('时间', new Date());
+              }
+       </script>
+</head>
+<body>
+<div>
+       <button type="button" onclick="showNotify()">ClickMe</button>
+       <table border="1" cellspacing="0" style="border-color:#fdfcfc;">
+              <thead>
+              <tr style="height:40px;">
+                     <th width="200">请求类型</th>
+                     <th width="400" align="left" style="padding-left:20px;">请求地址</th>
+                     <th width="240">鉴权</th>
+                     <th width="320">授权范围</th>
+                     <th width="500" align="left" style="padding-left:20px;">参数规则</th>
+              </tr>
+              </thead>
+              <tbody>
+              <% routes.forEach(function(r) { %>
+                     <tr style="height:40px;">
+                            <td align="center"><%- r.method %></td>
+                            <% if (r.isNew !== undefined) {%>
+                                   <td style="padding-left:20px; color: #ff0000"><%- r.path %></td>
+                            <%} else {%>
+                                   <td style="padding-left:20px;"><%- r.path %></td>
+                            <%}%>
+                            <td align="center"><%- r.authType %> </td>
+                            <td align="center"><%- r.scope %> </td>
+                            <td style="padding:5px 0 10px 20px">
+                                   <ul style="list-style: none;margin: 0;padding: 0;">
+                                          <% Object.keys(r.validator).forEach(function (key) { %>
+                                          <li style="margin-top:5px;">
+                                                 <span><%- key %></span>
+                                                 <span><%- JSON.stringify(r.validator[key]) %></span>
+                                          </li>
+                                          <% }) %>
+                                   </ul>
+                            </td>
+                     </tr>
+              <% }) %>
+              </tbody>
+       </table>
+</div>
+</body>
+</html>
