@@ -32,7 +32,8 @@ const { RepositoryFactory } = require('./repository');
 const { CacheFactory } = require('./cache');
 const { EndpointFactory } = require('./endpoint');
 const { DistributedEntityLocker } = require('./distributed-locker');
-const { TaskFactory } = require('./xtask');
+const { LicenseManager } = require('./license-manager');
+const { TaskManager } = require('./xtask');
 const { UploadHelper } = require('./upload');
 
 //
@@ -83,27 +84,33 @@ async function _deregService() {
         logger.info(`${this._name}: De-register from consul succeed.`);
         return result;
     } catch (ex) {
-        logger.error(`${this._name}: De-register from consul failed.`);
+        logger.error(`${this._name}: De-register from consul failed. - ${ex.message}`);
         return 0;
     }
 }
 
-function _fireStartupAlarm(callback) {
-    let options = {
-        eventId: sysdefs.eAlarmCode.SERVICE_STARTUP,
-        content: 'This is a startup alarm test!'
+async function _fireStartupAlarm() {
+    try {
+        let options = {
+            eventId: sysdefs.eAlarmCode.SERVICE_STARTUP,
+            content: 'This is a startup alarm test!'
+        }
+        await this.fireAlarm(options);
+    } catch (err) {
+        logger.error(`*** Fire startup alarm error! - ${err.message}`)
     }
-    return this.fireAlarm(options, callback);
 }
 
 async function _fireExitAlarm() {
-    // let options = {
-    //     eventId: sysdefs.eAlarmCode.GRACEFUL_EXIT,
-    //     content: 'This is a graceful-exit alarm test!'
-    // }
-    // return this.fireAlarm(options, callback);
-    logger.info(`[${this._name}]: TODO - fire exit alarm ...`)
-    return 0;
+    try {
+        let options = {
+            eventId: sysdefs.eAlarmCode.GRACEFUL_EXIT,
+            content: 'This is a graceful-exit alarm test!'
+        }
+        await this.fireAlarm(options);
+    } catch (err) {
+        logger.error(`*** Fire exit alarm error! - ${err.message}`)
+    }
 }
 
 function _buildModuleArch() {
@@ -186,6 +193,53 @@ function _recursiveLoadDaemons(rootPath, subPath, options) {
     });
     return loaded;
 }
+function _recursiveLoadExtensions(rootPath, subPath, options) {
+    let results = [];
+    let currentDir = path.join(rootPath, subPath);
+    logger.info(`> Load extensions from dir: ${currentDir}`);
+    let entries = fs.readdirSync(currentDir, {
+        withFileTypes: true
+    });
+    entries.forEach(dirent => {
+        if (_reSysFile.test(dirent.name)) { // Ignore macOS system file
+            return null;
+        }
+        const entryPath = path.join(subPath, dirent.name);
+        if (dirent.isDirectory()) { // Recursively
+            if (dirent.name !== 'libs') { // Ignore libs folders
+                results = results.concat(_recursiveLoadDaemons.call(this, rootPath, entryPath, options));
+            }
+            return null;
+        }
+        if (options.disabled.includes(entryPath) || (options.enabled !== '*' && !options.enabled.includes(entryPath))) { // Ignore disabled service
+            return null;
+        }
+        let filePath = path.join(currentDir, dirent.name);
+        let result = {
+            file: filePath,
+            message: null
+        }
+        try {
+            let ext = require(filePath);
+            if (typeof ext.start === 'function') {
+                try {
+                    ext.start();  // With potential configuration identified by name
+                    result.message = 'started';
+                } catch (ex) {
+                    logger.error(`!!! Call start() of error! - ${ex.message}`);
+                    result.message = ex.message;
+                }
+            } else {
+                result.message = 'loaded';
+            }
+        } catch (ex) {
+            logger.error(`!!! Load extensions from: ${filePath} error! - ${ex.message}`);
+            result.message = ex.message;
+        }
+        results.push(result);
+    });
+    return results;
+}
 
 // The application class
 class Application extends EventEmitter {
@@ -207,10 +261,11 @@ class Application extends EventEmitter {
         this.registry = new Registry(this, { $name: sysdefs.eFrameworkModules.REGISTRY });
         this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
         this.cacheFactory = new CacheFactory(this, { $name: sysdefs.eFrameworkModules.CACHE });
-        this.taskFactory = new TaskFactory(this, { $name: sysdefs.eFrameworkModules.XTASK });
+        this.taskManager = new TaskManager(this, { $name: sysdefs.eFrameworkModules.XTASK });
         this.distLocker = new DistributedEntityLocker(this, { $name: sysdefs.eFrameworkModules.DLOCKER });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.epFactory = new EndpointFactory(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
+        this.licenseManager = new LicenseManager(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
     }
     getVersion() {
         if (this._version === null) {
@@ -237,9 +292,6 @@ class Application extends EventEmitter {
     getState() {
         return this._state;
     }
-    fetchServices(callback) {
-        return _consulClient.listServices(callback);
-    }
     getDataSource(...args) {
         return this.dsFactory.getDataSource(...args);
     }
@@ -255,7 +307,7 @@ class Application extends EventEmitter {
      * @param { Object? } config.eventBus
      * @returns
      */
-    async initFramework(config, extensions) {
+    async initFramework(config) {
         if (this._state !== sysdefs.eModuleState.INIT) {
             return Promise.reject({
                 code: eRetCodes.INTERNAL_SERVER_ERR,
@@ -279,7 +331,7 @@ class Application extends EventEmitter {
         }
         const results = {};
         if (config.eventBus) {
-            results['ebus'] = await this.ebus.init(config.eventBus, extensions.eventBus || {});
+            results['ebus'] = await this.ebus.init(config.eventBus);
         }
         if (config.registry) {
             results['reg'] = await this.registry.init(config.registry);
@@ -299,8 +351,11 @@ class Application extends EventEmitter {
         if (config.distLocker) {
             results['dlck'] = await this.distLocker.init(config.distLocker);
         }
+        if (config.license) {
+            results['lm'] = await this.licenseManger.init(config.license);
+        }
         if (config.endpoints) {
-            results['ep'] = await this.epFactory.init(config.endpoints, extensions.endpoints || {});
+            results['ep'] = await this.epFactory.init(config.endpoints);
         }
         //TODO: Add other framework components here ...
         logger.debug(`>>> The init results: ${tools.inspect(results)}`);
@@ -314,23 +369,26 @@ class Application extends EventEmitter {
         if (options.disabled === undefined) {
             options.disabled = [];
         }
-        // for (let i = 0; i < options.enabledServices.length; i++) {
-        //     options.enabledServices[i] = path.join(options.servicePath, options.enabledServices[i])
-        // }
-        //
         logger.info(`>>> Loading daemons with options: ${tools.inspect(options)} ...`);
         let loaded = _recursiveLoadDaemons.call(this, path.join(appRoot.path, options.pathName || 'daemons'), '', options);
         logger.debug(`>>> Loaded daemons: ${tools.inspect(loaded)}`);
         return loaded;
     }
-
+    loadExtensions(options) {
+        if (options.enabled === undefined) {
+            options.enabled = '*';
+        }
+        if (options.disabled === undefined) {
+            options.disabled = [];
+        }
+        logger.info(`>>> Loading extensions with options: ${tools.inspect(options)} ...`);
+        let result = _recursiveLoadExtensions.call(this, path.join(appRoot.path, options.pathName || 'extensions'), '', options);
+        logger.debug(`>>> Loaded extensions: ${tools.inspect(result)}`);
+        return result;
+    }
     //
     // Fire alarm
     async fireAlarm(args, options) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
         return false;
         // if (process.env.NODE_ENV !== 'production' && !options.alwaysSend) {
         //     logger.debug(`Ignore fire alarm on development env.`);
@@ -414,14 +472,14 @@ class Application extends EventEmitter {
     getSecurity() {
         return this._security;
     }
-    setDebugLevel(args, callback) {
+    async setDebugLevel(args) {
         if (['info', 'debug', 'error'].indexOf(args.level) === -1) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.BAD_REQUEST,
                 message: 'Invalid level!'
             })
         }
-        return logger.setRotateFileLevel(args.level, callback);
+        await logger.setRotateFileLevel(args.level);
     }
 
     async createEndpoints() {

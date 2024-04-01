@@ -25,9 +25,10 @@ const { Application } = require('./framework/app');
  * @param { Object? } extensions.registry
  * @param { Object? } extensions.eventBus
  * @param { Object? } extensions.endpoints
+ * @param { Object? } extensions.licenseManager
  * @returns 
  */
-async function bootstrap(extensions) {
+async function bootstrap() {
     const beginTime = new Date();
     logger.info('>>> Application startup ... <<<');
     // Step 1: Create app context instance
@@ -47,12 +48,15 @@ async function bootstrap(extensions) {
     const result = {};
     try {
         logger.info('====== Step 1: Init framework components ======');
-        result.framework = await theApp.initFramework(config, extensions);
+        result.framework = await theApp.initFramework(config);
         //
-        logger.info('====== Step 2: Load daemon tasks ======');
+        logger.info('====== Step 2: Load extensions ======');
+        result.daemons = theApp.loadExtensions(config.extensions || {});
+        //
+        logger.info('====== Step 3: Load daemon tasks ======');
         result.daemons = theApp.loadDaemons(config.daemons || {});
         //
-        logger.info('====== Step 3: App startup ======');
+        logger.info('====== Step 4: App startup ======');
         result.start = await theApp.start();
     } catch (ex) {
         logger.error(`!!! Bootstrap error! - ${tools.inspect(ex)}`);

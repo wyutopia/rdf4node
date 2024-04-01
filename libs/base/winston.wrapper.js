@@ -115,39 +115,39 @@ function WinstonWrapper(name) {
 }
 exports.WinstonLogger = WinstonWrapper;
 
-exports.getLoggers = function (callback) {
-    return callback(null, Object.keys(gLoggers));
+exports.getLoggers = async function () {
+    return Object.keys(gLoggers);
 };
 
-exports.getTransporters = function (name, callback) {
+exports.getTransporters = async function (name) {
     let logger = gLoggers[name];
     if (logger === undefined) {
-        return callback({
+        return Promise.reject({
             code: 404,
             message: `Logger not found! - ${name}`
-        });
+        })
     }
     let results = {};
     Object.keys(logger.transports).forEach((tp) => {
         results[tp] = logger.transports[tp].level;
     });
-    return callback(null, results);
+    return results;
 };
 
-exports.setLoggerLevel = function (name, tp, level, callback) {
+exports.setLoggerLevel = async function (name, tp, level) {
     let logger = gLoggers[name];
     if (logger === undefined) {
-        return callback({
+        return Promise.reject({
             code: 404,
             message: `Logger not found! - ${name}`
         });
     }
     if (logger.transports[tp] === undefined) {
-        return callback({
+        return Promise.reject({
             code: 404,
             message: `Transporter not found! - ${name} - ${tp}`
         });
     }
     logger.transports[tp].level = level;
-    return callback(null, logger.transports[tp].level);
+    return logger.transports[tp].level;
 };

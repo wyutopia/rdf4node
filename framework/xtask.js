@@ -10,7 +10,8 @@ const Types = require('../include/types');
 const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.XTASK;
-const { EventObject, EventModule } = require('../include/events');
+const { CommonObject } = require('../include/base');
+const { EventModule } = require('../include/events');
 const mntService = require('../libs/base/prom.monitor');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'xtask');
@@ -24,7 +25,7 @@ const eMetricNames = {
 };
 
 //
-class TaskFactory extends EventModule {
+class TaskManager extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props)
         //
@@ -38,11 +39,11 @@ class TaskFactory extends EventModule {
         });
     }
     //
-    create (name, fn, options) {
+    create(name, fn, options) {
         logger.debug(`>>> Create new background task: ${name}`);
         const t = this._tasks[name];
         if (t !== undefined) {
-            logger.error(`${this.$name}: Task ${name} already exists!`);
+            logger.error(`${this.alias}: Task ${name} already exists!`);
             return null;
         }
         if (typeof fn === 'function') {
@@ -58,9 +59,9 @@ class TaskFactory extends EventModule {
         //
         this._metricCollector[eMetricNames.activeTasks].inc(1);
     }
-    async dispose () {
+    async dispose() {
         const taskNames = Object.keys(this._tasks);
-        logger.info(`${this.$name}: Stop ${taskNames.length} backgroud tasks ...`);
+        logger.info(`${this.alias}: Stop ${taskNames.length} backgroud tasks ...`);
         //
         const promises = [];
         taskNames.forEach(key => {
@@ -71,17 +72,17 @@ class TaskFactory extends EventModule {
         })
         try {
             const results = await Promise.all(promises);
-            logger.info(`${this.$name}: All backgroud tasks stopped.`);
+            logger.info(`${this.alias}: All backgroud tasks stopped.`);
             return results;
         } catch (ex) {
-            logger.error(`${this.$name}: Stop tasks error! - ${tools.inspect(ex)}`);
+            logger.error(`${this.alias}: Stop tasks error! - ${tools.inspect(ex)}`);
             return 0;
         }
     }
 }
 
 // The interval task wrapper
-class XTask extends EventObject {
+class XTask extends CommonObject {
     /**
      * The class constructor
      * @param {Types.XTaskProperties} props 
@@ -90,7 +91,7 @@ class XTask extends EventObject {
         assert(props !== undefined);
         super(props);
         // Class meta-info
-        this._run = true;
+        this._run = false;
         this._id = tools.uuidv4();
         this._isAbstract = props.isAbstract !== undefined;
         this._mutex = false;
@@ -101,116 +102,123 @@ class XTask extends EventObject {
         this.interval = props.interval || sysdefs.eInterval._5_SEC;
         this.startup = props.startup !== undefined ? props.startup.toUpperCase() : 'AUTO';
         this.cronExp = props.cronExp;
-        this.immediateExec = props.immediateExec;
+        this.immediateExec = props.immediateExec !== undefined ? props.immediateExec : false;
         this.startDelayMs = props.startDelayMs;
 
-        // Methods
-        this.realWork = (callback) => {
-            return process.nextTick(callback);
+        // Overrided methods
+        this.realWork = async () => {
+            return null;
         }
-        this.beforeWork = (callback) => {
-            return process.nextTick(callback);
+        this.beforeWork = async () => {
+            return null;
         }
-        this.afterWork = (callback) => {
-            return process.nextTick(callback);
-        }
-        this.doWork = () => {
-            //logger.debug(this.alias, 'Start working...');
-            if (!this._run) {
-                logger.debug(`${this.$name}: stopped.`);
-                return null;
-            }
-            if (this._mutex) {
-                logger.error(`${this.$name}: loop conflict!`);
-                return null;
-            }
-            this._mutex = true;
-            this.beforeWork((err) => {
-                if (err) {
-                    this._mutex = false;
-                    return null;
-                }
-                this.realWork(() => {
-                    //logger.debug(this.alias, 'Finished.')
-                    this.afterWork(() => {
-                        this._mutex = false;
-                        return null;
-                    });
-                });
-            });
-        }
-        this.dispose = () => {
-            return new Promise((resolve) => {
-                this._run = false;
-                setTimeout(() => {
-                    logger.info(`${this.alias}: >>>>> Backend task <<<<< stopped.`);
-                    this.stop();
-                    return resolve(`${this.alias} diposed.`);
-                }, 200);
-            });
-        }
-        this.start = (itv) => {
-            if (itv !== undefined) {
-                this.interval = itv;
-            }
-            if (this._hTask === null) {
-                this._mutex = false;
-                this._hTask = this.startup === 'ONCE' ? setTimeout(this.doWork, this.interval) : setInterval(this.doWork, this.interval);
-                logger.info(`${this.alias}: started. - ${this.startup} - ${this.interval}`);
-            } else {
-                logger.error(`${this.alias}: already exists.`);
-            }
-        }
-        this.stop = () => {
-            if (this._hTask !== null) {
-                this.startup === 'ONCE' ? clearTimeout(this._hTask) : clearInterval(this._hTask);
-                this._hTask = null;
-                this._mutex = false;
-                logger.info(`${this.alias}: >>>>> Backend task <<<<< destroyed.`);
-            }
-        }
-        this.restart = (itv) => {
-            this.stop();
-            this.start(itv);
-        }
-        this.toJSON = () => {
-            let json = {
-                alias: this.alias,
-                interval: this.interval,
-                hTask: this._hTask,
-                startup: this.startup
-            };
-            if (this.cronExp !== undefined) {
-                json.cronExp = this.cronExp;
-            }
-            return json;
-        }
-        // Startup script
-        this._bootstrap = () => {
-            if (this.immediateExec) {
-                this.doWork();
-            }
-            if (this.startup === 'AUTO' || this.startup === 'ONCE') {
-                this.start();
-            } else if (this.startup === 'SCHEDULE' && this.cronExp !== undefined) {
-                logger.info(`${this.alias}: Schedule task with cron: ${this.cronExp}`);
-                schedule.scheduleJob(this.cronExp, this.doWork.bind(this));
-            }
+        this.afterWork = async () => {
+            return null;
         }
         // Register task
         (() => {
+            if (theApp.taskManager instanceof TaskManager) {
+                theApp.taskManager.register(this);
+            }
             if (!this._isAbstract) {
+                if (this.immediateExec) {
+                    this.doWork().then(tools.noop).catch(tools.noop);
+                }
                 if (this.startDelayMs) {
-                    setTimeout(this._bootstrap.bind(this), this.startDelayMs);
+                    setTimeout(this.bootstrap.bind(this), this.startDelayMs);
                 } else {
-                    this._bootstrap();
+                    this.bootstrap();
                 }
             }
         })();
+    }
+    async doWork() {
+        //logger.debug(this.alias, 'Start working...');
+        if (!this._run) {
+            logger.debug(`${this.alias}: stopped.`);
+            return false;
+        }
+        if (this._mutex) {
+            logger.error(`${this.alias}: loop conflict!`);
+            return false;
+        }
+        this._mutex = true;
+        try {
+            await this.beforeWork();
+            try {
+                await this.realWork();
+            } catch(err) {
+                logger.error(`*** ${this.alias} peform realWork error! - ${err.message}`);
+            }
+            await this.afterWork();
+            return true;
+        } catch (ex) {
+            logger.error(`*** ${this.alias}: ${ex.message}`);
+            return false;
+        } finally {
+            this._mutex = false;
+        }
+    }
+    dispose() {
+        return new Promise((resolve) => {
+            this._run = false;
+            setTimeout(() => {
+                logger.info(`${this.alias}: >>>>> Backend task <<<<< stopped.`);
+                this.stop();
+                return resolve(`${this.alias} diposed.`);
+            }, 200);
+        })
+    }
+    start(itv) {
+        if (itv !== undefined) {
+            this.interval = itv;
+        }
+        if (this._hTask === null) {
+            this._mutex = false;
+            this._hTask = this.startup === 'ONCE' ? setTimeout(this.doWork.bind(this), this.interval) : setInterval(this.doWork.bind(this), this.interval);
+            logger.info(`${this.alias}: started. - ${this.startup} - ${this.interval}`);
+        } else {
+            logger.error(`${this.alias}: already exists.`);
+        }
+    }
+    stop() {
+        if (this._hTask !== null) {
+            this.startup === 'ONCE' ? clearTimeout(this._hTask) : clearInterval(this._hTask);
+            this._hTask = null;
+            this._mutex = false;
+            logger.info(`${this.alias}: >>>>> Backend task <<<<< destroyed.`);
+        }
+    }
+    restart(itv) {
+        this.stop();
+        this.start(itv);
+    }
+    toJSON() {
+        let json = {
+            alias: this.alias,
+            interval: this.interval,
+            hTask: this._hTask,
+            startup: this.startup
+        };
+        if (this.cronExp !== undefined) {
+            json.cronExp = this.cronExp;
+        }
+        return json;
+    }
+    // Startup script
+    bootstrap() {
+        if (this.startup === 'AUTO' || this.startup === 'ONCE') {
+            this._run = true;
+            this.start();
+        } else if (this.startup === 'SCHEDULE' && this.cronExp !== undefined) {
+            this._run = true;
+            logger.info(`${this.alias}: Schedule task with cron: ${this.cronExp}`);
+            schedule.scheduleJob(this.cronExp, this.doWork.bind(this));
+        }
     }
 }
 
 // Define module
 module.exports = exports = {
-    TaskFactory, XTask
+    TaskManager, XTask
 };

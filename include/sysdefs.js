@@ -372,3 +372,12 @@ const eErrMsg = {
     INVALID_DS    : 'DataSource not exists!'
 };
 exports.eErrMsg = eErrMsg;
+
+const eResourceOp = {
+    Lock      : 'lck',
+    Unlock    : 'ulck',
+    Free      : 'free',
+    Apply     : 'apply',
+    Refund    : 'refund'
+};
+exports.eResourceOp = eResourceOp;

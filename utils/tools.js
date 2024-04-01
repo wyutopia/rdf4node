@@ -19,7 +19,7 @@ const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const exp = require('constants');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'tools');
 
-function _noop() {}
+async function _noop() { return 'noop'; }
 exports.noop = _noop;
 
 function _inspect(obj) {
