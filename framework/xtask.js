@@ -117,18 +117,19 @@ class XTask extends CommonObject {
         }
         // Register task
         (() => {
-            if (theApp.taskManager instanceof TaskManager) {
-                theApp.taskManager.register(this);
+            if (!(theApp.taskManager instanceof TaskManager)) {
+                logger.error(`*** taskManager is not exists! ***`);
+                return null;
             }
-            if (!this._isAbstract) {
-                if (this.immediateExec) {
-                    this.doWork().then(tools.noop).catch(tools.noop);
-                }
-                if (this.startDelayMs) {
-                    setTimeout(this.bootstrap.bind(this), this.startDelayMs);
-                } else {
-                    this.bootstrap();
-                }
+            if (this._isAbstract) {
+                logger.warn(`### No actual running for abstract class! ###`);
+                return null;
+            }
+            theApp.taskManager.register(this);
+            if (this.startDelayMs) {
+                setTimeout(this.bootstrap.bind(this), this.startDelayMs);
+            } else {
+                this.bootstrap();
             }
         })();
     }
@@ -210,6 +211,12 @@ class XTask extends CommonObject {
         if (this.startup === 'AUTO' || this.startup === 'ONCE') {
             this._run = true;
             this.start();
+            //
+            if (this.immediateExec && this.interval > sysdefs.eInterval._30_SEC) {
+                this.doWork().then(tools.noop).catch(ex => {
+                    logger.error(`*** ${this.alias}: Immediate run error! - ${ex.message}`);
+                });
+            }
         } else if (this.startup === 'SCHEDULE' && this.cronExp !== undefined) {
             this._run = true;
             logger.info(`${this.alias}: Schedule task with cron: ${this.cronExp}`);
