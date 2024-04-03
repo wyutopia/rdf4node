@@ -8,14 +8,16 @@ const { RepositoryFactory } = require('./framework/repository');
 const { CacheFactory } = require('./framework/cache');
 const { DataSourceFactory } = require('./framework/data-source');
 const { DistributedEntityLocker } = require('./framework/distributed-locker');
+const { LicenseManager } = require('./license-manager');
 
 class Patcher {
     constructor(config) {
         this.redisManager = null;
+        this.licenseManager = new LicenseManager(this, { $name: sysdefs.eFrameworkModules.LICENSE });
         //
-        this.dsFactory = new DataSourceFactory(this, {$name: sysdefs.eFrameworkModules.DATASOURCE});
-        this.repoFactory = new RepositoryFactory(this, {$name: sysdefs.eFrameworkModules.REPOSITORY});
-        this.cacheFactory = new CacheFactory(this, {$name: sysdefs.eFrameworkModules.CACHE});
+        this.dsFactory = new DataSourceFactory(this, { $name: sysdefs.eFrameworkModules.DATASOURCE });
+        this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
+        this.cacheFactory = new CacheFactory(this, { $name: sysdefs.eFrameworkModules.CACHE });
         this.distLocker = new DistributedEntityLocker(this, { $name: sysdefs.eFrameworkModules.DLOCKER });
     }
     registerModule () {}

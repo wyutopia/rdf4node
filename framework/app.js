@@ -255,6 +255,7 @@ class Application extends EventEmitter {
         }
         this.redisManager = null;
         this.rascalManager = null;
+        this.licenseManager = new LicenseManager(this, { $name: sysdefs.eFrameworkModules.LICENSE });
         // !!! *** ebus should be the first framework component ***
         this.ebus = new EventBus(this, { $name: sysdefs.eFrameworkModules.EBUS });
         this.upload = new UploadHelper(this, { $name: sysdefs.eFrameworkModules.UPLOAD });
@@ -265,7 +266,6 @@ class Application extends EventEmitter {
         this.distLocker = new DistributedEntityLocker(this, { $name: sysdefs.eFrameworkModules.DLOCKER });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.epFactory = new EndpointFactory(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
-        this.licenseManager = new LicenseManager(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
     }
     getVersion() {
         if (this._version === null) {
