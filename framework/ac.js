@@ -320,6 +320,7 @@ function _parseParameters(params, validator, callback) {
 class AccessControllerHelper extends CommonModule {
     constructor(props) {
         super(props);
+        this._noLogUrls = [];
         //
         this.packUserPayload = (user) => {
             return {
@@ -361,6 +362,14 @@ class AccessControllerHelper extends CommonModule {
             logger.info('>>> Do nothing! Please override this method to implement AKSK authentication. <<<')
             return callback();
         }
+    }
+    isNoLogUrl(url) {
+        return this._noLogUrls.includes(url);
+    }
+    appendNoLogUrls(urls) {
+        urls.forEach(url => {
+            this._noLogUrls.append(url);
+        }) 
     }
 }
 const _acHelper = new AccessControllerHelper({
@@ -405,9 +414,6 @@ function _authorize(req, scope, callback) {
     return _acHelper.realAuthorize(req, { scope: scope }, callback);
 }
 
-const _excludeLogUrls = [
-    '/v1/project/diagrams/update'
-];
 /**
  * 
  * @param {authType, validator, scope} options 
@@ -421,7 +427,7 @@ function _accessCtl({ authType, validator, scope }, req, res, next) {
             return res.sendStatus(err.code);
         }
         let params = Object.assign({}, req.params, req.query, req.body);
-        if (!_excludeLogUrls.includes(req.url)) {
+        if (!_acHelper.isNoLogUrl(req.url)) {
             logger.debug(`Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
         }
         _parseParameters(params, validator, (err, args) => {
@@ -429,7 +435,7 @@ function _accessCtl({ authType, validator, scope }, req, res, next) {
                 return res.sendRsp(err.code, err.message);
             }
             req.$args = args;  // Append parsed parameters as $args
-            if (authType === 'none') {
+            if (authType === sysdefs.eRequestAuthType.NONE) {
                 return next();
             }
             _authorize(req, scope, err => {
