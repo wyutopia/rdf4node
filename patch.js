@@ -8,7 +8,7 @@ const { RepositoryFactory } = require('./framework/repository');
 const { CacheFactory } = require('./framework/cache');
 const { DataSourceFactory } = require('./framework/data-source');
 const { DistributedEntityLocker } = require('./framework/distributed-locker');
-const { LicenseManager } = require('./license-manager');
+const { LicenseManager } = require('./framework/license-manager');
 
 class Patcher {
     constructor(config) {
