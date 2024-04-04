@@ -133,7 +133,7 @@ function _recursiveReadRouteDir(rootPath, subPath, options) {
                         authType: route.authType || authType,
                         scope: route.scope || scope,
                         resource: route.resource || routePack.resource,
-                        op: route.op || sysdefs.ePermResourceOp.RO,
+                        op: route.op || sysdefs.eResourceOp.RO,
                         method: route.method.toUpperCase(),
                         validator: route.handler.val || {},
                         multerFunc: route.multerFunc,

@@ -383,11 +383,11 @@ const eSessCacheResourceOp = {
 };
 exports.eSessCacheResourceOp = eSessCacheResourceOp;
 
-const ePermResourceOp = {
+const eResourceOp = {
     CRUD       : 'crud',
     RO         : 'r',
     RW         : 'ru',
     DEL        : 'd',
     MOV        : 'u'
 };
-exports.ePermResourceOp = ePermResourceOp;
+exports.eResourceOp = eResourceOp;
