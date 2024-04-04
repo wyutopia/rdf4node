@@ -368,7 +368,7 @@ class AccessControllerHelper extends CommonModule {
     }
     appendNoLogUrls(urls) {
         urls.forEach(url => {
-            this._noLogUrls.append(url);
+            this._noLogUrls.push(url);
         }) 
     }
 }

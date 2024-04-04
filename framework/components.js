@@ -270,10 +270,10 @@ const _defaultCtlSpec = {
                 const { rc, ett, op } = sessionCache.get(k);
                 switch (rc) {
                     case eSessionCacheResource.LicenseReservation:
-                        promiseMap[`${rc}#${k}`] = op === sysdefs.eResourceOp.Apply ? this._appCtx.licenseManager.applyLicense(ett) : this._appCtx.licenseManager.refundLicense(ett);
+                        promiseMap[`${rc}#${k}`] = op === sysdefs.eSessCacheResourceOp.Apply ? this._appCtx.licenseManager.applyLicense(ett) : this._appCtx.licenseManager.refundLicense(ett);
                         break;
                     case eSessionCacheResource.DistributedLock:
-                        promiseMap[`${rc}#${k}`] = op === sysdefs.eResourceOp.Free || op === sysdefs.eResourceOp.Unlock ? this._appCtx.distLocker.UnlockOneAsync(ett) : Promise.resolve('ignored');
+                        promiseMap[`${rc}#${k}`] = op === sysdefs.eSessCacheResourceOp.Free || op === sysdefs.eSessCacheResourceOp.Unlock ? this._appCtx.distLocker.UnlockOneAsync(ett) : Promise.resolve('ignored');
                         break;
                     default:
                         logger.warn(`*** ${this.$name}: Unrecognized cache resource - ${rc}`);

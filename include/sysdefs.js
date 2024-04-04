@@ -374,11 +374,18 @@ const eErrMsg = {
 };
 exports.eErrMsg = eErrMsg;
 
-const eResourceOp = {
+const eSessCacheResourceOp = {
     Lock      : 'lck',
     Unlock    : 'ulck',
     Free      : 'free',
     Apply     : 'apply',
     Refund    : 'refund'
 };
-exports.eResourceOp = eResourceOp;
+exports.eSessCacheResourceOp = eSessCacheResourceOp;
+
+const ePermResourceOp = {
+    CRUD       : 'crud',
+    RO         : 'r',
+    RW         : 'ru',
+};
+exports.ePermResourceOp = ePermResourceOp;

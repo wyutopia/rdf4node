@@ -131,7 +131,9 @@ function _recursiveReadRouteDir(rootPath, subPath, options) {
                     let r = {
                         path: path.join('/', pathElem.dir, pathElem.name, route.path),
                         authType: route.authType || authType,
-                        scope: scope,
+                        scope: route.scope || scope,
+                        resource: route.resource || routePack.resource,
+                        op: route.op || sysdefs.ePermResourceOp.RO,
                         method: route.method.toUpperCase(),
                         validator: route.handler.val || {},
                         multerFunc: route.multerFunc,
