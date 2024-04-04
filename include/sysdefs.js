@@ -387,5 +387,7 @@ const ePermResourceOp = {
     CRUD       : 'crud',
     RO         : 'r',
     RW         : 'ru',
+    DEL        : 'd',
+    MOV        : 'u'
 };
 exports.ePermResourceOp = ePermResourceOp;
