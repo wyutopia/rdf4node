@@ -309,7 +309,7 @@ const eRequestAuthType = {
     AKSK     : 'aksk' 
 };
 exports.eRequestAuthType = eRequestAuthType;
-exports.isValidAuthType = function(t) { return Object.values(eRequestAuthType).indexOf(t) > -1; }
+exports.isValidAuthType = function(t) { return Object.values(eRequestAuthType).includes(t); }
 
 const eDbType = {
     PROCMEM       : 'procmem',

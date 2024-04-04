@@ -17,10 +17,10 @@ const tools = require('../utils/tools');
 // The endpoint kinds
 const express = require('../libs/base/express.wrapper');
 const router = express.Router();
-const { RateLimit } = require('../libs/base/ratelimit.wrapper');
 const MorganWrapper = require('../libs/base/morgan.wrapper');
 const httpLogger = MorganWrapper(process.env.SRV_ROLE);
-const routeHelper = require('./router');
+const routeManager = require('../libs/common/router');
+const { RateLimit } = require('../libs/common/ratelimit.wrapper');
 const { _DS_DEFAULT_ } = require('./repository');
 
 //const gRpc = require('../libs/common/grpc.wrapper');
@@ -59,7 +59,6 @@ class Endpoint extends EventModule {
 class HttpEndpoint extends Endpoint {
     constructor(appCtx, props) {
         super(appCtx, props);
-        //
     }
     init(options) {
         if (this._state !== eModuleState.INIT) {
@@ -123,7 +122,7 @@ class HttpEndpoint extends Endpoint {
             return next();
         })
         // Step 6: Setup routes
-        routeHelper.initRouter(router, this._config);
+        routeManager.init(router, this._config);
         app.use('/', router);
         // The 404 and forware to error handler
         app.use(function (req, res, next) {

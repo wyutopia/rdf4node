@@ -5,10 +5,12 @@ const fs = require('fs');
 const path = require('path');
 const appRoot = require('app-root-path');
 // Framework
-const tools = require('../utils/tools');
-const {WinstonLogger} = require('../libs/base/winston.wrapper');
+const sysdefs = require('../../include/sysdefs');
+const tools = require('../../utils/tools');
+const {WinstonLogger} = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'router');
-const {accessCtl} = require('./ac');
+const {accessCtl} = require('../../framework/ac');
+const { CommonObject } = require('../../include/base');
 
 /**
  * Middleware to Support CORS
@@ -119,8 +121,8 @@ function _recursiveReadRouteDir(rootPath, subPath, options) {
         try {
             const routePack = require(filePath);
             //
-            const scope = routePack.scope || 'usr';
-            const authType = routePack.authType || 'jwt';
+            const scope = routePack.scope || 'user';
+            const authType = routePack.authType || sysdefs.eRequestAuthType.JWT;
             //
             const routes = routePack.routes || [];
             routes.forEach(route => {
@@ -143,7 +145,7 @@ function _recursiveReadRouteDir(rootPath, subPath, options) {
                     _calibrateValidator(r.validator, scope, route.modValidators);
                     specs.push(r);
                 } else {
-                    logger.error(`Route handling function is missing! - ${filename} - ${route.path}`);
+                    logger.error(`Route handling function is missing! - ${filePath} - ${route.path}`);
                 }
             });
         } catch (ex) {
@@ -202,17 +204,32 @@ function _addAppRoutes(router, routeDir) {
             return res.render('api', {routes: routeSpecs});
         });
     }
+    // Cache the route specs
+    routeSpecs.forEach(spec => {
+        this._routeSpec[spec.path] = spec;
+    });
 }
 
-function initRouter(router, options) {
-    logger.info(`>>> Init router with options: ${tools.inspect(options)}`);
-    _setCORS(router, options);
-    _addHomepage(router, options);
-    //
-    _addAppRoutes(router, path.join(appRoot.path, options.routePath || 'routes'));
+class RouteManager extends CommonObject {
+    constructor(props) {
+        super(props)
+        this._routeSpec = {};
+    }
+    init(expressRouter, options) {
+        logger.info(`>>> Init express-router with options: ${tools.inspect(options)}`);
+        _setCORS(expressRouter, options);
+        _addHomepage(expressRouter, options);
+        //
+        _addAppRoutes.call(this, expressRouter, path.join(appRoot.path, options.routePath || 'routes'));
+    }
+    getSpec(path) {
+        return this._routeSpec[path];
+    }
 }
+
+const routeMananger = new RouteManager({
+    $name: '_rt_'
+});
 
 // Declaring module exports
-module.exports = exports = {
-    initRouter
-};
+module.exports = exports = routeMananger;
