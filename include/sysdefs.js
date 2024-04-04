@@ -388,6 +388,6 @@ const eResourceOp = {
     RO         : 'r',
     RW         : 'ru',
     DEL        : 'd',
-    MOV        : 'u'
+    MOD        : 'u'
 };
 exports.eResourceOp = eResourceOp;
