@@ -168,9 +168,12 @@ function _setRoutes(router, routeSpecs) {
             }
             // Add accessCtl middleware
             argv.push(accessCtl.bind(null, {
+                scope: route.scope,
+                resource: route.resource,
+                op: route.op,
+                //
                 authType: route.authType,
                 validator: route.validator,
-                scope: route.scope
             }));
             // Add sequence middlewares or handler
             if (typeof route.handler === 'function') {

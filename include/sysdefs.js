@@ -385,6 +385,7 @@ exports.eSessCacheResourceOp = eSessCacheResourceOp;
 
 const eResourceOp = {
     CRUD       : 'crud',
+    ADD        : 'c',
     RO         : 'r',
     RW         : 'ru',
     DEL        : 'd',
