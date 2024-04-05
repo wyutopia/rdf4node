@@ -20,27 +20,26 @@ const DEFAULT_OPTIONS = config.signOptions || {
 };
 logger.info(`>>>>>> The jwt configuration: ${ENCRYPT_KEY} - ${tools.inspect(DEFAULT_OPTIONS)}`);
 
-function _validateJwt(req, callback) {
+async function _validateJwt(req) {
     // Extract JWT from the request header
     const authHeader = req.headers['authorization'];
     const jwt = authHeader && authHeader.split(' ')[1];
     if (!jwt) {
-        return callback({
+        return Promise.reject({
             code: eRetCodes.UNAUTHORIZED,
             message: 'JWT is required!'
         });
     }
-    return jsonwebtoken.verify(jwt, ENCRYPT_KEY, (err, token) => {
-        if (err) {
-            logger.error(`Verfiy JWT error! - ${err.message}`);
-            return callback({
-                code: eRetCodes.FORBIDDEN,
-                message: 'Invalid JWT value!'
-            });
-        }
-        return callback(null, token);
-    });
-};
+    try {
+        return jsonwebtoken.verify(jwt, ENCRYPT_KEY);
+    } catch(err) {
+        logger.error(`*** Verfiy JWT error! - ${err.message}`);
+        return Promise.reject({
+            code: eRetCodes.FORBIDDEN,
+            message: 'Invalid JWT value!'
+        })
+    }
+}
 
 function _validateString(field, validator, argv) {
     let errMsg = null;
@@ -239,7 +238,7 @@ function _validateParameter(field, validator, argv) {
         case 'EmbeddedObject':
             errMsg = _validateEmbeddedObject(field, validator, [argv]);
             break;
-        }
+    }
     return errMsg;
 }
 
@@ -269,16 +268,15 @@ function _unifyValidator(validator) {
     }
 }
 
-function _parseParameters(params, validator, callback) {
-    if (typeof validator === 'function') {
-        callback = validator;
-        validator = {};
+async function _parseParameters(params, validator) {
+    if (validator === undefined) {
+        return params;
     }
     _unifyValidator(validator);
     let fields = Object.keys(validator);
     //logger.debug(`Validator fields: ${tools.inspect(fields)}`);
     if (fields.length === 0) {  // No validator provided or all arguments are validated
-        return callback(null, params);
+        return params;
     }
     // Only validated arguments will be parsed
     let args = {};
@@ -308,12 +306,12 @@ function _parseParameters(params, validator, callback) {
         }
     }
     if (errMsg) {
-        return callback({
+        return Promise.reject({
             code: eRetCodes.BAD_REQUEST,
             message: errMsg
         })
     }
-    return callback(null, args);
+    return args;
 }
 
 // The class
@@ -350,17 +348,13 @@ class AccessControllerHelper extends CommonModule {
             return jwt.sign(payload, ENCRYPT_KEY, jwtSignOptions);
         };
         //
-        this.realAuthorize = function (req, options, callback) {
-            if (typeof options === 'function') {
-                callback = options;
-                options = {};
-            }
+        this.realAuthorize = async function (req, options) {
             logger.info('>>> Do nothing on authorization! <<< ');
-            return callback();
+            return null;
         };
-        this.akskAuthenticate = function (req, callback) {
+        this.akskAuthenticate = async function (req) {
             logger.info('>>> Do nothing! Please override this method to implement AKSK authentication. <<<')
-            return callback();
+            return true;
         }
     }
     isNoLogUrl(url) {
@@ -369,7 +363,7 @@ class AccessControllerHelper extends CommonModule {
     appendNoLogUrls(urls) {
         urls.forEach(url => {
             this._noLogUrls.push(url);
-        }) 
+        })
     }
 }
 const _acHelper = new AccessControllerHelper({
@@ -377,75 +371,73 @@ const _acHelper = new AccessControllerHelper({
 })
 
 // The private methods
-function _authenticate(authType, req, callback) {
+async function _authenticate(authType, req) {
     req.$token = {};
     if (authType === sysdefs.eRequestAuthType.JWT) {
-        return _validateJwt(req, (err, token) => {
+        try {
+            const token = await _validateJwt(req);
+            req.$token = token;
+        } catch(err) {
             if (err && config.enableAuthentication === true) {
-                return callback(err);
+                return Promise.reject(err);
             }
-            if (token) {
-                req.$token = token;
-            }
-            return callback();
-        });
+            return true;
+        }
     }
     if (authType === sysdefs.eRequestAuthType.AKSK) {
-        return _acHelper.akskAuthenticate(req, callback);
+        return await _acHelper.akskAuthenticate(req);
     }
     if (authType === sysdefs.eRequestAuthType.COOKIE) {
         if (req.session && req.session.uid) {
-            return callback();
+            return true;
         }
-        return callback({
+        return Promise.reject({
             code: eRetCodes.SESSION_EXPIRED,
             message: 'Session expired.'
         })
     }
-    return callback();
+    return true;
 }
 
-function _authorize(req, scope, callback) {
+async function _authorize(req, options) {
     if (config.enableAuthorization !== true) {
         // Ignore AUTHORIZATION
-        return callback();
+        return true;
     }
     // Do real authorization
-    return _acHelper.realAuthorize(req, { scope: scope }, callback);
+    return _acHelper.realAuthorize(req, options);
 }
 
 /**
- * 
- * @param {authType, validator, scope} options 
- * @param {*} req 
- * @param {*} res 
- * @param {*} next 
+ *
+ * @param {authType, validator, scope, resource, op} options
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
  */
-function _accessCtl({ authType, validator, scope }, req, res, next) {
-    _authenticate(authType, req, err => {
-        if (err) {
-            return res.sendStatus(err.code);
-        }
+async function _accessCtl({ authType, validator, scope, resource, op}, req, res, next) {
+    try {
         let params = Object.assign({}, req.params, req.query, req.body);
         if (!_acHelper.isNoLogUrl(req.url)) {
-            logger.debug(`Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
+            logger.debug(`### Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
         }
-        _parseParameters(params, validator, (err, args) => {
-            if (err) {
-                return res.sendRsp(err.code, err.message);
-            }
-            req.$args = args;  // Append parsed parameters as $args
-            if (authType === sysdefs.eRequestAuthType.NONE) {
-                return next();
-            }
-            _authorize(req, scope, err => {
-                if (err) {
-                    return res.sendRsp(err.code, err.message);
-                }
-                return next();
-            });
-        });
-    });
+        // Stage 1: Authenticating
+        await _authenticate(authType, req);
+        // Stage 2: Validating request
+        const args = await _parseParameters(params, validator);
+        req.$args = args;  // Append parsed parameters as $args
+        if (authType === sysdefs.eRequestAuthType.NONE) {
+            return next();
+        }
+        // Stage 3: Authorization
+        await _authorize(req, scope, resource, op);
+        return next();
+    } catch(err) {
+        if (err.code === eRetCodes.UNAUTHORIZED || err.code === eRetCodes.FORBIDDEN) {
+            return res.sendStatus(err.code);
+        }
+        return res.sendRsp(err.code, err.message);
+    }
 }
 
 // Declaring module exports
