@@ -139,11 +139,9 @@ function _recursiveReadRouteDir(rootPath, subPath, options) {
                         multerFunc: route.multerFunc,
                         handler: route.handler.fn,
                         isNew: route.isNew,
+                        oldPath: route.oldPath,
                         commit: route.commit
                     };
-                    if (route.oldPath) {
-                        r.oldPath = path.join('/', pathElem.dir, pathElem.name, route.oldPath);
-                    }
                     _calibrateValidator(r.validator, scope, route.modValidators);
                     specs.push(r);
                 } else {

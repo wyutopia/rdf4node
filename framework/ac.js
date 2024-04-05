@@ -430,7 +430,7 @@ async function _accessCtl({ authType, validator, scope, resource, op}, req, res,
             return next();
         }
         // Stage 3: Authorization
-        await _authorize(req, scope, resource, op);
+        await _authorize(req, { scope, resource, op });
         return next();
     } catch(err) {
         if (err.code === eRetCodes.UNAUTHORIZED || err.code === eRetCodes.FORBIDDEN) {
