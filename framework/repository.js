@@ -265,6 +265,26 @@ function _appendCache(data, options, callback) {
 }
 
 /**
+ * 
+ * @param { string[] } keys 
+ * @param {*} callback 
+ * @returns 
+ */
+function _removeCache(keys, callback) {
+    if (typeof keys === 'function') {
+        callback = keys;
+        keys = '*';
+    }
+    if (this.allowCache === false) {
+        return callback();
+    }
+    if (keys === '*') {
+        this._cache.clear(callback);
+    }
+    return this._cache.delMany(keys, callback);
+}
+
+/**
  * Build query filter from document data with cacheSpec
  * @param {Object} data 
  * @param {Types.CacheSpecOptions} cacheSpec 
@@ -707,7 +727,11 @@ class Repository extends EventObject {
                     message: msg
                 });
             }
-            return callback(null, result);
+            // Remove cache
+            _removeCache.call(this, [options.filter._id.toString()], (err, count) => {
+                logger.debug(`### ${this.$name}: ${count} cache entries removed.`);
+                return callback(null, result);
+            })
         });
     };
     deleteAsync = util.promisify(this.delete);

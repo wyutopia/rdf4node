@@ -28,6 +28,15 @@ const eLoadPolicy = {
     SetAfterFound: 'setAfterFound'
 };
 
+function _removeEntry(key) {
+    let realKey = this._prefix ? `${this._prefix}:${key}` : key;
+    if (this._dataRepo[realKey]) {
+        if (this._dataRepo[realKey].ttl) {
+            clearTimeout(this._dataRepo[realKey].ttl);
+        }
+        delete this._dataRepo[realKey];
+    }
+}
 
 function _setValue(key, val, options, callback) {
     if (typeof options === 'function') {
@@ -35,24 +44,65 @@ function _setValue(key, val, options, callback) {
         options = {};
     }
     let realKey = this._prefix ? `${this._prefix}:${key}` : key;
-    this._dataRepo[realKey] = val;
-    // TODO: Start timer if necessary
-    return callback(null, 1);
-}
-
-function _unsetValue(key, callback) {
-    let realKey = this._prefix ? `${this._prefix}:${key}` : key;
-    if (this._dataRepo[realKey] === undefined) {
-        return callback(null, 0);
+    if (this._dataRepo[realKey] && this._dataRepo[realKey].ttl) {
+        clearTimeout(this._dataRepo[realKey].ttl);
     }
-    // TODO: Stop timer
-    delete this._dataRepo[realKey];
+    this._dataRepo[realKey] = {
+        value: val,
+        ttl: options.ttl? setTimeout(_removeEntry.bind(this, key), options.ttl * 1000) : null
+    }
     return callback(null, 1);
 }
 
-function _getvalue(key, callback) {
+/**
+ * 
+ * @param { Object } kvMap 
+ * @param {*} options 
+ * @param {*} callback 
+ */
+function _setManyValues(kvMap, options, callback) {
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    const keys = Object.keys(kvMap);
+    keys.forEach(key => {
+        let realKey = this._prefix ? `${this._prefix}:${key}` : key;
+        if (this._dataRepo[realKey] && this._dataRepo[realKey].ttl) {
+            clearTimeout(this._dataRepo[realKey].ttl);
+        }
+        this._dataRepo[realKey] = {
+            value: val,
+            ttl: options.ttl? setTimeout(_removeEntry.bind(this, key), options.ttl * 1000) : null
+        }
+    })
+    return callback(null, keys.length);
+}
+
+function _delValue(key, callback) {
+    _removeEntry.call(this, key);
+    return callback(null, 1);
+}
+
+function _delManyValues(keys, callback) {
+    keys.forEach(key => {
+        _removeEntry.call(this, key);
+    })
+    return callback(null, keys.length);
+}
+
+function _getValue(key, callback) {
     let realKey = this._prefix ? `${this._prefix}:${key}` : key;
-    return callback(null, this._dataRepo[realKey]);
+    return callback(null, this._dataRepo[realKey].value);
+}
+
+function _getManyValues(keys, callback) {
+    const result = {};
+    keys.forEach(key => {
+        let realKey = this._prefix ? `${this._prefix}:${key}` : key;
+        result[key] = this._dataRepo[realKey].value;
+    })
+    return callback(null, result);
 }
 
 const _fakeClient = {
@@ -87,7 +137,6 @@ const _sampleCacheSpec = {
     select: 'user project group tenant role',
     valueKeys: 'user project group tenant role'
 };
-
 
 
 const _defaultCacheProps = {
@@ -176,7 +225,7 @@ class Cache extends EventModule {
      */
     get(key, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _getvalue.call(this, key, callback);
+            return _getValue.call(this, key, callback);
         }
         if (!this._client) {
             return callback({
@@ -198,9 +247,9 @@ class Cache extends EventModule {
      * @param {*} callback 
      * @returns 
      */
-    unset(key, callback) {
+    del(key, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _unsetValue.call(this, key, callback);
+            return _delValue.call(this, key, callback);
         }
         if (!this._client) {
             return callback({
@@ -210,21 +259,21 @@ class Cache extends EventModule {
         }
         return this._client.execute('DEL', [key], callback);
     }
-    unsetAsync = util.promisify(this.unset)
+    delAsync = util.promisify(this.del)
     /**
      * Set multiply KVs
-     * @param { Object } data - The JSON value
+     * @param { Object } kvMap - The JSON value
      * @param {*} options 
      * @param {*} callback 
      * @returns 
      */
-    mset(data, options, callback) {
+    setMany(kvMap, options, callback) {
         if (typeof options === 'function') {
             callback = options;
             options = {};
         }
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _setMultiValues.call(this, data, options, callback);
+            return _setManyValues.call(this, kvMap, options, callback);
         }
         if (!this._client) {
             return callback({
@@ -234,22 +283,22 @@ class Cache extends EventModule {
         }
         // Pack redis command args
         let args = [];
-        Object.keys(data).forEach(key => {
+        Object.keys(kvMap).forEach(key => {
             args.push(key);
-            args.push(data[key].toString());
+            args.push(kvMap[key].toString());
         });
         return this._client.execute('MSET', args, callback);
     };
-    msetAsync = util.promisify(this.mset);
+    setManyAsync = util.promisify(this.setMany);
     /**
      * 
      * @param { string[] } keys 
      * @param {*} callback 
      * @returns 
      */
-    mget(keys, callback) {
+    getMany(keys, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _getMultiValues.call(this, keys, callback);
+            return _getManyValues.call(this, keys, callback);
         }
         // Retrieve from redis
         if (!this._client) {
@@ -260,7 +309,44 @@ class Cache extends EventModule {
         }
         return this._client.execute('MGET', keys, callback);
     }
-    mgetAsync = util.promisify(this.mget)
+    getManyAsync = util.promisify(this.getMany)
+    /**
+     * 
+     * @param { string[] } keys 
+     * @param { number } callback 
+     */
+    delMany(keys, callback) {
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return _delManyValues.call(this, keys, callback);
+        }
+        if (!this._client) {
+            return callback({
+                code: eRetCodes.REDIS_ERR,
+                message: 'Redis server not connected!'
+            })
+        }
+        return this._client.execute('DEL', keys, callback);
+    }
+    delManyAsync = util.promisify(this.delMany);
+
+    /**
+     * Delete all cache entries
+     * @param {*} callback 
+     * @returns 
+     */
+    clear(callback) {
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return _delManyValues.call(this, Object.keys(this._dataRepo), callback);
+        }
+        if (!this._client) {
+            return callback({
+                code: eRetCodes.REDIS_ERR,
+                message: 'Redis server not connected!'
+            })
+        }
+        return this._client.execute('FLUSHDB', callback);
+    }
+    clearAsync = util.promisify(this.clear);
 }
 
 const _typeCacheProps = {
