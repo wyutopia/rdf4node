@@ -552,15 +552,16 @@ class Repository extends EventObject {
             callback = options;
             options = {};
         }
+        let oid = tools.plainObjectId(id);
         if (!this._model) {
             return callback({
                 code: eRetCodes.DB_ERROR,
                 message: 'Model should be initialized before using!'
             });
         }
-        logger.debug(`${this.$name} - options: ${id} ${tools.inspect(options)}`);
+        logger.debug(`${this.$name} - options: ${oid} ${tools.inspect(options)}`);
         //
-        let query = this._model.findById(id);
+        let query = this._model.findById(oid);
         return _uniQuery.call(this, query, options, callback);
     };
     findByIdAsync = util.promisify(this.findById);
