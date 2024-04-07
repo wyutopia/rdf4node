@@ -145,7 +145,7 @@ const _defaultCacheProps = {
     server: 'default',
     database: 0,
     prefix: null,                       // No default key prefix
-    ttl: 0,
+    ttl: null,
     json: true,
 }
 
@@ -262,7 +262,7 @@ class Cache extends EventModule {
      */
     setMany(kvMap, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _setManyValues.call(this, kvMap, {ttl: this._ttl}, callback);
+            _setManyValues.call(this, kvMap, { ttl: this._ttl }, callback);
         }
         if (!this._client) {
             return callback({
