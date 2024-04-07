@@ -76,9 +76,10 @@ exports.isTypeOfDate = function (obj) {
 };
 
 const gPrimitiveTypes = ['undefined', 'boolean', 'number', 'bigint', 'string'];
-exports.isTypeOfPrimitive = function (v) {
-    return gPrimitiveTypes.indexOf(typeof v) !== -1;
+function _isTypeOfPrimitive (v) {
+    return gPrimitiveTypes.includes(typeof v);
 }
+exports.isTypeOfPrimitive = _isTypeOfPrimitive;
 
 exports.uuidv4 = function () {
     return uuidv4().replace(/-/g, '');
@@ -435,7 +436,10 @@ function _plainObjectId (doc) {
         return doc;
     }
     if (ObjectId.isValid(doc)) {
-        return new ObjectId(doc);
+        return ObjectId(doc);
+    }
+    if (_isTypeOfPrimitive(doc)) {
+        return doc;
     }
     return _plainObjectId(doc._id);
 }
