@@ -436,7 +436,7 @@ function _plainObjectId (doc) {
         return doc;
     }
     if (ObjectId.isValid(doc)) {
-        return ObjectId(doc);
+        return new ObjectId(doc);
     }
     if (_isTypeOfPrimitive(doc)) {
         return doc;

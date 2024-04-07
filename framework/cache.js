@@ -190,18 +190,12 @@ class Cache extends EventModule {
      * Set the key-value
      * @param { string } key 
      * @param { string | Object} val 
-     * @param { Object } options - Set options
-     * @param { Number } options.ttl - The ttl value in milesecond 
      * @param { * } callback 
      * @returns 
      */
-    set(key, val, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
+    set(key, val, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _setValue.call(this, key, val, options, callback);
+            return _setValue.call(this, key, val, { ttl: this._ttl }, callback);
         }
         if (!this._client) {
             return callback({
@@ -211,8 +205,8 @@ class Cache extends EventModule {
         }
         //
         const args = [key, typeof val === 'string'? val : JSON.stringify(val)];
-        if (options.ttl) {
-            args.push('EX', options.ttl)
+        if (this._ttl) {
+            args.push('EX', this._ttl)
         }
         return this._client.execute('SET', args, callback);
     }
@@ -263,17 +257,12 @@ class Cache extends EventModule {
     /**
      * Set multiply KVs
      * @param { Object } kvMap - The JSON value
-     * @param {*} options 
      * @param {*} callback 
      * @returns 
      */
-    setMany(kvMap, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
+    setMany(kvMap, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _setManyValues.call(this, kvMap, options, callback);
+            return _setManyValues.call(this, kvMap, {ttl: this._ttl}, callback);
         }
         if (!this._client) {
             return callback({
