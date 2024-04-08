@@ -246,39 +246,45 @@ function _appendCache(data, options, callback) {
         //logger.debug(`Ignore cache updating dur no cacheValue changed!`);
         return callback(null, data);
     }
-    logger.debug(`${this.$name}: Update cache with data ${tools.inspect(data)} ...`);
-    let cacheValues = [];
-    let docs = Array.isArray(data) ? data : [data];
+    logger.debug(`### ${this.$name}: Update cache ...`);
+    const cacheValues = [];
+    const kvMap = {};
     //
-    async.eachLimit(docs, 3, (doc, next) => {
+    let docs = Array.isArray(data) ? data : [data];
+    docs.forEach( doc => {
         let cacheKey = _parseCacheKey(doc, this.cacheSpec);
         let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);
+        //
+        kvMap[cacheKey] = cacheVal;
         cacheValues.push(cacheVal);
-        return this._cache.set(cacheKey, cacheVal, next);
-    }, (err) => {
+    });
+    return this._cache.setMany(kvMap, (err, count) => {
         if (err) {
-            logger.error(`Set cache error! - ${err.message}`);
+            logger.error(`*** ${this.$name}: Set cache error! - ${err.message}`);
+        } else {
+            logger.debug(`### ${this.$name}: Total ${count} entries set.`);
         }
         return callback(null, tools.isTypeOfArray(data) ? cacheValues : cacheValues[0]);
-    });
+    })
 }
 
 /**
  * 
- * @param { string[] } keys 
+ * @param { Object | Object[] } data 
  * @param {*} callback 
  * @returns 
  */
-function _removeCache(keys, callback) {
-    if (typeof keys === 'function') {
-        callback = keys;
-        keys = '*';
+function _removeCache(data, callback) {
+    if (!this.allowCache) {
+        return callback(null, 0);
     }
-    if (this.allowCache === false) {
-        return callback();
-    }
-    if (keys === '*') {
-        this._cache.clear(callback);
+    const docs = Array.isArray(data)? data : [data];
+    const keys = [];
+    docs.forEach(doc => {
+        keys.push(_parseCacheKey(doc, this.cacheSpec))
+    })
+    if (keys.length === 0) {
+        return callback(null, 0);
     }
     return this._cache.delMany(keys, callback);
 }
@@ -726,12 +732,15 @@ class Repository extends EventObject {
                     message: msg
                 });
             }
-            // Remove cache
-            _removeCache.call(this, [options.filter._id.toString()], (err, count) => {
-                logger.debug(`### ${this.$name}: ${count} cache entries removed.`);
-                return callback(null, result);
-            })
-        });
+            if (!options.multi) {
+                return _removeCache.call(this, result, (err, count) => {
+                    logger.debug(`### ${this.$name}: ${count} cache entries removed.`);
+                    return callback(null, result);
+                })
+            }
+            // TODO: Find a way to delete multiple cache entries
+            return callback(null, result);
+        })
     };
     deleteAsync = util.promisify(this.delete);
     remove(options, callback) {

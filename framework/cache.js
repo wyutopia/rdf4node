@@ -72,7 +72,7 @@ function _setManyValues(kvMap, options, callback) {
             clearTimeout(this._dataRepo[realKey].ttl);
         }
         this._dataRepo[realKey] = {
-            value: val,
+            value: kvMap[key],
             ttl: options.ttl? setTimeout(_removeEntry.bind(this, key), options.ttl * 1000) : null
         }
     })
@@ -262,7 +262,7 @@ class Cache extends EventModule {
      */
     setMany(kvMap, callback) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            _setManyValues.call(this, kvMap, { ttl: this._ttl }, callback);
+            return _setManyValues.call(this, kvMap, { ttl: this._ttl }, callback);
         }
         if (!this._client) {
             return callback({
