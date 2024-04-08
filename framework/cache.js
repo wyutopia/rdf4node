@@ -273,8 +273,9 @@ class Cache extends EventModule {
         // Pack redis command args
         let args = [];
         Object.keys(kvMap).forEach(key => {
+            let val = kvMap[key];
             args.push(key);
-            args.push(kvMap[key].toString());
+            args.push(typeof val === 'string'? val : JSON.stringify(val));
         });
         return this._client.execute('MSET', args, callback);
     };
@@ -286,6 +287,10 @@ class Cache extends EventModule {
      * @returns 
      */
     getMany(keys, callback) {
+        if (keys.length === 0) {
+            logger.warn(`*** ${this.$name}: Empty keys!`);
+            return callback(null, {});
+        }
         if (this._engine === sysdefs.eCacheEngine.Native) {
             return _getManyValues.call(this, keys, callback);
         }
@@ -296,7 +301,19 @@ class Cache extends EventModule {
                 message: 'Redis server not connected!'
             })
         }
-        return this._client.execute('MGET', keys, callback);
+        return this._client.execute('MGET', keys, (err, values) => {
+            const result = {};
+            for (let i = 0; i < keys.length; i++) {
+                let key = keys[i];
+                let val = values[i];
+                try {
+                    result[key] = this._json? JSON.parse(val) : val;
+                } catch(ex) {
+                    logger.error(`!!! ${this.$name}: parsing value: ${val} error! - ${ex.message}`)
+                }
+            }
+            return callback(null, result);
+        })
     }
     getManyAsync = util.promisify(this.getMany)
     /**
