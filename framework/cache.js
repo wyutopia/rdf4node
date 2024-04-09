@@ -93,14 +93,19 @@ function _delManyValues(keys, callback) {
 
 function _getValue(key, callback) {
     let realKey = this._prefix ? `${this._prefix}:${key}` : key;
-    return callback(null, this._dataRepo[realKey].value);
+    if (this._dataRepo[realKey]) {
+        return callback(null, this._dataRepo[realKey].value);
+    }
+    return this._dataRepo[realKey];
 }
 
 function _getManyValues(keys, callback) {
     const result = {};
     keys.forEach(key => {
         let realKey = this._prefix ? `${this._prefix}:${key}` : key;
-        result[key] = this._dataRepo[realKey].value;
+        if (this._dataRepo[realKey]) {
+            result[key] = this._dataRepo[realKey].value;
+        }
     })
     return callback(null, result);
 }

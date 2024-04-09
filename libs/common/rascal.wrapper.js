@@ -275,7 +275,7 @@ class RascalClient extends CommonObject {
             logger.debug(`${this.$name}[${this.state}]: PubSession on [SUCCESS] - ${msgId}`);
         });
         session.on('return', (message) => {
-            logger.debug(`${this.$name}[${this.state}]: PubSession on [RETURN] - ${tools.inspect(message)}`);
+            logger.debug(`${this.$name}[${this.state}]: on RETURN - ${tools.inspect(message.fields)} - ${message.properties.contentType} - ${message.properties.messageId}`);
             //TODO: 
         });
     }
