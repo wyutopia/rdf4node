@@ -93,10 +93,8 @@ function _delManyValues(keys, callback) {
 
 function _getValue(key, callback) {
     let realKey = this._prefix ? `${this._prefix}:${key}` : key;
-    if (this._dataRepo[realKey]) {
-        return callback(null, this._dataRepo[realKey].value);
-    }
-    return this._dataRepo[realKey];
+    let value = this._dataRepo[realKey]? this._dataRepo[realKey].value : undefined;
+    return callback(null, value);
 }
 
 function _getManyValues(keys, callback) {
