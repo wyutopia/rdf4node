@@ -482,7 +482,7 @@ class EntityController extends ControllerBase {
                     const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                     const repo = this.getRepo(this.modelName, dsName);
                     const baseOptions = _prepareFindOptions.call(this, req);
-                    const options = await this._beforeFind(req, baseOptions);
+                    const options = await this._beforeFind(req, baseOptions) || baseOptions;
                     const docs = await repo.findManyAsync(options);
                     const results = await this._afterFindMany(req, docs);
                     return res.sendSuccess(results);
@@ -503,7 +503,7 @@ class EntityController extends ControllerBase {
                     const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                     const repo = this.getRepo(this.modelName, dsName);
                     const baseOptions = _prepareFindOptions.call(this, req);
-                    const options = await this._beforeFind(req, baseOptions);
+                    const options = await this._beforeFind(req, baseOptions) || baseOptions;
                     this.emit('before_find_one', req, options);
                     const doc = await repo.findOneAsync(options);
                     const result = await this._afterFindOne(req, doc);
