@@ -193,6 +193,7 @@ const _defaultCtlSpec = {
     // For database query options
     populate: null,             // For populate
     sort: null,                 // For sort
+    sortOrder: 1,               // The default sortOrder, only effective when sort not null
     select: null,               // For select 
     deleteOptions: null,        // For additional delete criterias
     briefSelect: 'name',        // For brief query
@@ -318,7 +319,7 @@ function _prepareFindOptions(req) {
     if (args.sort !== undefined) {
         const sortData = {};
         args.sort.split(',').forEach(key => {
-            sortData[key] = 1;
+            sortData[key] = this._sortOrder;
         })
         options.sort = sortData;
         delete args.sort;
