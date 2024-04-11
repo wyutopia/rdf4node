@@ -320,7 +320,12 @@ function _prepareFindOptions(req) {
     if (args.sort !== undefined) { // User privilege
         const sortData = {};
         args.sort.split(',').forEach(key => {
-            sortData[key] = _reDescOrder.test(key)? -1 : 1;
+            let desc = _reDescOrder.test(key);
+            if (desc) {
+                sortData[key.slice(1)] = -1;
+            } else {
+                sortData[key] = 1;
+            }
         })
         options.sort = sortData;
         delete args.sort;
