@@ -446,8 +446,6 @@ function _plainObjectId (doc) {
 exports.plainObjectId = _plainObjectId;
 exports.purifyObjectId = _plainObjectId;
 
-
-
 async function _asyncParallel (promiseObject) {
     const promises = [];
     const keys = Object.keys(promiseObject);
@@ -464,3 +462,20 @@ async function _asyncParallel (promiseObject) {
     return result;
 }
 exports.asyncParallel = _asyncParallel;
+
+exports.parseNumberArrayFromString = async function (s) {
+    const arr = [];
+    try {
+        const items = s.split(',');
+        s.split(',').forEach(e => {
+            arr.push(parseInt(e));
+        })
+        return arr;
+    } catch(ex) {
+        logger.error(`!!! ${ex.message}`);
+        return Promise.reject({
+            code: eRetCodes.BAD_REQUEST,
+            message: 'Invalid array number parameter'
+        })
+    }
+}

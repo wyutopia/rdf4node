@@ -306,6 +306,7 @@ function _initCtlSpec(ctlSpec) {
  * @param { Object } req - The express request 
  * @returns { Types.QueryOptions }
  */
+const _reDescOrder = new RegExp('^-')
 function _prepareFindOptions(req) {
     const options = {};
     const args = req.$args;
@@ -316,10 +317,10 @@ function _prepareFindOptions(req) {
             delete args[key];
         }
     });
-    if (args.sort !== undefined) {
+    if (args.sort !== undefined) { // User privilege
         const sortData = {};
         args.sort.split(',').forEach(key => {
-            sortData[key] = this._sortOrder;
+            sortData[key] = _reDescOrder.test(key)? -1 : 1;
         })
         options.sort = sortData;
         delete args.sort;
