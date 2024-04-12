@@ -111,11 +111,19 @@ async function _publishEvents(options) {
     }
 }
 
-const eSessionCacheResource = {
+const eSessCacheResource = {
     LicenseReservation: 'licRsv',
     DistributedLock: 'distLock'
     // Additional key goes here ...
 }
+
+const eSessCacheResourceOp = {
+    Lock      : 'lck',
+    Unlock    : 'ulck',
+    Free      : 'free',
+    Apply     : 'apply',
+    Refund    : 'refund'
+};
 
 class SessionCache extends CommonObject {
     constructor(props) {
@@ -270,11 +278,11 @@ const _defaultCtlSpec = {
             sessionCache.keys().forEach(k => {
                 const { rc, ett, op } = sessionCache.get(k);
                 switch (rc) {
-                    case eSessionCacheResource.LicenseReservation:
-                        promiseMap[`${rc}#${k}`] = op === sysdefs.eSessCacheResourceOp.Apply ? this._appCtx.licenseManager.applyLicense(ett) : this._appCtx.licenseManager.refundLicense(ett);
+                    case eSessCacheResource.LicenseReservation:
+                        promiseMap[`${rc}#${k}`] = op === eSessCacheResourceOp.Apply ? this._appCtx.licenseManager.applyLicense(ett) : this._appCtx.licenseManager.refundLicense(ett);
                         break;
-                    case eSessionCacheResource.DistributedLock:
-                        promiseMap[`${rc}#${k}`] = op === sysdefs.eSessCacheResourceOp.Free || op === sysdefs.eSessCacheResourceOp.Unlock ? this._appCtx.distLocker.UnlockOneAsync(ett) : Promise.resolve('ignored');
+                    case eSessCacheResource.DistributedLock:
+                        promiseMap[`${rc}#${k}`] = op === eSessCacheResourceOp.Free || op === eSessCacheResourceOp.Unlock ? this._appCtx.distLocker.UnlockOneAsync(ett) : Promise.resolve('ignored');
                         break;
                     default:
                         logger.warn(`*** ${this.$name}: Unrecognized cache resource - ${rc}`);
@@ -891,7 +899,7 @@ class ServiceBase extends EventModule {
 
 // Declaring module exports
 module.exports = exports = {
-    eSessionCacheResource,
+    eSessCacheResource, eSessCacheResourceOp,
     ControllerBase: ControllerBase,
     EntityController: EntityController,
     ServiceBase: ServiceBase,
