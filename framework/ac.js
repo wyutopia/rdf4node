@@ -417,7 +417,7 @@ async function _authorize(req, options) {
  */
 async function _accessCtl({ authType, validator, scope, resource, op}, req, res, next) {
     try {
-        let params = Object.assign({}, req.params, req.query, req.body);
+        let params = req.method.toUpperCase() === 'GET'? Object.assign({}, req.params, req.query) : Object.assign({}, req.params, req.query, req.body);
         if (!_acHelper.isNoLogUrl(req.url)) {
             logger.debug(`### Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
         }
