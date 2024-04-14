@@ -1,6 +1,7 @@
 /**
  * Created by Eric on 2021/12/24
  */
+const assert = require('assert');
 const util = require('util');
 const async = require('async');
 const { createClient } = require('redis');
@@ -88,6 +89,65 @@ const _typeClientProps = {
     config: '_typeClientConfig'
 };
 
+async function _ensureConnected() {
+    if (this.state === eClientState.Conn) {
+        return null;
+    }
+    if (this._client !== null) {
+        logger.error(`${this.$name}[${this.state}]: client disconnected.`);
+        return Promise.reject({
+            code: eRetCodes.REDIS_CONN_ERR,
+            message: 'disconnected.'
+        })
+    }
+    logger.info(`${this.$name}[${this.state}]: Create client ...`);
+    this.state = eClientState.Init;
+    this._client = await createClient(this.config)
+        .on('connect', () => {
+            if (this.state === eClientState.Init) {
+                logger.info(`${this.$name}[${this.state}]: Connecting...`);
+            } else {
+                logger.error(`${this.$name}[${this.state}]: On [CONNECT] - Invalid state!`);
+            }
+        })
+        .on('ready', () => {
+            this.state = eClientState.Conn;
+            metricCollector[eMetricNames.activeConnection].inc();
+            //
+            let hostInfo = tools.safeGetJsonValue(this.config, 'socket.host') || this.config.url;
+            logger.info(`${this.$name}[${this.state}]: Server<${hostInfo}> connected.`);
+        })
+        .on('error', err => {
+            switch (this.state) {
+                case eClientState.Init:
+                    logger.error(`${this.$name}[${this.state}]: On [ERROR] - Connecting failed! - ${err.message}`);
+                    //this.state = eClientState.Closing;
+                    break;
+                case eClientState.Conn:
+                    logger.error(`${this.$name}[${this.state}]: On [ERROR] - Connection error! - ${err.message}`);
+                    this.state = eClientState.PClosing;
+                    break;
+                case eClientState.Closing:
+                    logger.error(`${this.$name}[${this.state}]: On [ERROR] - Connection closed! - ${err.message}`);
+                    break;
+                default:
+                    logger.error(`${this.$name}[${this.state}]: On [ERROR] - Invalid state!`);
+                    break;
+            }
+        })
+        .on('reconnection', () => {
+            logger.debug(`${this.$name}[${this.state}]: On [RECONNECTION].`);
+        })
+        .on('end', () => {
+            logger.info(`${this.$name}[${this.state}]: Connection closed!`);
+            this.state = eClientState.Pending;
+            this.$parent.emit('client-end', this.$id);
+            this.state = eClientState.Null;
+        }).connect();
+    logger.debug(`${this.$name}[${this.state}]: ...`);
+    return null;
+}
+
 // The class
 class RedisClient extends EventObject {
     constructor(props) {
@@ -101,55 +161,6 @@ class RedisClient extends EventObject {
         this.lastError = null;
         this.state = eClientState.Null;
         this._client = null;
-        //
-        (() => {
-            logger.info(`${this.$name}[${this.state}]: Create client ...`);
-            this._client = createClient(this.config);
-            this._client.on('connect', () => {
-                if (this.state === eClientState.Init) {
-                    logger.info(`${this.$name}[${this.state}]: Connecting...`);
-                } else {
-                    logger.error(`${this.$name}[${this.state}]: On [CONNECT] - Invalid state!`);
-                }
-            });
-            this._client.on('ready', () => {
-                this.state = eClientState.Conn;
-                metricCollector[eMetricNames.activeConnection].inc();
-                //
-                let hostInfo = tools.safeGetJsonValue(this.config, 'socket.host') || this.config.url;
-                logger.info(`${this.$name}[${this.state}]: Server<${hostInfo}> connected.`);
-            });
-            this._client.on('error', (err) => {
-                switch (this.state) {
-                    case eClientState.Init:
-                        logger.error(`${this.$name}[${this.state}]: On [ERROR] - Connecting failed! - ${err.message}`);
-                        //this.state = eClientState.Closing;
-                        break;
-                    case eClientState.Conn:
-                        logger.error(`${this.$name}[${this.state}]: On [ERROR] - Connection error! - ${err.message}`);
-                        this.state = eClientState.PClosing;
-                        break;
-                    case eClientState.Closing:
-                        logger.error(`${this.$name}[${this.state}]: On [ERROR] - Connection closed! - ${err.message}`);
-                        break;
-                    default:
-                        logger.error(`${this.$name}[${this.state}]: On [ERROR] - Invalid state!`);
-                        break;
-                }
-            });
-            this._client.on('reconnection', () => {
-                logger.debug(`${this.$name}[${this.state}]: On [RECONNECTION].`);
-            });
-            this._client.on('end', () => {
-                logger.info(`${this.$name}[${this.state}]: Connection closed!`);
-                this.state = eClientState.Pending;
-                this.$parent.emit('client-end', this.$id);
-                this.state = eClientState.Null;
-            });
-            // Initializing connection
-            this.state = eClientState.Init;
-            this._client.connect();
-        })();
     }
     isConnected () {
         return this.state === eClientState.Conn;
@@ -157,6 +168,7 @@ class RedisClient extends EventObject {
     getClient () {
         return this._client;
     }
+    
     /**
      * 
      * @param { string } method 
@@ -165,25 +177,24 @@ class RedisClient extends EventObject {
      * @returns 
      */
     execute (method, args, callback) {
-        if (!this.isConnected()) {
-            let msg = `${this.$name}[${this.state}]: client disconnected.`;
-            logger.error(msg);
-            return callback({
-                code: eRetCodes.REDIS_CONN_ERR,
-                message: msg
-            });
-        }
-        let fn = this._client[method];
-        if (typeof fn !== 'function') {
-            let msg = `${this.$name}[${this.state}]: Invalid method - ${method}`;
-            logger.error(msg);
-            return callback({
-                code: eRetCodes.REDIS_METHOD_NOTEXISTS,
-                message: msg
-            });
-        }
-        args.push(callback);
-        return fn.apply(this._client, args);
+        assert(typeof method === 'string');
+        assert(typeof callback === 'function');
+        //
+        _ensureConnected.call(this).then(() => {
+            let fn = this._client[method];
+            if (typeof fn !== 'function') {
+                let msg = `${this.$name}[${this.state}]: Invalid method - ${method}`;
+                logger.error(msg);
+                return callback({
+                    code: eRetCodes.REDIS_METHOD_NOTEXISTS,
+                    message: msg
+                });
+            }
+            args.push(callback);
+            return fn.apply(this._client, args);
+        }).catch(err => {
+            return callback(err);
+        })
     }
     execAsync = util.promisify(this.execute)
     async dispose () {
