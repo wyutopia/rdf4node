@@ -144,7 +144,6 @@ async function _ensureConnected() {
             this.$parent.emit('client-end', this.$id);
             this.state = eClientState.Null;
         }).connect();
-    logger.debug(`${this.$name}[${this.state}]: ...`);
     return null;
 }
 

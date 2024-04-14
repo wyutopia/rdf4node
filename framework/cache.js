@@ -275,12 +275,18 @@ class Cache extends EventModule {
         }
         // Pack redis command args
         let args = [];
-        Object.keys(kvMap).forEach(key => {
+        let keys = Object.keys(kvMap);
+        keys.forEach(key => {
             let val = kvMap[key];
             args.push(key);
             args.push(typeof val === 'string'? val : JSON.stringify(val));
         });
-        return this._client.execute('MSET', args, callback);
+        return this._client.execute('MSET', args, (err, result) => {
+            if (err) {
+                return callback(err);
+            }
+            return callback(null, result === 'ok'? keys.length : 0)
+        })
     };
     setManyAsync = util.promisify(this.setMany);
     /**
