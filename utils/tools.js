@@ -463,7 +463,7 @@ async function _asyncParallel (promiseObject) {
 }
 exports.asyncParallel = _asyncParallel;
 
-exports.parseNumberArrayFromString = async function (s) {
+exports.parseNumberArrayFromString = function (s) {
     const arr = [];
     try {
         const items = s.split(',');
@@ -472,10 +472,9 @@ exports.parseNumberArrayFromString = async function (s) {
         })
         return arr;
     } catch(ex) {
-        logger.error(`!!! ${ex.message}`);
-        return Promise.reject({
-            code: eRetCodes.BAD_REQUEST,
-            message: 'Invalid array number parameter'
-        })
+        logger.error(`!!! Parsing number array error! - ${ex.message}`);
+        let err = new Error('Invalid array number parameter');
+        err.code = eRetCodes.BAD_REQUEST;
+        throw err;
     }
 }
