@@ -179,11 +179,22 @@ class ControllerBase extends EventModule {
     constructor(props) {
         super(global.theApp, props);
     }
+    // The repository management
     getMultiRepos(modelNames, dsName = _DS_DEFAULT_) {
         return this._appCtx.repoFactory.getMultiRepos(modelNames, dsName);
     }
     getRepo(modelName, dsName) {
         return this._appCtx.repoFactory.getRepo(modelName, dsName);
+    }
+    // The license management
+    async reserveLicense(...args) {
+        return this._appCtx.licenseManager.reserveLicense(...args);
+    }
+    async applyLicense(...args) {
+        return this._appCtx.licenseManager.applyLicense(...args);
+    }
+    async refundLicense(...args) {
+        return this._appCtx.licenseManager.refundLicense(...args);
     }
 }
 
