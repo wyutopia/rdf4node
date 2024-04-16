@@ -899,7 +899,7 @@ class ServiceBase extends EventModule {
 
 // Declaring module exports
 module.exports = exports = {
-    eSessCacheResource, eSessCacheResourceOp,
+    eSessCacheResource, eSessCacheResourceOp, SessionCache, 
     ControllerBase: ControllerBase,
     EntityController: EntityController,
     ServiceBase: ServiceBase,
