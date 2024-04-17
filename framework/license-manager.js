@@ -23,8 +23,9 @@ class LicenseManager extends CommonObject {
         //
     }
     reserveLicense = async function() { return null; }
-    applyLicense = async function () { return false; }
-    refundLicense = async function () { return false; }    
+    applyLicense = async function ({licId, appId, quantity}) { return 'noop'; }
+    refundLicense = async function ({licId, appId, quantity}, applied) { return 'noop'; }    
+    closeReservation = async function({licId, appId, quantity}, applied) { return 'noop'; }
     async init(config) {
         // TODO:...
         return true;

@@ -307,7 +307,7 @@ const _defaultCtlSpec = {
             logger.debug(`>>> ${this.$name}: Cleanup - ${tools.inspect(result)}}]`);
             return 0;
         } catch (ex) {
-            logger.error(`*** ${this.$name}: ${ex.message}`);
+            logger.error(`!!! ${this.$name}: ${ex.message}`);
             return -1;
         }
     }
