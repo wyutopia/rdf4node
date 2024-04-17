@@ -420,9 +420,19 @@ exports.deleteFromArray = function (arr, item) {
     return null;
 };
 
-exports.addToSet = function (arr, item) {
-    if (arr.indexOf(item) === -1) {
-        arr.push(item);
+/**
+ * 
+ * @param { any[] } arr 
+ * @param { * } item 
+ * @param { function? } tester 
+ */
+exports.addToSet = function (arr, item, tester) {
+    if (typeof tester === 'function') {
+        if (tester(arr, item)) {
+            arr.push(item)
+        }
+    } else if (!arr.includes(item)) {
+        arr.push(item)
     }
 }
 
