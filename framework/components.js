@@ -196,6 +196,9 @@ class ControllerBase extends EventModule {
     async refundLicense(...args) {
         return this._appCtx.licenseManager.refundLicense(...args);
     }
+    async closeReservation(...args) {
+        return this._appCtx.licenseManager.closeReservation(...args);
+    }
 }
 
 const _defaultCtlSpec = {
