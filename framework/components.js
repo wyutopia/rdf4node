@@ -133,6 +133,7 @@ class SessionCacheItem extends CommonObject {
      * @param { Object.values(eSessCacheItemOp) } op 
      */
     constructor(type, ett, op, ...args) {
+        super({});
         this.type = type;
         this.ett = ett;
         this.op = op;
@@ -807,7 +808,7 @@ class EntityController extends ControllerBase {
                     const result = await this._afterAdd(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${err.message}`);
+                    logger.error(`!!! ${this.$name}: ${err.message}`);
                     if (req.$sessionCache) {
                         let n = req.$sessionCache.setLicRsvOp(eSessCacheItemOp.Refund);
                         logger.debug(`--- Set ${n} licRsv refund success.`);
