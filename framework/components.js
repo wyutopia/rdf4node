@@ -111,13 +111,13 @@ async function _publishEvents(options) {
     }
 }
 
-const eSessCacheResource = {
+const eSessCacheItemType = {
     LicenseReservation: 'licRsv',
     DistributedLock: 'distLock'
     // Additional key goes here ...
 }
 
-const eSessCacheResourceOp = {
+const eSessCacheItemOp = {
     Lock      : 'lck',
     Unlock    : 'ulck',
     Free      : 'free',
@@ -125,49 +125,107 @@ const eSessCacheResourceOp = {
     Refund    : 'refund'
 };
 
-/**
- * @typedef SessionCacheEntityWrapper
- * @prop { string } rc
- * @prop { Object } ett
- * @prop { string } op
- */
+class SessionCacheItem extends CommonObject {
+    /**
+     * Constructor
+     * @param { Object.values(eSessCacheItemType) } type 
+     * @param { Object } ett 
+     * @param { Object.values(eSessCacheItemOp) } op 
+     */
+    constructor(type, ett, op, ...args) {
+        this.type = type;
+        this.ett = ett;
+        this.op = op;
+        this.args = args || [];
+    }
+    appendArgs(arg) {
+        this.args.push(arg);
+    }
+    modArgs(index, v) {
+        this.args[index] = v;
+    }
+    setOp(op) {
+        this.op = op;
+    }
+}
 
 class SessionCache extends CommonObject {
     constructor(props) {
         super(props || {});
         this._repo = {};
     }
+    /**
+     * Whether the cache is empty
+     * @returns { boolean }
+     */
     isEmpty() {
         return Object.keys(this._repo).length === 0;
     }
+    /**
+     * The keys of cache items
+     * @returns {string[]}
+     */
     keys() {
         return Object.keys(this._repo);
     }
+    /**
+     * Number of the cache items
+     * @returns { number }
+     */
     count() {
         return Object.keys(this._repo).length;
     }
     /**
      * @param { string } k
-     * @param { SessionCacheEntityWrapper } v
-     * @param { string } op
+     * @param { SessionCacheItem } v
+     * @return { string }
      */
-    append(k, v) {
+    add(k, v) {
         if (this._repo[k]) {
-            throw new Error(`Cache entity conflict! - ${k} - ${v.rc}`);
+            throw new Error(`Cache entry conflict! - ${k} - ${v.rc}`);
         }
         this._repo[k] = v;
         return k;
     }
-    updateOp(k, op) {
-        if (this._repo[k] === undefined) {
-            throw new Error(`Specified entity not exists! - ${k}`);
+    /**
+     * 
+     * @param { string } k 
+     * @param { eSessCacheItemOp } op 
+     */
+    setOp(k, op) {
+        let item = this._repo[k];
+        if (item === undefined) {
+            throw new Error(`Specified item not exists! - ${k}`);
         }
-        this._repo[k].op = op;
+        item.setOp(op);
+    }
+    /**
+     * Update all license reservations op
+     * @param {*} op
+     * @return {number} 
+     */
+    setLicRsvOp(op) {
+        let count = 0;
+        Object.keys(this._repo).forEach(k => {
+            let item = this._repo[k];
+            if (k.type === eSessCacheItemType.LicenseReservation) {
+                item.setOp(op);
+                count++;
+            }
+        })
+        return count;
+    }
+    appendArgs(k, arg) {
+        let item = this._repo[k];
+        if (item === undefined) {
+            throw new Error(`Specified item not exists! - ${k}`);
+        }
+        item.appendArgs(arg);
     }
     /**
      * @param { string } k 
      * @param { boolean } autoClean - Default true
-     * @returns 
+     * @returns { SessionCacheItem }
      */
     get(k) {
         return this._repo[k];
@@ -301,6 +359,11 @@ const _defaultCtlSpec = {
     beforeDeleteOne: tools.noop,
     afterDeleteOne: async function (req, doc) { return doc; },
     //
+    /**
+     * 
+     * @param { SessionCache } sessionCache 
+     * @returns 
+     */
     cleanup: async function (sessionCache) {
         if (!sessionCache || sessionCache.isEmpty()) {
             return 0;
@@ -308,16 +371,16 @@ const _defaultCtlSpec = {
         try {
             const promiseMap = {};
             sessionCache.keys().forEach(k => {
-                const { rc, ett, op } = sessionCache.get(k);
-                switch (rc) {
-                    case eSessCacheResource.LicenseReservation:
-                        promiseMap[`${rc}#${k}`] = op === eSessCacheResourceOp.Apply ? this._appCtx.licenseManager.applyLicense(ett) : this._appCtx.licenseManager.refundLicense(ett);
+                const { type, ett, op } = sessionCache.get(k);
+                switch (type) {
+                    case eSessCacheItemType.LicenseReservation:
+                        promiseMap[`${type}#${k}`] = op === eSessCacheItemOp.Apply ? this.applyLicense(ett) : this.refundLicense(ett);
                         break;
-                    case eSessCacheResource.DistributedLock:
-                        promiseMap[`${rc}#${k}`] = op === eSessCacheResourceOp.Free || op === eSessCacheResourceOp.Unlock ? this._appCtx.distLocker.UnlockOneAsync(ett) : Promise.resolve('ignored');
+                    case eSessCacheItemType.DistributedLock:
+                        promiseMap[`${type}#${k}`] = op === eSessCacheItemOp.Free || op === eSessCacheItemOp.Unlock ? this.unlockOne(ett) : Promise.resolve('noop');
                         break;
                     default:
-                        logger.warn(`*** ${this.$name}: Unrecognized cache resource - ${rc}`);
+                        logger.warn(`*** ${this.$name}: Unrecognized cache item - ${type}`);
                         break;
                 }
             })
@@ -745,6 +808,10 @@ class EntityController extends ControllerBase {
                     return res.sendSuccess(result);
                 } catch (err) {
                     logger.error(`*** ${this.$name}: ${err.message}`);
+                    if (req.$sessionCache) {
+                        let n = req.$sessionCache.setLicRsvOp(eSessCacheItemOp.Refund);
+                        logger.debug(`--- Set ${n} licRsv refund success.`);
+                    }
                     return res.sendRsp(err.code, err.message);
                 } finally {
                     await this._cleanup(req.$sessionCache);
@@ -951,7 +1018,7 @@ class ServiceBase extends EventModule {
 
 // Declaring module exports
 module.exports = exports = {
-    eSessCacheResource, eSessCacheResourceOp, SessionCache, 
+    eSessCacheItemType, eSessCacheItemOp, SessionCache, SessionCacheItem,
     ControllerBase: ControllerBase,
     EntityController: EntityController,
     ServiceBase: ServiceBase,
