@@ -209,7 +209,7 @@ class SessionCache extends CommonObject {
         let count = 0;
         Object.keys(this._repo).forEach(k => {
             let item = this._repo[k];
-            if (k.type === eSessCacheItemType.LicenseReservation) {
+            if (item.type === eSessCacheItemType.LicenseReservation) {
                 item.setOp(op);
                 count++;
             }
