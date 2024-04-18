@@ -125,11 +125,17 @@ const eSessCacheResourceOp = {
     Refund    : 'refund'
 };
 
+/**
+ * @typedef SessionCacheEntityWrapper
+ * @prop { string } rc
+ * @prop { Object } ett
+ * @prop { string } op
+ */
+
 class SessionCache extends CommonObject {
     constructor(props) {
         super(props || {});
         this._repo = {};
-        this._index = 0;
     }
     isEmpty() {
         return Object.keys(this._repo).length === 0;
@@ -141,22 +147,22 @@ class SessionCache extends CommonObject {
         return Object.keys(this._repo).length;
     }
     /**
-     * @param { string } rc
-     * @param { * } ett
+     * @param { string } k
+     * @param { SessionCacheEntityWrapper } v
      * @param { string } op
      */
-    append(rc, ett, op) {
-        let id = this._index;
-        this._repo[this._index++] = {
-            rc, ett, op
+    append(k, v) {
+        if (this._repo[k]) {
+            throw new Error(`Cache entity conflict! - ${k} - ${v.rc}`);
         }
-        return id;
+        this._repo[k] = v;
+        return k;
     }
-    updateOp(id, op) {
-        let data = this._repo[id];
-        if (data) {
-            data.op = op;
+    updateOp(k, op) {
+        if (this._repo[k] === undefined) {
+            throw new Error(`Specified entity not exists! - ${k}`);
         }
+        this._repo[k].op = op;
     }
     /**
      * @param { string } k 
@@ -171,7 +177,6 @@ class SessionCache extends CommonObject {
     }
     clear() {
         this._repo = {};
-        this._index = 0;
     }
 }
 
@@ -198,6 +203,19 @@ class ControllerBase extends EventModule {
     }
     async closeReservation(...args) {
         return this._appCtx.licenseManager.closeReservation(...args);
+    }
+    // The distributed locker
+    async lockOne(...args) {
+        return this._appCtx.distLocker.lockOneAsync(...args);
+    }
+    async unlockOne(...args) {
+        return this._appCtx.distLocker.unlockOneAsync(...args);
+    }
+    async lockMany(...args) {
+        return this._appCtx.distLocker.lockManyAsync(...args);
+    }
+    async unlockMany(...args) {
+        return this._appCtx.distLocker.unlockManyAsync(...args);
     }
 }
 
@@ -232,7 +250,7 @@ const _defaultCtlSpec = {
     afterFindMany: async function (req, docs) { return docs; },     // For one or array results
     afterFindPartial: async function (req, results) { return results; },  // For pagination results
     //
-    allowAdd: async function (req, sessionCache) { return true; },
+    allowAdd: async function (req) { return true; },
     beforeAdd: async function (req) { return req.$args; },
     beforeInsert: async function (req) {
         return {
@@ -284,7 +302,7 @@ const _defaultCtlSpec = {
     afterDeleteOne: async function (req, doc) { return doc; },
     //
     cleanup: async function (sessionCache) {
-        if (sessionCache.isEmpty()) {
+        if (!sessionCache || sessionCache.isEmpty()) {
             return 0;
         }
         try {
@@ -518,6 +536,8 @@ class EntityController extends ControllerBase {
                 } catch (err) {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this.cleanup(req.$sessionCache);
                 }
             }
         };
@@ -540,6 +560,8 @@ class EntityController extends ControllerBase {
                 } catch (err) {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this.cleanup(req.$sessionCache);
                 }
             }
         };
@@ -562,6 +584,8 @@ class EntityController extends ControllerBase {
                 } catch (err) {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this.cleanup(req.$sessionCache);
                 }
             }
         };
@@ -590,6 +614,8 @@ class EntityController extends ControllerBase {
                 } catch (err) {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this.cleanup(req.$sessionCache);
                 }
             }
         };
@@ -623,6 +649,8 @@ class EntityController extends ControllerBase {
                 } catch (err) {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this.cleanup(req.$sessionCache);
                 }
             }
         };
@@ -650,6 +678,8 @@ class EntityController extends ControllerBase {
                 } catch (err) {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this.cleanup(req.$sessionCache);
                 }
             }
         };
@@ -679,6 +709,8 @@ class EntityController extends ControllerBase {
                 } catch (err) {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this.cleanup(req.$sessionCache);
                 }
             }
         };
@@ -694,11 +726,10 @@ class EntityController extends ControllerBase {
                 return validator;
             }).call(this),
             fn: async (req, res) => {
-                let sessionCache = new SessionCache();
                 try {
                     const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                     const repo = this.getRepo(this.modelName, dsName);
-                    await this._allowAdd(req, sessionCache);
+                    await this._allowAdd(req);
                     const data = await this._beforeAdd(req);
                     if (data._id === undefined && req.$args.oid !== undefined) {
                         data._id = req.$args.oid; // Using client provided id
@@ -716,7 +747,7 @@ class EntityController extends ControllerBase {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
-                    await this._cleanup(sessionCache);
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
@@ -743,6 +774,8 @@ class EntityController extends ControllerBase {
                 } catch (err) {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
@@ -775,8 +808,10 @@ class EntityController extends ControllerBase {
                     const result = await this._afterUpdateOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${err.message}`);
+                    logger.error(`!!! ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
@@ -814,8 +849,10 @@ class EntityController extends ControllerBase {
                     const result = await this._afterDeleteOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${err.message}`);
+                    logger.error(`!!! ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
+                } finally {
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
@@ -860,8 +897,10 @@ class EntityController extends ControllerBase {
                     const result = await this._afterDeleteOne(req, doc);
                     return res.sendSuccess(result);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${err.message}`);
+                    logger.error(`!!! ${this.$name}: ${err.message}`);
                     return res.sendRsp(eRetCodes.DB_DELETE_ERR, err.message);
+                } finally {
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
@@ -877,7 +916,6 @@ class EntityController extends ControllerBase {
                 dryrun: {}
             },
             fn: async (req, res) => {
-                let sessionCache = new SessionCache();
                 try {
                     const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                     const repo = this.getRepo(this.modelName, dsName);
@@ -893,10 +931,10 @@ class EntityController extends ControllerBase {
                     await this._afterPatchOne(doc);
                     return res.sendSuccess(doc);
                 } catch (err) {
-                    logger.error(`*** ${this.$name}: ${err.message}`);
+                    logger.error(`!!! ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
-                    await this._cleanup(sessionCache);
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         }
