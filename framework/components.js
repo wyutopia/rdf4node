@@ -537,7 +537,7 @@ class EntityController extends ControllerBase {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
-                    await this.cleanup(req.$sessionCache);
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
@@ -561,7 +561,7 @@ class EntityController extends ControllerBase {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
-                    await this.cleanup(req.$sessionCache);
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
@@ -585,7 +585,7 @@ class EntityController extends ControllerBase {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
-                    await this.cleanup(req.$sessionCache);
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
@@ -615,7 +615,7 @@ class EntityController extends ControllerBase {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
-                    await this.cleanup(req.$sessionCache);
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
@@ -650,7 +650,7 @@ class EntityController extends ControllerBase {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
-                    await this.cleanup(req.$sessionCache);
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
@@ -679,7 +679,7 @@ class EntityController extends ControllerBase {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
-                    await this.cleanup(req.$sessionCache);
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
@@ -710,7 +710,7 @@ class EntityController extends ControllerBase {
                     logger.error(`*** ${this.$name}: ${err.message}`);
                     return res.sendRsp(err.code, err.message);
                 } finally {
-                    await this.cleanup(req.$sessionCache);
+                    await this._cleanup(req.$sessionCache);
                 }
             }
         };
