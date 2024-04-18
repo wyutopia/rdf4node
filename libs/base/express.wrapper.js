@@ -9,7 +9,7 @@
  // Attach customized response methods
  responseWrapper.sendRsp = function(rc, msg, data) {
      let rsp = {
-         code: rc,
+         code: rc || 500,
          message: msg
      };
      if (data !== undefined && data !== null) {
