@@ -260,7 +260,7 @@ class RascalClient extends CommonObject {
      * @returns 
      */
     async pubAsync(pubKey, data, options) {
-        logger.debug(`${this.$name}[${this.state}]: Publish - ${pubKey}, ${tools.inspect(data)}, ${tools.inspect(options)}`);
+        logger.debug(`${this.$name}[${this.state}]: Publish - ${pubKey}, ${data.code}, ${tools.inspect(options)}`);
         if (this.state !== eClientState.Conn) {
             throw new Error(`${this.$name}[${this.state}]: Please execute initializing before use.`);
         }
