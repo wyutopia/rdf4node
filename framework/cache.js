@@ -54,6 +54,24 @@ function _setValue(key, val, options, callback) {
     return callback(null, 1);
 }
 
+function _incrBy(key, n, callback) {
+    let realKey = this._prefix ? `${this._prefix}:${key}` : key;
+    if (this._dataRepo[realKey] === undefined) {
+        this._dataRepo[realKey] = {
+            value: n,
+            ttl: null
+        }
+        return callback(null, n);
+    }
+    if (Number.isNaN(this._dataRepo[realKey].value)) {
+        return callback({
+            code: eRetCodes.REDIS_ERR_NAN,
+            message: `!!! Not number for key: ${key}`
+        })        
+    }
+    this._dataRepo[realKey].value += n;
+    return callback(null, this._dataRepo[realKey].value)
+}
 /**
  * 
  * @param { Object } kvMap 
@@ -218,6 +236,32 @@ class Cache extends EventModule {
         return this._client.execute('SET', args, callback);
     }
     setAsync = util.promisify(this.set);
+    /**
+     * 
+     * @param {*} key 
+     * @param {*} n 
+     * @param {*} callback 
+     */
+    incr(key, n, callback) {
+        if (typeof n === 'function') {
+            callback = n;
+            n = 1;
+        }
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return _incrBy.call(this, key, n, callback);
+        }
+        // Using redis
+        if (!this._client) {
+            return callback({
+                code: eRetCodes.REDIS_ERR,
+                message: 'Redis server not connected.'
+            });
+        }
+        //
+        return this._client.execute('INCRBY', [key, n], callback);
+    }
+    incrAsync = util.promisify(this.incr);
+
     /**
      * 
      * @param { string } key - key
