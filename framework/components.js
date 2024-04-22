@@ -1020,9 +1020,7 @@ class ServiceBase extends EventModule {
 // Declaring module exports
 module.exports = exports = {
     eSessCacheItemType, eSessCacheItemOp, SessionCache, SessionCacheItem,
-    ControllerBase: ControllerBase,
-    EntityController: EntityController,
-    ServiceBase: ServiceBase,
+    ControllerBase, EntityController, ServiceBase,
     utils: {
         packFindOption: _packFindOption,
         findUpdatedKeys: _findUpdatedKeys

@@ -172,6 +172,7 @@ class Cache extends EventModule {
         _initCacheEntity(this, props.cacheProps);
         this._dataRepo = {};
         this._client = null;
+        this._refCount = 1;
         //
         if (this._engine == sysdefs.eCacheEngine.Redis) {
             let options = {};
@@ -187,6 +188,9 @@ class Cache extends EventModule {
                 logger.error(err.message);
             }
         }
+    }
+    incRef() {
+        return ++this._refCount;
     }
     // Implementing all the cache operation methods
     /**
@@ -397,6 +401,9 @@ class CacheFactory extends EventModule {
                 cacheProps
             });
             logger.info(`Create new CacheEntity <${name}> with client config: ${tools.inspect(cacheProps)}.`);
+        } else {
+            let count = this._caches[name].incRef();
+            logger.info(`Cache: ${name} exists. refCount=${count}`);
         }
         return this._caches[name];
     }
