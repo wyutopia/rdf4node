@@ -24,34 +24,35 @@ const _DEST_LOCAL_ = 'local';
 
 const eDomainEvent = {
     // System
-    SYS_APP_START          : 'app.start',
-    SYS_APP_STOP           : 'app.stop',
+    APP_START          : 'app.start',
+    APP_STOP           : 'app.stop',
     // Module
-    SYS_MODULE_CREATE      : 'module.create',
-    SYS_MODULE_INIT        : 'module.init',
-    SYS_MODULE_ACTIVE      : 'module.active',
-    SYS_MODULE_HALT        : 'module.halt',
-    SYS_MODULE_RESUME      : 'module.resume',
-    SYS_MODULE_DESTORY     : 'module.destroy',
+    MODULE_CREATE      : 'module.create',
+    MODULE_INIT        : 'module.init',
+    MODULE_ACTIVE      : 'module.active',
+    MODULE_HALT        : 'module.halt',
+    MODULE_RESUME      : 'module.resume',
+    MODULE_DESTORY     : 'module.destroy',
     // Admin
-    SYS_ADMIN_CREATE       : 'admin.create',
-    SYS_ADMIN_UPDATE       : 'admin.update',
-    SYS_ADMIN_CHGPWD       : 'admin.chgpwd',
-    SYS_ADMIN_SUSPEND      : 'admin.suspend',
-    SYS_ADMIN_DELETE       : 'admin.delete',
-    SYS_ADMIN_LOGIN        : 'admin.login',
-    SYS_ADMIN_LOGOUT       : 'admin.logout',
+    ADMIN_CREATE       : 'admin.create',
+    ADMIN_UPDATE       : 'admin.update',
+    ADMIN_CHGPWD       : 'admin.chgpwd',
+    ADMIN_SUSPEND      : 'admin.suspend',
+    ADMIN_DELETE       : 'admin.delete',
+    ADMIN_LOGIN_SUCC   : 'admin.login.succ',
+    ADMIN_LOGIN_FAIL   : 'admin.login.fail',
+    ADMIN_LOGOUT       : 'admin.logout',
     // License
-    SYS_LIC_CREATE         : 'lic.create',
-    SYS_LIC_UPDATE         : 'lic.update',
-    SYS_LIC_APPLY          : 'lic.apply',
-    SYS_LIC_REFUND         : 'lic.refund',
-    SYS_LIC_DELETE         : 'lic.delete',
+    LIC_CREATE         : 'lic.create',
+    LIC_UPDATE         : 'lic.update',
+    LIC_APPLY          : 'lic.apply',
+    LIC_REFUND         : 'lic.refund',
+    LIC_DELETE         : 'lic.delete',
     // Message
-    MSG_CREATE             : 'msg.create',
-    MSG_UPDATE             : 'msg.update',
-    MSG_DELETE             : 'msg.delete',
-    MSG_READ               : 'msg.read'
+    MSG_CREATE         : 'msg.create',
+    MSG_UPDATE         : 'msg.update',
+    MSG_DELETE         : 'msg.delete',
+    MSG_READ           : 'msg.read'
     // Append new events here ...
 };
 
