@@ -24,30 +24,34 @@ const _DEST_LOCAL_ = 'local';
 
 const eDomainEvent = {
     // System
-    SYS_APP_START: 'app.start',
-    SYS_APP_STOP: 'app.stop',
+    SYS_APP_START          : 'app.start',
+    SYS_APP_STOP           : 'app.stop',
     // Module
-    SYS_MODULE_CREATE: 'module.create',
-    SYS_MODULE_INIT: 'module.init',
-    SYS_MODULE_ACTIVE: 'module.active',
-    SYS_MODULE_HALT: 'module.halt',
-    SYS_MODULE_RESUME: 'module.resume',
-    SYS_MODULE_DESTORY: 'module.destroy',
+    SYS_MODULE_CREATE      : 'module.create',
+    SYS_MODULE_INIT        : 'module.init',
+    SYS_MODULE_ACTIVE      : 'module.active',
+    SYS_MODULE_HALT        : 'module.halt',
+    SYS_MODULE_RESUME      : 'module.resume',
+    SYS_MODULE_DESTORY     : 'module.destroy',
     // Admin
-    SYS_ADMIN_CREATE: 'admin.create',
-    SYS_ADMIN_UPDATE: 'admin.update',
-    SYS_ADMIN_CHGPWD: 'admin.chgpwd',
-    SYS_ADMIN_SUSPEND: 'admin.suspend',
-    SYS_ADMIN_DELETE: 'admin.delete',
+    SYS_ADMIN_CREATE       : 'admin.create',
+    SYS_ADMIN_UPDATE       : 'admin.update',
+    SYS_ADMIN_CHGPWD       : 'admin.chgpwd',
+    SYS_ADMIN_SUSPEND      : 'admin.suspend',
+    SYS_ADMIN_DELETE       : 'admin.delete',
+    SYS_ADMIN_LOGIN        : 'admin.login',
+    SYS_ADMIN_LOGOUT       : 'admin.logout',
     // License
-    SYS_LIC_CREATE: 'lic.create',
-    SYS_LIC_UPDATE: 'lic.update',
-    SYS_LIC_DELETE: 'lic.delete',
+    SYS_LIC_CREATE         : 'lic.create',
+    SYS_LIC_UPDATE         : 'lic.update',
+    SYS_LIC_APPLY          : 'lic.apply',
+    SYS_LIC_REFUND         : 'lic.refund',
+    SYS_LIC_DELETE         : 'lic.delete',
     // Message
-    MSG_CREATE: 'msg.create',
-    MSG_UPDATE: 'msg.update',
-    MSG_DELETE: 'msg.delete',
-    MSG_READ: 'msg.read'
+    MSG_CREATE             : 'msg.create',
+    MSG_UPDATE             : 'msg.update',
+    MSG_DELETE             : 'msg.delete',
+    MSG_READ               : 'msg.read'
     // Append new events here ...
 };
 
