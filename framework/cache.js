@@ -28,11 +28,17 @@ const eLoadPolicy = {
     SetAfterFound: 'setAfterFound'
 };
 
-function _removeEntry(key) {
+/**
+ * 
+ * @param { string } key - The user provided key 
+ * @param { boolean } timeout - Indicate whether call from ttl timeout
+ */
+function _removeEntry(key, timeout = true) {
     let realKey = this._prefix ? `${this._prefix}:${key}` : key;
     if (this._dataRepo[realKey]) {
-        if (this._dataRepo[realKey].ttl) {
+        if (!timeout && this._dataRepo[realKey].ttl) {
             clearTimeout(this._dataRepo[realKey].ttl);
+            this._dataRepo[realKey].ttl = null;
         }
         delete this._dataRepo[realKey];
     }
@@ -49,7 +55,7 @@ function _setValue(key, val, options, callback) {
     }
     this._dataRepo[realKey] = {
         value: val,
-        ttl: options.ttl? setTimeout(_removeEntry.bind(this, key), options.ttl * 1000) : null
+        ttl: options.ttl? setTimeout(_removeEntry.bind(this, key, true), options.ttl * 1000) : null
     }
     return callback(null, 1);
 }
@@ -91,20 +97,20 @@ function _setManyValues(kvMap, options, callback) {
         }
         this._dataRepo[realKey] = {
             value: kvMap[key],
-            ttl: options.ttl? setTimeout(_removeEntry.bind(this, key), options.ttl * 1000) : null
+            ttl: options.ttl? setTimeout(_removeEntry.bind(this, key, true), options.ttl * 1000) : null
         }
     })
     return callback(null, keys.length);
 }
 
 function _delValue(key, callback) {
-    _removeEntry.call(this, key);
+    _removeEntry.call(this, key, false);
     return callback(null, 1);
 }
 
 function _delManyValues(keys, callback) {
     keys.forEach(key => {
-        _removeEntry.call(this, key);
+        _removeEntry.call(this, key, false);
     })
     return callback(null, keys.length);
 }
