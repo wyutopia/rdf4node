@@ -15,6 +15,7 @@ const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
 
+const _REDIS_OK = 'OK';
 const _CACHE_DEFAULT = 'default';
 const eDataType = {
     Kv: 'kv',
@@ -339,7 +340,7 @@ class Cache extends EventModule {
             if (err) {
                 return callback(err);
             }
-            return callback(null, result === 'ok'? keys.length : 0)
+            return callback(null, result === _REDIS_OK? keys.length : 0)
         })
     };
     setManyAsync = util.promisify(this.setMany);
