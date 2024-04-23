@@ -350,7 +350,7 @@ class Repository extends EventObject {
             if (err) {
                 logger.error(`cacheGet error! - ${err.message}`);
             }
-            if (v !== undefined || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
+            if ((v !== undefined && v !== null) || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
                 return callback(null, v);
             }
             logger.debug(`Cache not hit! Fetch ${this.modelName} data from database...`);
