@@ -78,9 +78,13 @@ function _validateEmbeddedObject(field, validator, args) {
             let val = vals[valKey];
             let argv = args[i][valKey];
             //
-            if (val.required === true && argv === undefined) {
-                errMsg = `${field}.${valKey} is required!`;
-                break;
+            if (argv === undefined) {
+                if (val.required === true) {
+                    errMsg = `${field}.${valKey} is required!`;
+                    break;
+                }
+                // Ignore not required undefined argument
+                continue;
             }
             if (val.enum) {
                 let enumValues = tools.isTypeOfArray(val.enum) ? val.enum : Object.values(val.enum);
