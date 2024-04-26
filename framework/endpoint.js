@@ -52,7 +52,6 @@ class HttpEndpoint extends Endpoint {
         super(appCtx, props);
         //
         this._routeManager = null;
-        this._server = null;
     }
     init(options) {
         if (this._state !== eModuleState.INIT) {
@@ -261,7 +260,7 @@ class EndpointFactory extends EventModule {
         const arr = tools.isTypeOfArray(config) ? config : [config];
         await async.each(arr, async item => {
             try {
-                const EpModule = _epConstructor(item.protocol);
+                const EpModule = _epConstructor[item.protocol];
                 const ep = new EpModule(this._appCtx, { 
                     $name: `${item.name}@${this.$name}`,
                     managed: true
