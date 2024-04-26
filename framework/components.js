@@ -1010,9 +1010,9 @@ class EntityController extends ControllerBase {
 };
 
 // The ServiceBase class
-class ServiceBase extends EventModule {
+class ServiceBase extends ControllerBase {
     constructor(props) {
-        super(global.theApp, props);
+        super(props);
         // Declaring other variables and methods here ...
     }
 };
