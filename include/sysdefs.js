@@ -74,7 +74,8 @@ const eModuleState = {
     READY        : 'ready',
     ACTIVE       : 'active',
     SUSPEND      : 'suspend',
-    STOP_PENDING : 'pending'
+    STOP_PENDING : 'pending',
+    ERROR        : 'error'
 };
 exports.eModuleState = eModuleState;
 exports.isValidModuleStatus = function (s) {

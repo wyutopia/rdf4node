@@ -230,9 +230,7 @@ class RouteManager extends CommonObject {
     }
 }
 
-const routeMananger = new RouteManager({
-    $name: '_rt_'
-});
-
 // Declaring module exports
-module.exports = exports = routeMananger;
+module.exports = exports = {
+    RouteManager
+};
