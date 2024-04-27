@@ -49,14 +49,14 @@ function _validateString(field, validator, argv) {
     if (validator.regexp && !validator.regexp.test(argv)) {
         errMsg = `Invalid ${field} value!`;
     }
-    if (!errMsg && validator.minLeng !== undefined) {
-        if (argv.length < validator.minLeng) {
-            errMsg = `Length of ${field} should be great than ${validator.minLeng} !`;
+    if (!errMsg && validator.minLength !== undefined) {
+        if (argv.length < validator.minLength) {
+            errMsg = `Length of ${field} should be great than ${validator.minLength} !`;
         }
     }
-    if (!errMsg && validator.maxLeng !== undefined) {
-        if (argv.length > validator.maxLeng) {
-            errMsg = `Length of ${field} should be less than ${validator.maxLeng} !`;
+    if (!errMsg && validator.maxLength !== undefined) {
+        if (argv.length > validator.maxLength) {
+            errMsg = `Length of ${field} should be less than ${validator.maxLength} !`;
         }
     }
     return errMsg;
