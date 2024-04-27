@@ -360,6 +360,14 @@ exports.sha1Sign = function() {
     return crypto.createHash('sha1').update(seed).digest('hex');
 };
 
+exports.sha256Hash = function() {
+    let seed = '';
+    for (let i = 0; i < arguments.length; i ++) {
+        seed += arguments[i];
+    }
+    return crypto.createHash('sha256').update(seed).digest('hex');
+}
+
 function _isEmail (email) {
     let re = new RegExp(/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
     return re.test(email);
