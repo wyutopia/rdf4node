@@ -222,12 +222,18 @@ class Cache extends EventModule {
      * Set the key-value
      * @param { string } key 
      * @param { string | Object} val 
-     * @param { * } callback 
+     * @param { Object? } options
+     * @param { function } callback 
      * @returns 
      */
-    set(key, val, callback) {
+    set(key, val, options, callback) {
+        if (typeof options === 'function') {
+            callback = options;
+            options = {};
+        }
+        let ttl = options.ttl || this._ttl;
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _setValue.call(this, key, val, { ttl: this._ttl }, callback);
+            return _setValue.call(this, key, val, { ttl }, callback);
         }
         if (!this._client) {
             return callback({
@@ -237,8 +243,8 @@ class Cache extends EventModule {
         }
         //
         const args = [key, typeof val === 'string'? val : JSON.stringify(val)];
-        if (this._ttl) {
-            args.push('EX', this._ttl)
+        if (ttl) {
+            args.push('EX', ttl)
         }
         return this._client.execute('SET', args, callback);
     }

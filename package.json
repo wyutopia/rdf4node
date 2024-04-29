@@ -1,6 +1,6 @@
 {
     "name": "@icedeer/rdf4node",
-    "version": "0.75.5",
+    "version": "0.75.6",
     "description": "A rapid develop framework based on express for nodejs",
     "author": {
         "name": "Eric Wang",
@@ -44,10 +44,10 @@
         "clickhouse": "^2.6.0",
         "connect-mongodb-session": "^2.2.0",
         "connect-redis": "^7.1.0",
-        "ldap-authentication": "^2.3.3",
+        "ldap-authentication": "^3.0.3",
         "mongoose": "^6.12.3",
         "moment": "^2.29.4",
-        "mysql2": "^3.6.3",
+        "mysql2": "^3.9.7",
         "pg": "^8.11.3",
         "rascal": "^17.0.1",
         "redis": "^4.6.10",
