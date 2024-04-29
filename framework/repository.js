@@ -142,6 +142,12 @@ function _updateOne(params, callback) {
         if (err) {
             let msg = `Update ${this.$name} error! - ${err.message}`;
             logger.error(msg);
+            if (err.code === 11000) {
+                return callback({
+                    code: eRetCodes.CONFLICT,
+                    message: `Update failed! ${this.modelName} already exists.`
+                })
+            }
             return callback({
                 code: eRetCodes.DB_UPDATE_ERR,
                 message: msg
@@ -399,9 +405,15 @@ class Repository extends EventObject {
             if (err) {
                 let msg = `Create ${this.modelName} error! - ${err.message}`;
                 logger.error(msg);
+                if (err.code === 11000) {
+                    return callback({
+                        code: eRetCodes.CONFLICT,
+                        message: `Create failed! ${this.modelName} already exists.`
+                    })
+                }
                 return callback({
                     code: eRetCodes.DB_INSERT_ERR,
-                    message: err.code === 11000 ? `Create failed, ${this.modelName} Already exists!` : msg
+                    message: msg
                 });
             }
             // Do not append cache in case the created data is not sufficient
@@ -437,6 +449,12 @@ class Repository extends EventObject {
             if (err) {
                 let msg = `[${this.$name}] Insert error! - ${err.message}`;
                 logger.error(msg);
+                if (err.code === 11000) {
+                    return callback({
+                        code: eRetCodes.CONFLICT,
+                        message: `Insert failed! - ${this.modelName} already exists.`
+                    })
+                }
                 return callback({
                     code: eRetCodes.DB_ERROR,
                     message: msg

@@ -877,9 +877,6 @@ class EntityController extends ControllerBase {
                     return res.sendSuccess(result);
                 } catch (err) {
                     logger.error(`!!! ${this.$name}: ${err.message}`);
-                    if (err.code === 11000) {
-                        return res.sendRsp(eRetCodes.CONFLICT, 'Entity conflict!');
-                    }
                     return res.sendRsp(err.code, err.message);
                 } finally {
                     await this._cleanup(req.$sessionCache);
