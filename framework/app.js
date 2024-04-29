@@ -35,6 +35,7 @@ const { DistributedEntityLocker } = require('./distributed-locker');
 const { LicenseManager } = require('./license-manager');
 const { TaskManager } = require('./xtask');
 const { UploadHelper } = require('./upload');
+const { AccHelper } = require('./ac');
 
 //
 async function _regService() {
@@ -256,6 +257,7 @@ class Application extends EventEmitter {
         this.redisManager = null;
         this.rascalManager = null;
         this.licenseManager = new LicenseManager(this, { $name: sysdefs.eFrameworkModules.LICENSE });
+        this.acHelper = new AccHelper(this, { $name: sysdefs.eFrameworkModules.AC });
         // !!! *** ebus should be the first framework component ***
         this.ebus = new EventBus(this, { $name: sysdefs.eFrameworkModules.EBUS });
         this.upload = new UploadHelper(this, { $name: sysdefs.eFrameworkModules.UPLOAD });

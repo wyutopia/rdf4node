@@ -59,6 +59,7 @@ const eFrameworkModules = {
     DATASOURCE      : '_datasource_',
     REPOSITORY      : '_repository_',
     CACHE           : '_cache_',
+    AC              : '_ac_',
     ENDPOINT        : '_endpoint_',
     ROUTER          : '_router_',
     DLOCKER         : '_distlocker_',

@@ -319,7 +319,7 @@ async function _parseParameters(params, validator) {
 }
 
 // The class
-class AccessControllerHelper extends CommonModule {
+class AccHelper extends CommonModule {
     constructor(props) {
         super(props);
         this._noLogUrls = [];
@@ -370,9 +370,6 @@ class AccessControllerHelper extends CommonModule {
         })
     }
 }
-const _acHelper = new AccessControllerHelper({
-    $name: 'AccessCtrollerHelper'
-})
 
 // The private methods
 async function _authenticate(authType, req) {
@@ -389,7 +386,7 @@ async function _authenticate(authType, req) {
         }
     }
     if (authType === sysdefs.eRequestAuthType.AKSK) {
-        return await _acHelper.akskAuthenticate(req);
+        return await theApp.acHelper.akskAuthenticate(req);
     }
     if (authType === sysdefs.eRequestAuthType.COOKIE) {
         if (req.session && req.session.uid) {
@@ -409,7 +406,7 @@ async function _authorize(req, options) {
         return true;
     }
     // Do real authorization
-    return _acHelper.realAuthorize(req, options);
+    return theApp.acHelper.realAuthorize(req, options);
 }
 
 /**
@@ -419,10 +416,10 @@ async function _authorize(req, options) {
  * @param {*} res
  * @param {*} next
  */
-async function _accessCtl({ authType, validator, scope, resource, op}, req, res, next) {
+async function accessCtl({ authType, validator, scope, resource, op}, req, res, next) {
     try {
         let params = req.method.toUpperCase() === 'GET'? Object.assign({}, req.params, req.query) : Object.assign({}, req.params, req.query, req.body);
-        if (!_acHelper.isNoLogUrl(req.url)) {
+        if (!theApp.acHelper.isNoLogUrl(req.url)) {
             logger.debug(`### Parsing parameters: ${tools.inspect(params)} - ${req.url}`);
         }
         // Stage 1: Authenticating
@@ -446,6 +443,5 @@ async function _accessCtl({ authType, validator, scope, resource, op}, req, res,
 
 // Declaring module exports
 module.exports = exports = {
-    accessCtl: _accessCtl,
-    acHelper: _acHelper
+    AccHelper, accessCtl
 };
