@@ -320,8 +320,9 @@ async function _parseParameters(params, validator) {
 
 // The class
 class AccHelper extends CommonModule {
-    constructor(props) {
+    constructor(appCtx, props) {
         super(props);
+        this._appCtx = appCtx;
         this._noLogUrls = [];
         //
         this.packUserPayload = (user) => {
