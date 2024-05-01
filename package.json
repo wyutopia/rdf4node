@@ -1,6 +1,6 @@
 {
     "name": "@icedeer/rdf4node",
-    "version": "0.75.9",
+    "version": "0.75.9a",
     "description": "A rapid develop framework based on express for nodejs",
     "author": {
         "name": "Eric Wang",

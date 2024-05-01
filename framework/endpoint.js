@@ -206,6 +206,26 @@ class HttpEndpoint extends Endpoint {
     }
 }
 
+class WebSockEndpoint extends Endpoint {
+    constructor(appCtx, props) {
+        super(appCtx, props);
+        //
+        
+    }
+    init(options) {
+        if (this._state !== eModuleState.INIT) {
+            logger.error(`${this.$name}: Already initialized!`);
+            return null;
+        }
+        this._config = options;
+        this._port = normalizePort(options.port || process.env.PORT || '3000');
+        // Update state
+        this._state = eModuleState.READY;
+    }
+    async start() {
+
+    }
+}
 class gRpcEndpoint extends Endpoint {
     constructor(appCtx, props) {
         super(appCtx, props);
@@ -229,12 +249,14 @@ class UdpEndpoint extends Endpoint {
 
 const eProtocol = {
     HTTP       : 'http',
+    WebSock    : 'ws',
     gRPC       : 'gRpc',
     TCP        : 'tcp',
     UDP        : 'udp'
 };
 const _epConstructor = {};
 _epConstructor[eProtocol.HTTP] = HttpEndpoint;
+_epConstructor[eProtocol.WebSock] = WebSockEndpoint;
 _epConstructor[eProtocol.gRPC] = gRpcEndpoint;
 _epConstructor[eProtocol.TCP] = TcpEndpoint;
 _epConstructor[eProtocol.UDP] = UdpEndpoint;
@@ -247,7 +269,7 @@ class EndpointFactory extends EventModule {
     }
     /**
      * 
-     * @param { 'http'|'grpc'|'tcp'|'udp' } protocol - The endpoint protocol.
+     * @param { 'http'|'ws|'grpc'|'tcp'|'udp' } protocol - The endpoint protocol.
      * @param { string } name - The endpoint name
      * @param { Object } options - The endpoint options
      * @param { string? } options.viewPath - The view template path
