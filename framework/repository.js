@@ -53,9 +53,8 @@ function _packCacheSafePopulate(origPopulate, allowCache, cacheSpec) {
  * 
  * @param {Object} query - The query promise 
  * @param {Types.QueryOptions} options - The additional query options 
- * @param {function} callback 
  */
-function _uniQuery(query, options, callback) {
+async function _uniQuery(query, options) {
     const select = _packCacheSafeSelect(options.select, this.allowCache || false, this.cacheSpec);
     if (select) {
         query.select(select)
@@ -70,105 +69,23 @@ function _uniQuery(query, options, callback) {
             query[method](options[method]);
         }
     });
-    return query.exec((err, result) => {
-        if (err) {
-            let msg = `Query error! - ${err.message}`;
-            logger.error(msg);
-            return callback({
-                code: eRetCodes.DB_QUERY_ERR,
-                message: msg
-            });
-        }
+    try {
+        const result = await query.exec();
         if (options.allowEmpty || result) {
-            return callback(null, result);
+            return result;
         }
-        return callback({
+        return Promise.reject({
             code: eRetCodes.NOT_FOUND,
             message: `${this.$name}: Specified document not exists!`
         });
-    });
-}
-
-/**
- * 
- * @param {Types.UpdateOptions} params 
- * @callback
- */
-function _updateOne(params, callback) {
-    if (typeof params === 'function') {
-        callback = params;
-        params = {};
-    }
-    if (!this._model) {
-        return callback({
-            code: eRetCodes.DB_ERROR,
-            message: 'Model should be initialized before using!'
-        });
-    }
-    //
-    let filter = params.filter || {};
-    let updates = params.updates || {};
-    let options = params.options || { new: true };
-    if (Object.keys(updates).length === 0) {
-        let msg = `Empty updates! - ${tools.inspect(updates)}`;
-        logger.debug(msg);
-        return callback({
-            code: eRetCodes.OP_FAILED,
+    } catch (err) {
+        let msg = `Query error! - ${err.message}`;
+        logger.error(msg);
+        return Promise.reject({
+            code: eRetCodes.DB_QUERY_ERR,
             message: msg
-        });
+        })
     }
-    if (options.new === undefined) {
-        options.new = true;
-    }
-    if (this.$name && this.$name.split('@').includes('Diagram')) {
-        logger.debug(`Update: ${this.$name} - ${tools.inspect(filter)}`);
-    } else {
-        logger.debug(`Update: ${this.$name} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`);
-    }
-    //
-    const query = this._model.findOneAndUpdate(filter, updates, options);
-    const select = _packCacheSafeSelect(params.select, this.allowCache || false, this.cacheSpec);
-    if (select) {
-        query.select(select)
-    }
-    const populate = _packCacheSafePopulate(params.populate, this.allowCache || false, this.cacheSpec);
-    if (populate) {
-        query.populate(populate);
-    }
-    if (params.sort) {
-        query.sort(params.sort);
-    }
-    query.exec((err, doc) => {
-        if (err) {
-            let msg = `Update ${this.$name} error! - ${err.message}`;
-            logger.error(msg);
-            if (err.code === 11000) {
-                return callback({
-                    code: eRetCodes.CONFLICT,
-                    message: `Update failed! ${this.modelName} already exists.`
-                })
-            }
-            return callback({
-                code: eRetCodes.DB_UPDATE_ERR,
-                message: msg
-            });
-        }
-        if (!doc) {
-            if (params.allowEmpty) {
-                return callback(null, null);
-            }
-            let msg = `Specified ${this.$name} not found! - ${tools.inspect(filter)}`;
-            logger.error(msg);
-            return callback({
-                code: eRetCodes.NOT_FOUND,
-                message: msg
-            });
-        }
-        // Append cache
-        _appendCache.call(this, doc, { updates: updates }, () => {
-            return callback(null, doc);
-        });
-    });
 }
 
 /**
@@ -243,46 +160,46 @@ function _cacheValueUpdated(valueKeys, { mandatory, updates }) {
     return result;
 }
 
-function _appendCache(data, options, callback) {
-    if (typeof options === 'function') {
-        callback = options;
-        options = { mandatory: true };
-    }
-    if (this.allowCache === false || !data || !_cacheValueUpdated(this.cacheSpec.valueKeys, options)) {
+/**
+ * 
+ * @param { Object } data 
+ * @param { Object } options 
+ * @returns { Promise<*> }
+ */
+async function _appendCache(data, options) {
+    if (this.allowCache === false || !data || !_cacheValueUpdated(this.cacheSpec.valueKeys, options)) { // Ignore
         //logger.debug(`Ignore cache updating dur no cacheValue changed!`);
-        return callback(null, data);
+        return data;
     }
-    logger.debug(`### ${this.$name}: Update cache ...`);
-    const cacheValues = [];
-    const kvMap = {};
-    //
-    let docs = Array.isArray(data) ? data : [data];
-    docs.forEach( doc => {
-        let cacheKey = _parseCacheKey(doc, this.cacheSpec);
-        let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);
+    try {
+        logger.debug(`### ${this.$name}: Update cache ...`);
+        const cacheValues = [];
+        const kvMap = {};
         //
-        kvMap[cacheKey] = cacheVal;
-        cacheValues.push(cacheVal);
-    });
-    return this._cache.setMany(kvMap, (err, count) => {
-        if (err) {
-            logger.error(`*** ${this.$name}: Set cache error! - ${err.message}`);
-        } else {
-            logger.debug(`### ${this.$name}: Total ${count} entries set.`);
-        }
-        return callback(null, tools.isTypeOfArray(data) ? cacheValues : cacheValues[0]);
-    })
+        let docs = Array.isArray(data) ? data : [data];
+        docs.forEach(doc => {
+            let cacheKey = _parseCacheKey(doc, this.cacheSpec);
+            let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys); Ò
+            //
+            kvMap[cacheKey] = cacheVal;
+            cacheValues.push(cacheVal);
+        })
+        const count = await this._cache.setManyAsync(kvMap);
+        logger.debug(`### ${this.$name}: Total ${count} entries set.`);
+    } catch (err) {
+        logger.error(`*** ${this.$name}: Set cache error! - ${err.message}`);
+    }
+    return tools.isTypeOfArray(data) ? cacheValues : cacheValues[0];
 }
 
 /**
  * 
  * @param { Object | Object[] } data 
- * @param {*} callback 
- * @returns 
+ * @returns { Promise<number> }
  */
-function _removeCache(data, callback) {
+async function _removeCache(data) {
     if (!this.allowCache) {
-        return callback(null, 0);
+        return 0;
     }
     const docs = Array.isArray(data)? data : [data];
     const keys = [];
@@ -290,9 +207,9 @@ function _removeCache(data, callback) {
         keys.push(_parseCacheKey(doc, this.cacheSpec))
     })
     if (keys.length === 0) {
-        return callback(null, 0);
+        return 0;
     }
-    return this._cache.delMany(keys, callback);
+    return this._cache.delManyAsync(keys);
 }
 
 /**
@@ -344,183 +261,166 @@ class Repository extends EventObject {
         return this._cache;
     }
     // Implementing cache methods
-    cacheGet(keyOpt, callback) {
+    async cacheGetAsync(keyOpt) {
         if (this.allowCache === false) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.METHOD_NOT_ALLOWED,
                 message: 'Set allowCache=true before using.'
-            });
+            })
         }
-        let cacheKey = _parseCacheKey(keyOpt, this.cacheSpec);
-        this._cache.get(cacheKey, (err, v) => {
-            if (err) {
-                logger.error(`cacheGet error! - ${err.message}`);
-            }
-            if ((v !== undefined && v !== null) || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
-                return callback(null, v);
-            }
-            logger.debug(`Cache not hit! Fetch ${this.modelName} data from database...`);
-            let filter = _buildQueryFilter(keyOpt, this.cacheSpec);
-            logger.debug(`The query filter: ${tools.inspect(filter)}`);
-            if (Object.keys(filter).length === 0) {
-                return callback({
-                    code: eRetCodes.BAD_REQUEST,
-                    message: 'Invalid cache key!'
-                });
-            }
-            let options = {};
-            if (this.cacheSpec.populate) {
-                options.populate = this.cacheSpec.populate;
-            }
-            if (this.cacheSpec.select) {
-                options.select = this.cacheSpec.select;
-            }
-            let query = this._model.findOne(filter);
-            return _uniQuery.call(this, query, options, (err, doc) => {
-                if (err) {
-                    return callback(err);
-                }
-                logger.debug(`Document found: ${tools.inspect(doc)}`);
-                _appendCache.call(this, doc, (err, cacheVal) => {
-                    return callback(err, cacheVal);
-                });
-            });
-        });
+        let v = null;
+        try {
+            let cacheKey = _parseCacheKey(keyOpt, this.cacheSpec);
+            v = await this._cache.getAsync(cacheKey);
+        } catch (err) {
+            logger.error(`*** ${this.$name}: cacheGet error! - ${err.message}`);
+        }
+        if ((v !== undefined && v !== null) || this.cacheSpec.loadPolicy !== eLoadPolicy.SetAfterFound) {
+            return v;
+        }
+        logger.debug(`${this.$name}: Cache not hit! Fetch ${this.modelName} data from database...`);
+        let filter = _buildQueryFilter(keyOpt, this.cacheSpec);
+        logger.debug(`${this.$name}: The query filter - ${tools.inspect(filter)}`);
+        if (Object.keys(filter).length === 0) {
+            return Promise.reject({
+                code: eRetCodes.BAD_REQUEST,
+                message: 'Invalid cache key!'
+            })
+        }
+        let options = {};
+        if (this.cacheSpec.populate) {
+            options.populate = this.cacheSpec.populate;
+        }
+        if (this.cacheSpec.select) {
+            options.select = this.cacheSpec.select;
+        }
+        let query = this._model.findOne(filter);
+        const doc = await _uniQuery.call(this, query, options);
+        logger.debug(`Document found: ${tools.inspect(doc)}`);
+        return await _appendCache.call(this, doc);
     }
-    cacheGetAsync = util.promisify(this.cacheGet)
-    // Create one or many documents
-    create(data, callback) {
-        if (typeof data === 'function') {
-            callback = data;
-            data = {};
-        }
+    /**
+     * Create one or many documents
+     * @param { Object|Object[] } data 
+     * @returns 
+     */
+    async createAsync(data) {
         if (!this._model) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.DB_ERROR,
                 message: 'Model should be initialized before using!'
-            });
+            })
         }
         //logger.debug(`Create ${this.modelName} with data: ${tools.inspect(data)}`);
-        this._model.create(data, (err, result) => {
-            if (err) {
-                let msg = `Create ${this.modelName} error! - ${err.message}`;
-                logger.error(msg);
-                if (err.code === 11000) {
-                    return callback({
-                        code: eRetCodes.CONFLICT,
-                        message: `Create failed! ${this.modelName} already exists.`
-                    })
-                }
-                return callback({
-                    code: eRetCodes.DB_INSERT_ERR,
-                    message: msg
-                });
-            }
-            // Do not append cache in case the created data is not sufficient
-            return callback(null, result);
-        });
-    }
-    createAsync = util.promisify(this.create);
-    // Create one document by findAndUpdateOne
-    insert(params, callback) {
-        if (typeof params === 'function') {
-            callback = params;
-            params = {};
-        }
-        if (!params.filter || !params.updates) {
-            return callback({
-                code: eRetCodes.DB_ERROR,
-                message: 'Bad request! filter and updates are mandatory.'
-            });
-        }
-        if (!this._model) {
-            return callback({
-                code: eRetCodes.DB_ERROR,
-                message: 'Model should be initialized before using!'
-            });
-        }
-        logger.debug(`findOneAndUpdate with params: ${tools.inspect(params)}`);
-        const options = Object.assign({
-            upsert: true,
-            setDefaultsOnInsert: true,
-            new: true
-        }, params.options || {});
-        return this._model.findOneAndUpdate(params.filter, params.updates, options, (err, doc) => {
-            if (err) {
-                let msg = `[${this.$name}] Insert error! - ${err.message}`;
-                logger.error(msg);
-                if (err.code === 11000) {
-                    return callback({
-                        code: eRetCodes.CONFLICT,
-                        message: `Insert failed! - ${this.modelName} already exists.`
-                    })
-                }
-                return callback({
-                    code: eRetCodes.DB_ERROR,
-                    message: msg
+        try {
+            return await this._model.create(data);
+        } catch(err) {
+            let msg = `Create ${this.modelName} error! - ${err.message}`;
+            logger.error(msg);
+            if (err.code === 11000) {
+                return Promise.reject({
+                    code: eRetCodes.CONFLICT,
+                    message: `Create failed! ${this.modelName} already exists.`
                 })
             }
-            // Append cache
-            _appendCache.call(this, doc, {
-                updates: params.updates
-            }, () => {
-                return callback(null, doc);
-            });
-        });
+            return Promise.reject({
+                code: eRetCodes.DB_INSERT_ERR,
+                message: msg
+            })
+        }
     }
-    insertAsync = util.promisify(this.insert);
-    // Find one document
-    findOne(options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
+    /**
+     * Create one document by findAndUpdateOne
+     * @param { Object } params 
+     * @returns { Promise<*> }
+     */
+    async insertAsync(params) {
+        if (!params.filter || !params.updates) {
+            return Promise.reject({
+                code: eRetCodes.DB_ERROR,
+                message: 'Bad request! filter and updates are mandatory.'
+            })
         }
         if (!this._model) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.DB_ERROR,
                 message: 'Model should be initialized before using!'
-            });
+            })
         }
-        logger.debug(`${this.modelName} - options: ${tools.inspect(options)}`);
+        try {
+            logger.debug(`>>> ${this.$name}: findOneAndUpdate with params - ${tools.inspect(params)}`);
+            const options = Object.assign({
+                upsert: true,
+                setDefaultsOnInsert: true,
+                new: true
+            }, params.options || {});
+            const doc = await this._model.findOneAndUpdate(params.filter, params.updates, options);
+            // Append cache
+            await _appendCache.call(this, doc, {
+                updates: params.updates
+            })
+            return doc;
+        } catch(err) {
+            let msg = `[${this.$name}] Insert error! - ${err.message}`;
+            logger.error(msg);
+            if (err.code === 11000) {
+                return Promise.reject({
+                    code: eRetCodes.CONFLICT,
+                    message: `Insert failed! - ${this.modelName} already exists.`
+                })
+            }
+            return Promise.reject({
+                code: eRetCodes.DB_ERROR,
+                message: msg
+            })
+        }
+    }
+    /**
+     * Find one document
+     * @param { Types.QueryOptions } options
+     * @returns { Promise<*> }
+     */
+    async findOneAsync(options) {
+        if (!this._model) {
+            return Promise.reject({
+                code: eRetCodes.DB_ERROR,
+                message: 'Model should be initialized before using!'
+            })
+        }
+        logger.debug(`${this.$name}: The query options - ${tools.inspect(options)}`);
         //
         let query = this._model.findOne(options.filter || {});
-        return _uniQuery.call(this, query, options, (err, doc) => {
-            _appendCache.call(this, doc, () => {
-                return callback(err, doc);
-            });
-        });
-    };
-    findOneAsync = util.promisify(this.findOne);
-    // Find all documents
-    findMany(options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
+        const doc = await _uniQuery.call(this, query, options);
+        await _appendCache.call(this, doc);
+        return doc;
+    }
+    /**
+     * Find all documents
+     * @param { Types.QueryOptions } options
+     * @returns { Promise<Object[]> }
+     */
+    async findManyAsync(options) {
         if (!this._model) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.DB_ERROR,
                 message: 'Model should be initialized before using!'
-            });
+            })
         }
         logger.debug(`${this.$name} - options: ${tools.inspect(options)}`);
         //
         let query = this._model.find(options.filter || {});
-        return _uniQuery.call(this, query, options, (err, docs) => {
-            _appendCache.call(this, docs, () => {
-                return callback(err, docs);
-            });
-        });
-    };
-    findManyAsync = util.promisify(this.findMany);
-    // Paginating find documents
-    findPartial(options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
+        const docs = await _uniQuery.call(this, query, options);
+        await _appendCache.call(this, docs);
+        return docs;
+    }
+    /**
+     * Paginating find documents
+     * @param { Types.QueryOptions } options 
+     * @returns { Promise<Object>}
+     */
+    async findPartialAsync(options) {
         if (!this._model) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.DB_ERROR,
                 message: 'Model should be initialized before using!'
             });
@@ -532,25 +432,28 @@ class Repository extends EventObject {
 
         logger.debug(`Query ${this.$name} with filter: ${tools.inspect(filter)}`);
         //
-        let countMethod = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
-        this._model[countMethod](filter, (err, count) => {
-            if (err) {
-                let msg = `${countMethod} for ${this.$name} error! - ${err.message}`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.DB_QUERY_ERR,
-                    message: msg
-                });
-            }
-            const result = {
-                total: count,
-                pageSize: ps,
-                page: pn
-            };
-            if (count === 0) {
-                result.values = [];
-                return callback(null, result);
-            }
+        let count = null;
+        try {
+            let countMethod = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
+            count = await this._model[countMethod](filter);
+        } catch(err) {
+            let msg = `${countMethod} for ${this.$name} error! - ${err.message}`;
+            logger.error(msg);
+            return Promise.reject({
+                code: eRetCodes.DB_QUERY_ERR,
+                message: msg
+            })
+        }
+        const result = {
+            total: count,
+            pageSize: ps,
+            page: pn
+        };
+        if (count === 0) {
+            result.values = [];
+            return result;
+        }
+        try {
             // Assemble query promise
             const query = this._model.find(filter).skip((pn - 1) * ps).limit(ps);
             const select = _packCacheSafeSelect(options.select, this.allowCache || false, this.cacheSpec);
@@ -566,205 +469,252 @@ class Repository extends EventObject {
                     query[method](options[method]);
                 }
             });
-            return query.exec((err, docs) => {
-                if (err) {
-                    let msg = `Query ${this.$name} error! - ${err.message}`;
-                    logger.error(msg);
-                    return callback({
-                        code: eRetCodes.DB_QUERY_ERR,
-                        message: msg
-                    });
-                }
-                result.values = docs;
-                // Append cache
-                _appendCache.call(this, docs, () => {
-                    return callback(null, result);
-                });
-            });
-        });
+            const docs = await query.exec();
+            await _appendCache.call(this, docs);
+            result.values = docs;
+            return result;
+        } catch (err) {
+            let msg = `Query ${this.$name} error! - ${err.message}`;
+            logger.error(msg);
+            return Promise.reject({
+                code: eRetCodes.DB_QUERY_ERR,
+                message: msg
+            })
+        }
     }
-    findPartialAsync = util.promisify(this.findPartial);
     /**
      * Find one document by id
      * @param {(string|Object)} id - The document id
      * @param {Types.QueryOptions} options - The query options
-     * @param {function} callback
+     * @returns {Promise<*>}
      */
-    findById(id, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
-        let oid = tools.plainObjectId(id);
+    async findByIdAsync(id, options) {
         if (!this._model) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.DB_ERROR,
                 message: 'Model should be initialized before using!'
             });
         }
+        let oid = tools.plainObjectId(id);
         logger.debug(`${this.$name} - options: ${oid} ${tools.inspect(options)}`);
         //
         let query = this._model.findById(oid);
-        return _uniQuery.call(this, query, options, callback);
-    };
-    findByIdAsync = util.promisify(this.findById);
-    // Update one
-    updateOne = _updateOne.bind(this);
-    updateOneAsync = util.promisify(this.updateOne);
-    // Update many
-    updateMany(options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
+        return _uniQuery.call(this, query, options);
+    }
+    /**
+     * Update one document
+     * @param {Types.UpdateOptions} params
+     * @returns {Promise<Object>}
+     */
+    async updateOneAsync(params) {
         if (!this._model) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.DB_ERROR,
                 message: 'Model should be initialized before using!'
-            });
+            })
         }
-        let filter = options.filter || {
-            _id: new Object(),
-            isUpdateProtection: true
-        };
-        let updates = options.updates || {};
-        logger.debug(`UpdateMany ${this.$name} with filter: ${tools.inspect(filter)} - updates: ${tools.inspect(updates)}`);
-        this._model.updateMany(filter, updates, (err, result) => {
-            if (err) {
-                logger.error(`${this.$name}: updateMany error! - ${err.message}`);
-                return callback({
-                    code: eRetCodes.DB_UPDATE_ERR,
-                    message: 'updateMany error!'
-                });
+        //
+        let filter = params.filter || {};
+        let updates = params.updates || {};
+        let options = params.options || { new: true };
+        if (Object.keys(updates).length === 0) {
+            let msg = `Empty updates! - ${tools.inspect(updates)}`;
+            logger.debug(msg);
+            return Promise.reject({
+                code: eRetCodes.OP_FAILED,
+                message: msg
+            })
+        }
+        if (options.new === undefined) {
+            options.new = true;
+        }
+        if (this.$name && this.$name.split('@').includes('Diagram')) {
+            logger.debug(`Update: ${this.$name} - ${tools.inspect(filter)}`);
+        } else {
+            logger.debug(`Update: ${this.$name} - ${tools.inspect(filter)} - ${tools.inspect(updates)} - ${tools.inspect(options)}`);
+        }
+        //
+        try {
+            const query = this._model.findOneAndUpdate(filter, updates, options);
+            const select = _packCacheSafeSelect(params.select, this.allowCache || false, this.cacheSpec);
+            if (select) {
+                query.select(select)
             }
-            return callback(null, result);
-        });
+            const populate = _packCacheSafePopulate(params.populate, this.allowCache || false, this.cacheSpec);
+            if (populate) {
+                query.populate(populate);
+            }
+            if (params.sort) {
+                query.sort(params.sort);
+            }
+            const doc = await query.exec()
+            if (!doc) {
+                if (params.allowEmpty) {
+                    return null;
+                }
+                let msg = `Specified ${this.$name} not found! - ${tools.inspect(filter)}`;
+                logger.error(msg);
+                return Promise.reject({
+                    code: eRetCodes.NOT_FOUND,
+                    message: msg
+                })
+            }
+            // Append cache
+            await _appendCache.call(this, doc, { updates: updates })
+            return doc;
+        } catch (err) {
+            let msg = `Update ${this.$name} error! - ${err.message}`;
+            logger.error(msg);
+            if (err.code === 11000) {
+                return Promise.reject({
+                    code: eRetCodes.CONFLICT,
+                    message: `Update failed! ${this.modelName} already exists.`
+                })
+            }
+            return Promise.reject({
+                code: eRetCodes.DB_UPDATE_ERR,
+                message: msg
+            })
+        }
     }
-    updateManyAsync = util.promisify(this.updateMany);
+    // 
+    /**
+     * Update many documents
+     * @param {Types.UpdateOptions} options 
+     * @returns {Promise<Object>}
+     */
+    async updateManyAsync(options) {
+        if (!this._model) {
+            return Promise.reject({
+                code: eRetCodes.DB_ERROR,
+                message: 'Model should be initialized before using!'
+            })
+        }
+        try {
+            let filter = options.filter || {
+                _id: new Object(),
+                isUpdateProtection: true
+            };
+            let updates = options.updates || {};
+            logger.debug(`${this.$name}>> updateMany with filter: ${tools.inspect(filter)} - updates: ${tools.inspect(updates)}`);
+            return await this._model.updateMany(filter, updates);
+        } catch (err) {
+            logger.error(`*** ${this.$name}>> updateMany error! - ${err.message}`);
+            return Promise.reject({
+                code: eRetCodes.DB_UPDATE_ERR,
+                message: 'updateMany error!'
+            })
+        }
+    }
     /**
      * Aggregate documents by specific pipeline
      * @param {Object[]} pipeline 
      * @param {Object} options - The query options
      * @param {boolean} allowEmpty - Whether treating empty result as error. Default is false: empty result as error.
-     * @param {function} callback
-     * @callback
+     * @returns { Promise<Object>}
      */
-    aggregate(pipeline, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
+    async aggregateAsync(pipeline, options) {
         if (!this._model) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.DB_ERROR,
                 message: `Model: ${this.$name} should be initialized before using!`
-            });
+            })
         }
         //
-        return this._model.aggregate(pipeline).allowDiskUse(true).exec((err, results) => {
-            if (err) {
-                let msg = `Aggregate ${this.$name} with pipeline: ${tools.inspect(pipeline)} error! - ${err.message}`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.DB_AGGREGATE_ERR,
-                    message: msg
-                });
-            }
+        try {
+            const results = await this._model.aggregate(pipeline).allowDiskUse(true).exec();
             if (!results || results.length === 0) {
                 if (options.allowEmpty) {
-                    return callback(null, []);
+                    return [];
                 }
                 let msg = 'Empty data set.';
                 logger.error(`Aggregate ${this.$name} with ${tools.inspect(pipeline)} results: ${msg}`);
-                return callback({
+                return Promise.reject({
                     code: eRetCodes.NOT_FOUND,
                     message: msg
-                });
+                })
             }
             //logger.debug(`Aggregate ${this.$name} results: ${tools.inspect(results)}`);
-            return callback(null, results);
-        });
+            return results;
+        } catch(err) {
+            let msg = `Aggregate ${this.$name} with pipeline: ${tools.inspect(pipeline)} error! - ${err.message}`;
+            logger.error(msg);
+            return Promise.reject({
+                code: eRetCodes.DB_AGGREGATE_ERR,
+                message: msg
+            })
+        }
     }
-    aggregateAsync = util.promisify(this.aggregate);
     /**
      * Count documents
      * @param {Types.CountOptions} options 
-     * @param {*} callback 
      * @returns 
      */
-    count(options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
+    async countAsync(options) {
         if (!this._model) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.DB_ERROR,
                 message: 'Model should be initialized before using!'
-            });
+            })
         }
-        let filter = options.filter || {};
-        let methodName = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
-        logger.debug(`Count ${this.$name} by ${methodName} with filter: ${tools.inspect(filter)}`);
-        this._model[methodName](filter, (err, count) => {
-            if (err) {
-                logger.error(`${this.$name}: count by ${tools.inspect(filter)} error! - ${err.message}`);
-                return callback({
-                    code: eRetCodes.DB_QUERY_ERR,
-                    message: 'Count error!'
-                });
-            }
-            return callback(null, count);
-        });
-    };
-    countAsync = util.promisify(this.count);
+        try {
+            let filter = options.filter || {};
+            let methodName = options.allowRealCount === true ? 'countDocuments' : 'estimatedDocumentCount';
+            logger.debug(`Count ${this.$name} by ${methodName} with filter: ${tools.inspect(filter)}`);
+            return await this._model[methodName](filter);
+        } catch (err) {
+            logger.error(`${this.$name}: count by ${tools.inspect(filter)} error! - ${err.message}`);
+            return Promise.reject({
+                code: eRetCodes.DB_QUERY_ERR,
+                message: 'Count error!'
+            })
+        }
+    }
     /**
      * Delete one or many documents
-     * @param {Types.DeleteOptions} options 
-     * @param {*} callback 
+     * @param {Types.DeleteOptions} options
      * @returns 
      */
-    delete(options, callback) {
+    async deleteAsync(options) {
         assert(options !== undefined);
-        assert(typeof callback === 'function');
         //
         if (!this._model) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.DB_ERROR,
                 message: 'Model should be initialized before using!'
-            });
+            })
         }
-        //
-        let filter = options.filter || { // Fill-in specififc _id for disaster protection
-            _id: new ObjectId(),
-            isDeleteProtection: true
-        };
-        let methodName = options.multi === true ? 'deleteMany' : 'findOneAndDelete';
-        logger.debug(`Remove ${this.$name} by ${methodName} with filter: ${tools.inspect(filter)}`);
-        this._model[methodName](filter, (err, result) => {
-            if (err) {
-                let msg = `${this.$name}: delete with options: ${tools.inspect(options)} error! - ${err.message}`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.DB_DELETE_ERR,
-                    message: msg
-                });
-            }
+        try {
+            let filter = options.filter || { // Fill-in specififc _id for disaster protection
+                _id: new ObjectId(),
+                isDeleteProtection: true
+            };
+            let methodName = options.multi === true ? 'deleteMany' : 'findOneAndDelete';
+            logger.debug(`Remove ${this.$name} by ${methodName} with filter: ${tools.inspect(filter)}`);
+            const result = await this._model[methodName](filter);
             if (!options.multi) {
-                return _removeCache.call(this, result, (err, count) => {
+                try {
+                    const count = await _removeCache.call(this, result);
                     logger.debug(`### ${this.$name}: ${count} cache entries removed.`);
-                    return callback(null, result);
-                })
+                } catch(err) {
+                    logger.error(`*** ${this.$name}>> Remove cache error! - ${err.message}`);
+                }
             }
             // TODO: Find a way to delete multiple cache entries
-            return callback(null, result);
-        })
-    };
-    deleteAsync = util.promisify(this.delete);
-    remove(options, callback) {
+            return result;
+        } catch(err) {
+            let msg = `${this.$name}: delete with options: ${tools.inspect(options)} error! - ${err.message}`;
+            logger.error(msg);
+            return Promise.reject({
+                code: eRetCodes.DB_DELETE_ERR,
+                message: msg
+            })
+        }
+    }
+    async remove(options) {
         logger.warn(`${this.$name}: The remove method will be deprecated soon, please use delete instead`);
-        return this.delete(options, callback);
-    };
+        return this.delete(options);
+    }
 }
 
 function _deepGetModelRefs(modelSpecs, key, totalRefs) {
@@ -952,7 +902,7 @@ class RepositoryFactory extends EventModule {
      * @param { string } dsName - The dataSource name
      * @returns 
      */
-    getMultiRepos(modelNames, dsName = 'default') {
+    getMultiRepos(modelNames, dsName = _DS_DEFAULT_) {
         assert(Array.isArray(modelNames));
         let results = {};
         modelNames.forEach(modelName => {
@@ -962,36 +912,28 @@ class RepositoryFactory extends EventModule {
         return results;
     }
     // entitiesOption[modelName] = {ids, queryOptions};
-    findEntities(entitiesOption, dsName, callback) {
-        if (typeof dsName === 'function') {
-            callback = dsName;
-            dsName = 'default'
-        }
+    async findEntities(entitiesOption, dsName = _DS_DEFAULT_) {
         logger.debug(`findEntites: ${tools.inspect(entitiesOption)} - ${dsName}`);
         let results = {};
         let modelNames = Object.keys(entitiesOption);
-        async.each(modelNames, (modelName, next) => {
-            let repo = this.getRepo(modelName, dsName);
-            if (!repo) {
-                return process.nextTick(next);
-            }
-            let queryOptions = entitiesOption[modelName];
-            repo.findMany(queryOptions, (err, docs) => {
-                if (err) {
-                    logger.error(`Find ${modelName} entites error! - ${err.message}`);
-                    return next();
-                }
+        await async.each(modelNames, async (modelName) => {
+            try {
+                let repo = this.getRepo(modelName, dsName);
+                let queryOptions = entitiesOption[modelName];
+                const docs = await repo.findMany(queryOptions);
                 docs.forEach(doc => {
                     results[doc._id] = doc;
-                });
-                return next();
-            });
-        }, () => {
-            return callback(null, results);
-        });
+                })
+                return 0;
+            } catch(err) {
+                logger.error(`Find ${modelName} entites error! - ${err.message}`);
+                return -1;
+            }
+        })
+        return results;
     }
-    findDistEntites(distEntitiesOption, callback) {
-        return callback(null, {});
+    async findDistEntites(distEntitiesOption) {
+        return {}
     }
 }
 

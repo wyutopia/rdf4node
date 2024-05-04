@@ -3,7 +3,6 @@
  */
 const async = require('async');
 const path = require('path');
-const EventEmitter = require('events');
 const util = require('util');
 // Framework libs
 const tools = require('../utils/tools');
