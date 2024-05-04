@@ -69,6 +69,7 @@ class HttpEndpoint extends Endpoint {
             return false;
         }
         try {
+            this._state = eModuleState.START_PENDING;
             // Dynamicly load http and express libs
             const http = require('http');
             const cookieParser = require('cookie-parser');
@@ -152,7 +153,6 @@ class HttpEndpoint extends Endpoint {
             });
             app.set('port', this._port);
             this._server = http.createServer(app);
-            this._server.listen(this._port);
             this._server.on('error', (error) => {
                 if (error.syscall !== 'listen') {
                     throw error;
@@ -184,8 +184,10 @@ class HttpEndpoint extends Endpoint {
                     ? 'pipe ' + addr
                     : 'port ' + addr.port;
                 logger.info('Listening on ' + bind);
+                //
+                this._state = eModuleState.ACTIVE;
             });
-            this._state = eModuleState.ACTIVE;
+            this._server.listen(this._port);
             return 'ok';
         } catch(ex) {
             this._state = eModuleState.ERROR;
