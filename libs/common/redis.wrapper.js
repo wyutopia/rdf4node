@@ -53,9 +53,7 @@ function _reconnectStrategy(retries) {
 }
 
 function _assembleRealConfig(rawConf) {
-    let config = {
-        legacyMode: true
-    };
+    let config = {}; // Eliminate legacyMode
     if (rawConf.url) {
         config.url = rawConf.url;
     } else {
@@ -169,38 +167,33 @@ class RedisClient extends EventObject {
     }
     
     /**
-     * 
+     * Execute the redis command
      * @param { string } method 
-     * @param { string[] } args 
-     * @param { function } callback 
+     * @param { *[] } args 
      * @returns 
      */
-    execute (method, args, callback) {
+    async execAsync(method, args) {
         assert(typeof method === 'string');
-        assert(typeof callback === 'function');
         //
-        _ensureConnected.call(this).then(() => {
-            let fn = this._client[method];
-            if (typeof fn !== 'function') {
-                let msg = `${this.$name}[${this.state}]: Invalid method - ${method}`;
-                logger.error(msg);
-                return callback({
-                    code: eRetCodes.REDIS_METHOD_NOTEXISTS,
-                    message: msg
-                });
-            }
-            args.push(callback);
-            return fn.apply(this._client, args);
-        }).catch(err => {
-            return callback(err);
-        })
+        await _ensureConnected.call(this);
+        let fn = this._client[method];
+        if (typeof fn !== 'function') {
+            let msg = `${this.$name}[${this.state}]: Invalid method - ${method}`;
+            logger.error(msg);
+            return Promise.reject({
+                code: eRetCodes.REDIS_METHOD_NOTEXISTS,
+                message: msg
+            })
+        }
+        return await fn.apply(this._client, args);
     }
-    execAsync = util.promisify(this.execute)
+    
     async dispose () {
         if (this.isConnected()) {
             logger.info(`${this.$name}[${this.state}]: disconnecting...`);
             this.state = eClientState.Closing;
-            this._client.disconnect();
+            await this._client.disconnect();
+            this.state = eClientState.Closed;
             this._client = null;
         }
         return `${this.$name} closed.`;
