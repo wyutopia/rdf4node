@@ -336,7 +336,7 @@ class Repository extends EventObject {
      * @param { Object } params 
      * @returns { Promise<*> }
      */
-    async insertAsync(params) {
+    async insertAsync(params = {}) {
         if (!params.filter || !params.updates) {
             return Promise.reject({
                 code: eRetCodes.DB_ERROR,
@@ -382,7 +382,7 @@ class Repository extends EventObject {
      * @param { Types.QueryOptions } options
      * @returns { Promise<*> }
      */
-    async findOneAsync(options) {
+    async findOneAsync(options = {}) {
         if (!this._model) {
             return Promise.reject({
                 code: eRetCodes.DB_ERROR,
@@ -401,7 +401,7 @@ class Repository extends EventObject {
      * @param { Types.QueryOptions } options
      * @returns { Promise<Object[]> }
      */
-    async findManyAsync(options) {
+    async findManyAsync(options = {}) {
         if (!this._model) {
             return Promise.reject({
                 code: eRetCodes.DB_ERROR,
@@ -420,7 +420,7 @@ class Repository extends EventObject {
      * @param { Types.QueryOptions } options 
      * @returns { Promise<Object>}
      */
-    async findPartialAsync(options) {
+    async findPartialAsync(options = {}) {
         if (!this._model) {
             return Promise.reject({
                 code: eRetCodes.DB_ERROR,
@@ -490,7 +490,7 @@ class Repository extends EventObject {
      * @param {Types.QueryOptions} options - The query options
      * @returns {Promise<*>}
      */
-    async findByIdAsync(id, options) {
+    async findByIdAsync(id, options = {}) {
         if (!this._model) {
             return Promise.reject({
                 code: eRetCodes.DB_ERROR,
@@ -508,7 +508,7 @@ class Repository extends EventObject {
      * @param {Types.UpdateOptions} params
      * @returns {Promise<Object>}
      */
-    async updateOneAsync(params) {
+    async updateOneAsync(params = {}) {
         if (!this._model) {
             return Promise.reject({
                 code: eRetCodes.DB_ERROR,
@@ -585,7 +585,7 @@ class Repository extends EventObject {
      * @param {Types.UpdateOptions} options 
      * @returns {Promise<Object>}
      */
-    async updateManyAsync(options) {
+    async updateManyAsync(options = {}) {
         if (!this._model) {
             return Promise.reject({
                 code: eRetCodes.DB_ERROR,
@@ -615,7 +615,7 @@ class Repository extends EventObject {
      * @param {boolean} allowEmpty - Whether treating empty result as error. Default is false: empty result as error.
      * @returns { Promise<Object>}
      */
-    async aggregateAsync(pipeline, options) {
+    async aggregateAsync(pipeline, options = {}) {
         if (!this._model) {
             return Promise.reject({
                 code: eRetCodes.DB_ERROR,
@@ -652,7 +652,7 @@ class Repository extends EventObject {
      * @param {Types.CountOptions} options 
      * @returns 
      */
-    async countAsync(options) {
+    async countAsync(options = {}) {
         if (!this._model) {
             return Promise.reject({
                 code: eRetCodes.DB_ERROR,
@@ -677,9 +677,7 @@ class Repository extends EventObject {
      * @param {Types.DeleteOptions} options
      * @returns 
      */
-    async deleteAsync(options) {
-        assert(options !== undefined);
-        //
+    async deleteAsync(options = {}) {
         if (!this._model) {
             return Promise.reject({
                 code: eRetCodes.DB_ERROR,
