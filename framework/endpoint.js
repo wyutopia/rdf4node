@@ -79,7 +79,7 @@ class HttpEndpoint extends Endpoint {
             const MorganWrapper = require('../libs/base/morgan.wrapper');
             const httpLogger = MorganWrapper(process.env.SRV_ROLE);
             const { RouteManager } = require('../libs/common/router');
-            const { RateLimit } = require('../libs/common/ratelimit.wrapper');            
+            const { createRateLimit } = require('../libs/common/ratelimit.wrapper');            
             //
             const app = express();
             if (this._config.trustProxy !== undefined) {
@@ -101,7 +101,8 @@ class HttpEndpoint extends Endpoint {
             app.use(express.static(this._config.staticPath || path.join(appRoot.path, 'public')));
             // Step 3: Set rateLimit on demand
             if (this._config.enableRateLimit && this._config.rateLimit) {
-                app.use(RateLimit(this._config.rateLimit));
+                let limiter = await createRateLimit(this._config.rateLimit);
+                app.use(limiter);
                 logger.info('>>>>>> Rate limitation enabled. <<<<<<');
             } else {
                 logger.info('>>>>>> Rate limitation disabled. <<<<<<');
