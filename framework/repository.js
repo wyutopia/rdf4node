@@ -174,19 +174,18 @@ async function _appendCache(data, options) {
         //logger.debug(`Ignore cache updating dur no cacheValue changed!`);
         return data;
     }
-    try {
-        logger.debug(`### ${this.$name}: Update cache ...`);
-        const cacheValues = [];
-        const kvMap = {};
+    logger.debug(`### ${this.$name}: Update cache ...`);
+    const cacheValues = [];
+    const kvMap = {};
+    let docs = Array.isArray(data) ? data : [data];
+    docs.forEach(doc => {
+        let cacheKey = _parseCacheKey(doc, this.cacheSpec);
+        let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);
         //
-        let docs = Array.isArray(data) ? data : [data];
-        docs.forEach(doc => {
-            let cacheKey = _parseCacheKey(doc, this.cacheSpec);
-            let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys); Ò
-            //
-            kvMap[cacheKey] = cacheVal;
-            cacheValues.push(cacheVal);
-        })
+        kvMap[cacheKey] = cacheVal;
+        cacheValues.push(cacheVal);
+    })
+    try {
         const count = await this._cache.setManyAsync(kvMap);
         logger.debug(`### ${this.$name}: Total ${count} entries set.`);
     } catch (err) {
