@@ -45,11 +45,15 @@ function _removeEntry(key, timeout = true) {
     }
 }
 
-function _setValue(key, val, options, callback) {
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
-    }
+/**
+ * 
+ * @param {string} key 
+ * @param {string|Object} val 
+ * @param {Object} options
+ * @param {number?} options.ttl
+ * @returns 
+ */
+async function _setValue(key, val, options = {}) {
     let realKey = this._prefix ? `${this._prefix}:${key}` : key;
     if (this._dataRepo[realKey] && this._dataRepo[realKey].ttl) {
         clearTimeout(this._dataRepo[realKey].ttl);
@@ -58,38 +62,40 @@ function _setValue(key, val, options, callback) {
         value: val,
         ttl: options.ttl? setTimeout(_removeEntry.bind(this, key, true), options.ttl * 1000) : null
     }
-    return callback(null, 1);
+    return 1;
 }
 
-function _incrBy(key, n, callback) {
+/**
+ * 
+ * @param {string} key 
+ * @param {number} n 
+ * @returns 
+ */
+async function _incrBy(key, n) {
     let realKey = this._prefix ? `${this._prefix}:${key}` : key;
     if (this._dataRepo[realKey] === undefined) {
         this._dataRepo[realKey] = {
             value: n,
             ttl: null
         }
-        return callback(null, n);
+        return n;
     }
     if (Number.isNaN(this._dataRepo[realKey].value)) {
-        return callback({
+        return Promise.reject({
             code: eRetCodes.REDIS_ERR_NAN,
             message: `!!! Not number for key: ${key}`
         })        
     }
     this._dataRepo[realKey].value += n;
-    return callback(null, this._dataRepo[realKey].value)
+    return this._dataRepo[realKey].value;
 }
+
 /**
- * 
+ * Set multiple KVs
  * @param { Object } kvMap 
- * @param {*} options 
- * @param {*} callback 
+ * @param {*} options
  */
-function _setManyValues(kvMap, options, callback) {
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
-    }
+async function _setManyValues(kvMap, options = {}) {
     const keys = Object.keys(kvMap);
     keys.forEach(key => {
         let realKey = this._prefix ? `${this._prefix}:${key}` : key;
@@ -101,28 +107,48 @@ function _setManyValues(kvMap, options, callback) {
             ttl: options.ttl? setTimeout(_removeEntry.bind(this, key, true), options.ttl * 1000) : null
         }
     })
-    return callback(null, keys.length);
+    return keys.length;
 }
 
-function _delValue(key, callback) {
+/**
+ * 
+ * @param {string} key 
+ * @returns 
+ */
+async function _delValue(key) {
     _removeEntry.call(this, key, false);
-    return callback(null, 1);
+    return 1;
 }
 
-function _delManyValues(keys, callback) {
+/**
+ * 
+ * @param {string[]} keys 
+ * @returns { Promise<number> }
+ */
+async function _delManyValues(keys) {
     keys.forEach(key => {
         _removeEntry.call(this, key, false);
     })
-    return callback(null, keys.length);
+    return keys.length;
 }
 
-function _getValue(key, callback) {
+/**
+ * 
+ * @param {string} key 
+ * @returns { Promise<*> }
+ */
+async function _getValue(key) {
     let realKey = this._prefix ? `${this._prefix}:${key}` : key;
     let value = this._dataRepo[realKey]? this._dataRepo[realKey].value : undefined;
-    return callback(null, value);
+    return value;
 }
 
-function _getManyValues(keys, callback) {
+/**
+ * 
+ * @param { string[] } keys 
+ * @returns { Promise<*> }
+ */
+async function _getManyValues(keys) {
     const result = {};
     keys.forEach(key => {
         let realKey = this._prefix ? `${this._prefix}:${key}` : key;
@@ -130,17 +156,7 @@ function _getManyValues(keys, callback) {
             result[key] = this._dataRepo[realKey].value;
         }
     })
-    return callback(null, result);
-}
-
-const _fakeClient = {
-    execute: function (method, ...args) {
-        let callback = args[args.length - 1];
-        return callback({
-            code: eRetCodes.BAD_REQUEST,
-            message: 'Returned from fakeClient!'
-        });
-    }
+    return result;
 }
 
 const _sampleCacheSpec = {
@@ -223,20 +239,15 @@ class Cache extends EventModule {
      * @param { string } key 
      * @param { string | Object} val 
      * @param { Object? } options
-     * @param { function } callback 
      * @returns 
      */
-    set(key, val, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
+    async setAsync(key, val, options = {}) {
         let ttl = options.ttl || this._ttl;
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _setValue.call(this, key, val, { ttl }, callback);
+            return _setValue.call(this, key, val, { ttl });
         }
         if (!this._client) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.REDIS_ERR,
                 message: 'Redis server not connected.'
             });
@@ -246,93 +257,85 @@ class Cache extends EventModule {
         if (ttl) {
             args.push('EX', ttl)
         }
-        return this._client.execute('SET', args, callback);
+        return this._client.execAsync('SET', args);
     }
-    setAsync = util.promisify(this.set);
-    /**
-     * 
-     * @param {*} key 
-     * @param {*} n 
-     * @param {*} callback 
-     */
-    incr(key, n, callback) {
-        if (typeof n === 'function') {
-            callback = n;
-            n = 1;
-        }
-        if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _incrBy.call(this, key, n, callback);
-        }
-        // Using redis
-        if (!this._client) {
-            return callback({
-                code: eRetCodes.REDIS_ERR,
-                message: 'Redis server not connected.'
-            });
-        }
-        //
-        return this._client.execute('INCRBY', [key, n], callback);
-    }
-    incrAsync = util.promisify(this.incr);
-
-    /**
-     * 
-     * @param { string } key - key
-     * @param {*} callback 
-     * @returns 
-     */
-    get(key, callback) {
-        if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _getValue.call(this, key, callback);
-        }
-        if (!this._client) {
-            return callback({
-                code: eRetCodes.REDIS_ERR,
-                message: 'Redis server not connected.'
-            });
-        }
-        this._client.execute('GET', [key], (err, result) => {
-            if (err) {
-                return callback(err);
-            }
-            return callback(null, this._json ? JSON.parse(result) : result);
-        });
-    }
-    getAsync = util.promisify(this.get)
     /**
      * 
      * @param { string } key 
-     * @param {*} callback 
-     * @returns 
+     * @param { number } n 
      */
-    del(key, callback) {
+    async incrAsync(key, n = 1) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _delValue.call(this, key, callback);
+            return _incrBy.call(this, key, n);
         }
+        // Using redis
         if (!this._client) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.REDIS_ERR,
                 message: 'Redis server not connected.'
-            });
+            })
         }
-        return this._client.execute('DEL', [key], callback);
+        //
+        return this._client.execAsync('INCRBY', [key, n]);
     }
-    delAsync = util.promisify(this.del)
+
+    /**
+     * Get cache value by key
+     * @param { string } key - The cache key
+     * @returns { Promise<*> }
+     */
+    async getAsync(key) {
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return _getValue.call(this, key);
+        }
+        if (!this._client) {
+            return Promise.reject({
+                code: eRetCodes.REDIS_ERR,
+                message: 'Redis server not connected.'
+            })
+        }
+        const result = await this._client.execAsync('GET', [key]);
+        try {
+            const json = JSON.parse(result);
+            return json;
+        } catch(ex) {
+            logger.warn(`*** Parse cache-value failed! - ${ex.message}`);
+            return result;
+        }
+    }
+
+    /**
+     * Delete cache by key
+     * @param { string } key - The cache key
+     * @returns { Promise<*> }
+     */
+    async delAsync(key) {
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return _delValue.call(this, key);
+        }
+        if (!this._client) {
+            return Promise.reject({
+                code: eRetCodes.REDIS_ERR,
+                message: 'Redis server not connected.'
+            })
+        }
+        return this._client.execAsync('DEL', [key]);
+    }
+
     /**
      * Set multiply KVs
      * @param { Object } kvMap - The JSON value
-     * @param {*} callback 
      * @returns 
      */
-    setMany(kvMap, callback) {
+    async setManyAsync(kvMap) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _setManyValues.call(this, kvMap, { ttl: this._ttl }, callback);
+            return _setManyValues.call(this, kvMap, { ttl: this._ttl });
         }
         if (!this._client) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.REDIS_ERR,
                 message: 'Redis server not connected.'
-            });
+            })
         }
         // Pack redis command args
         let args = [];
@@ -342,87 +345,78 @@ class Cache extends EventModule {
             args.push(key);
             args.push(typeof val === 'string'? val : JSON.stringify(val));
         });
-        return this._client.execute('MSET', args, (err, result) => {
-            if (err) {
-                return callback(err);
-            }
-            return callback(null, result === _REDIS_OK? keys.length : 0)
-        })
-    };
-    setManyAsync = util.promisify(this.setMany);
+        const result = await this._client.execAsync('MSET', args);
+        return result === _REDIS_OK? keys.length : 0;
+    }
+
     /**
-     * 
+     * Get multiple cache values
      * @param { string[] } keys 
-     * @param {*} callback 
-     * @returns 
+     * @returns { Promise<Object> }
      */
-    getMany(keys, callback) {
+    async getManyAsync(keys) {
         if (keys.length === 0) {
             logger.warn(`*** ${this.$name}: Empty keys!`);
-            return callback(null, {});
+            return {};
         }
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _getManyValues.call(this, keys, callback);
+            return _getManyValues.call(this, keys);
         }
         // Retrieve from redis
         if (!this._client) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.REDIS_ERR,
                 message: 'Redis server not connected!'
             })
         }
-        return this._client.execute('MGET', keys, (err, values) => {
-            const result = {};
-            for (let i = 0; i < keys.length; i++) {
-                let key = keys[i];
-                let val = values[i];
-                try {
-                    result[key] = this._json? JSON.parse(val) : val;
-                } catch(ex) {
-                    logger.error(`!!! ${this.$name}: parsing value: ${val} error! - ${ex.message}`)
-                }
+        const values = await this._client.execAsync('MGET', keys);
+        const result = {};
+        for (let i = 0; i < keys.length; i++) {
+            let key = keys[i];
+            let val = values[i];
+            try {
+                result[key] = JSON.parse(val);
+            } catch(ex) {
+                logger.warn(`*** ${this.$name}: parsing cached value: ${val} error! - ${ex.message}`)
+                result[key] = val;
             }
-            return callback(null, result);
-        })
+        }
+        return result;
     }
-    getManyAsync = util.promisify(this.getMany)
+
     /**
-     * 
-     * @param { string[] } keys 
-     * @param { number } callback 
+     * Delete multiple cache values
+     * @param { string[] } keys
      */
-    delMany(keys, callback) {
+    async delManyAsync(keys) {
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _delManyValues.call(this, keys, callback);
+            return _delManyValues.call(this, keys);
         }
         if (!this._client) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.REDIS_ERR,
                 message: 'Redis server not connected!'
             })
         }
-        return this._client.execute('DEL', keys, callback);
+        return this._client.execAsync('DEL', keys);
     }
-    delManyAsync = util.promisify(this.delMany);
 
     /**
      * Delete all cache entries
-     * @param {*} callback 
      * @returns 
      */
-    clear(callback) {
+    async clearAsync() {
         if (this._engine === sysdefs.eCacheEngine.Native) {
-            return _delManyValues.call(this, Object.keys(this._dataRepo), callback);
+            return _delManyValues.call(this, Object.keys(this._dataRepo));
         }
         if (!this._client) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.REDIS_ERR,
                 message: 'Redis server not connected!'
             })
         }
-        return this._client.execute('FLUSHDB', callback);
+        return this._client.execAsync('FLUSHDB');
     }
-    clearAsync = util.promisify(this.clear);
 }
 
 const _typeCacheProps = {
