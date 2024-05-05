@@ -253,11 +253,11 @@ class Cache extends EventModule {
             });
         }
         //
-        const args = [key, typeof val === 'string'? val : JSON.stringify(val)];
+        let strVal = typeof val === 'string'? val : JSON.stringify(val);
         if (ttl) {
-            args.push('EX', ttl)
+            return this._client.execAsync('SET', key, strVal, {EX: ttl});
         }
-        return this._client.execAsync('SET', args);
+        return this._client.execAsync('SET', key, strVal);
     }
     /**
      * 
@@ -276,7 +276,7 @@ class Cache extends EventModule {
             })
         }
         //
-        return this._client.execAsync('INCRBY', [key, n]);
+        return this._client.execAsync('INCRBY', key, n);
     }
 
     /**
@@ -294,7 +294,7 @@ class Cache extends EventModule {
                 message: 'Redis server not connected.'
             })
         }
-        const result = await this._client.execAsync('GET', [key]);
+        const result = await this._client.execAsync('GET', key);
         try {
             const json = JSON.parse(result);
             return json;
@@ -319,7 +319,7 @@ class Cache extends EventModule {
                 message: 'Redis server not connected.'
             })
         }
-        return this._client.execAsync('DEL', [key]);
+        return this._client.execAsync('DEL', key);
     }
 
     /**

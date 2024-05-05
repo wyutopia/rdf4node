@@ -172,12 +172,11 @@ class RedisClient extends EventObject {
      * @param { *[] } args 
      * @returns 
      */
-    async execAsync(method, args) {
+    async execAsync(method, ...args) {
         assert(typeof method === 'string');
         //
         await _ensureConnected.call(this);
-        let fn = this._client[method];
-        if (typeof fn !== 'function') {
+        if (typeof this._client[method] !== 'function') {
             let msg = `${this.$name}[${this.state}]: Invalid method - ${method}`;
             logger.error(msg);
             return Promise.reject({
@@ -185,7 +184,7 @@ class RedisClient extends EventObject {
                 message: msg
             })
         }
-        return await fn.apply(this._client, args);
+        return await this._client[method](...args);
     }
     
     async dispose () {
