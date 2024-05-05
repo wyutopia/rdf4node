@@ -53,9 +53,7 @@ function _reconnectStrategy(retries) {
 }
 
 function _assembleRealConfig(rawConf) {
-    let config = {
-        legacyMode: true
-    };
+    let config = {}; // Eliminate legacyMode
     if (rawConf.url) {
         config.url = rawConf.url;
     } else {
