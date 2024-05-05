@@ -167,6 +167,9 @@ function _cacheValueUpdated(valueKeys, { mandatory, updates }) {
  * @returns { Promise<*> }
  */
 async function _appendCache(data, options) {
+    if (options === undefined) {
+        options = { mandatory: true }
+    }
     if (this.allowCache === false || !data || !_cacheValueUpdated(this.cacheSpec.valueKeys, options)) { // Ignore
         //logger.debug(`Ignore cache updating dur no cacheValue changed!`);
         return data;
