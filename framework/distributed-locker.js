@@ -1,6 +1,7 @@
 /**
  * Created by Eric on 2023/10/19
  */
+const assert = require('assert');
 const async = require('async');
 const path = require('path');
 const util = require('util');
@@ -78,29 +79,53 @@ function _ttlRemoveLock (key) {
     delete this._locks[key];
 }
 
-function _lockOneImpl(key, options, callback) {
+/**
+ * Implmenting the lockOne method
+ * @param { string } key 
+ * @param { Object } options
+ * @returns { Promise<string> }
+ */
+async function _lockOneImpl(key, options) {
+    assert(typeof key === 'string');
+    //
     if (this._engine === sysdefs.eCacheEngine.Native) {
         if (this._locks[key] !== undefined) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.CONFLICT,
                 message: `Entity#[${key}] has been locked!`
             })
         }
         this._locks[key] = _createLock.call(this, options);
-        return callback(null, key);
+        return key;
     }
-    return this._redisClient.execute('SET', [key, '1', 'EX', options.ttl || this._ttl, 'NX'], (err, result) => {
-        if (err || result !== _OP_SUCCESS) {
-            return callback({
+    try {
+        const result = await this._redisClient.execAsync('SET', key, '1', {
+            EX: options.ttl || this._ttl,
+            NX: true
+        });
+        if (result !== _OP_SUCCESS) {
+            return Promise.reject({
                 code: eRetCodes.CONFLICT,
-                message: err? err.message : `Entity#[${key}] has been locked or redis error! `
+                message: `Entity#[${key}] has been locked!`
             })
         }
-        return callback(null, key);
-    })
+        return key;
+    } catch(err) {
+        logger.error(`*** Lock ${key} error! - ${err.message}`);
+        return Promise.reject({
+            code: eRetCodes.REDIS_ERR,
+            message: err.message
+        })
+    }
 }
 
-function _lockManyImpl(entities, options, callback) {
+/**
+ * 
+ * @param {*} entities 
+ * @param { Object } options 
+ * @returns 
+ */
+async function _lockManyImpl(entities, options) {
     if (this._engine === sysdefs.eCacheEngine.Native) {
         // Check all entites
         let locks = {};
@@ -118,20 +143,20 @@ function _lockManyImpl(entities, options, callback) {
             }
         }
         if (err) {
-            // Stop timeout callbacks and delete them
+            // CleanUp: Stop timeout methods and delete them
             Object.keys(locks).forEach(lck => {
                 if (lck.hTimeout) {
                     clearTimeout(lck.hTimeout);
                 }
             })
             delete locks;
-            return callback(err);
+            return Promise.reject(err);
         }
         let keys = Object.keys(locks);
         keys.forEach(key => {
             this._locks[key] = locks[key];
         });
-        return callback(null, keys);
+        return keys;
     }
     // Pack multiple KVs
     const keys = [];
@@ -143,15 +168,22 @@ function _lockManyImpl(entities, options, callback) {
         args.push(key, ts);
     })
     // Perform mset command
-    this._redisClient.execute('MSET', args, (err, result) => {
-        if (err || result !== _OP_SUCCESS) {
-            return callback( {
+    try {
+        const result = await this._redisClient.execAsync('MSET', args);
+        if (result !== _OP_SUCCESS) {
+            return Promise.reject( {
                 code: eRetCodes.CONFLICT,
-                message: err? err.message : 'One of the entities has been locked!'
+                message: 'One of the entities has been locked!'
             })
         }
-        return callback(null, keys);
-    });
+        return keys;
+    } catch(err) {
+        logger.error(`*** Lock multiple keys error! - ${err.message}`);
+        return Promise.reject({
+            code: eRetCodes.REDIS_ERR,
+            message: err.message
+        })
+    }
 }
 
 // The class
@@ -194,36 +226,32 @@ class DistributedEntityLocker extends CommonObject {
      * Lock single domain entity
      * @param { LockEntity } entity
      * @param { LockOptions? } options
-     * @param { function } callback
      */
-    lockOne (entity, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
+    async lockOneAsync (entity, options = {}) {
         if (this._state !== sysdefs.eModuleState.ACTIVE) {
-            return callback({
+            return Promise.reject({
                 code: eRetCodes.SERVICE_UNAVAILABLE,
                 message: this.lastError
             })
         }
-        let key = _packKey(entity);
-        _lockOneImpl.call(this, key, options, err => {
-            if (err) {
-                logger.error(`*** lock[${key}] acquire error. - ${err.message}]`);
-                this.lastError = err.message;
-                return callback(err);
-            }
+        try {
+            let key = _packKey(entity);
+            await _lockOneImpl.call(this, key, options);
             logger.debug(`>>> lock[${key}] acquired.`);
-            return callback(null, key);
-        })
+            return key;
+        } catch(err) {
+            logger.error(`*** lock[${key}] acquire error. - ${err.message}]`);
+            this.lastError = err.message;
+            return Promise.reject(err);
+        }
     }
-    lockOneAsync = util.promisify(this.lockOne)
     /**
      * Unlock single domain entity 
      * @param { string } key - The key of a lock
      */
-    unlockOne (key, callback) {
+    async unlockOneAsync(key) {
+        assert(typeof key === 'string');
+        //
         if (this._engine === sysdefs.eCacheEngine.Native) {
             let lck = this._locks[key];
             if (lck) {
@@ -235,50 +263,44 @@ class DistributedEntityLocker extends CommonObject {
             } else {
                 logger.warn(`*** lock[${key}] not found.`);
             }
-            return callback(null, key);
+            return key;
         }
-        return this._redisClient.execute('DEL', [key], (err, result) => {
-            if (err) {
-                logger.error(`*** Release lock[${key}] error! - ${err.message}`);
-            } else if (result > 0) {
+        try {
+            const val = await this._redisClient.execAsync('GETDEL', key);
+            if (val) {
                 logger.debug(`>>> lock[${key}] released.`);
             } else {
                 logger.warn(`*** lock[${key}] not found.`);
             }
-            return callback(null, key);
-        })
+        } catch(err) {
+            logger.error(`*** Release lock[${key}] error! - ${err.message}`);
+        }
+        return key;
     }
-    unlockOneAsync = util.promisify(this.unlockOne)
 
     /**
      * Lock multiple domain entities
      * @param { (LockEntity[]|LockEntityWrapper) } args - The domain entities array
      * @param { LockOptions } options
-     * @param { function } callback
      */
-    lockMany (args, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
+    async lockManyAsync (args, options = {}) {
+        try {
+            const entities = tools.isTypeOfArray(args)? args : _parseLockEntities(args);
+            return await _lockManyImpl.call(this, entities, options);
+        } catch (err) {
+            logger.error(`*** Lock many keys error! - ${err.message}`);
+            this.lastError = err.message;
+            return Promise.reject(err);
         }
-        const entities = tools.isTypeOfArray(args)? args : _parseLockEntities(args);
-        _lockManyImpl.call(this, entities, options, (err, keys) => {
-            if (err) {
-                logger.error(`*** Lock many keys error! - ${err.message}`);
-                this.lastError = err.message;
-                return callback(err);
-            }
-            return callback(null, keys);
-        });
     }
-    lockManyAsync = util.promisify(this.lockMany);
     /**
      * Unlock multiple domain entities
      * @param { string[] } keys - The keys of all lock 
-     * @param { function } callback 
      * @returns 
      */
-    unlockMany (keys, callback) {
+    async unlockManyAsync (keys) {
+        assert(Array.isArray(keys));
+        //
         if (this._engine === sysdefs.eCacheEngine.Native) {
             keys.forEach(key => {
                 let lck = this._locks[key];
@@ -289,32 +311,34 @@ class DistributedEntityLocker extends CommonObject {
                     delete this._locks[key];
                 }
             });
-            return callback(null, keys);
+            return keys;
         }
         // Remove kv from redis
-        return this._redisClient.execute('DEL', keys, (err, result) => {
-            if (err) {
-                logger.error(`*** Release many locks error! - ${err.message}`);
-            } else if (result > 0) {
+        try {
+            const result = await this._redisClient.execAsync('DEL', keys);
+            if (result > 0) {
                 logger.debug(`>>> Many locks released.`);
             } else {
                 logger.warn(`*** Lock(s) not found.`);
             }
-            return callback(null, keys);
-        })
+        } catch(err) {
+            logger.error(`*** Release many locks error! - ${err.message}`);
+        }
+        return keys;
     }
-    unlockManyAsync = util.promisify(this.unlockMany);
     
     /**
      * Pagination list lockers - list all currently
      * @param {*} param0 
-     * @param {*} callback
      * @returns 
      */
-    list ({pageSize, pageNum, page}, callback) {
-        return callback(null, Object.keys(this._locks));
+    async listAsync ({pageSize, pageNum, page}) {
+        if (this._engine === sysdefs.eCacheEngine.Native) {
+            return Object.keys(this._locks);
+        }
+        // TODO: return keys from redis
+        return [];
     }
-    listAsync = util.promisify(this.list);
 }
 
 module.exports = exports = {
