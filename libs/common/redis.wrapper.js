@@ -113,7 +113,7 @@ async function _ensureConnected() {
             metricCollector[eMetricNames.activeConnection].inc();
             //
             let hostInfo = tools.safeGetJsonValue(this.config, 'socket.host') || this.config.url;
-            logger.info(`${this.$name}[${this.state}]: Server<${hostInfo}> connected.`);
+            logger.info(`${this.$name}[${this.state}]: Server<${this.config.database}@${hostInfo}> connected.`);
         })
         .on('error', err => {
             switch (this.state) {
