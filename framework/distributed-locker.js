@@ -6,6 +6,7 @@ const async = require('async');
 const path = require('path');
 const util = require('util');
 // Framework libs
+const Types = require('../include/types');
 const tools = require('../utils/tools');
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.DLOCKER;
@@ -15,7 +16,8 @@ const { CommonObject } = require('../include/base');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
-const _DEFAULT_TTL = sysdefs.eInterval._5_MIN;
+const _CACHE_DB = 7;
+const _CACHE_TTL = sysdefs.eInterval._1_MIN;
 const _OP_SUCCESS = 'OK';
 /**
  * @typedef { Object } LockEntity
@@ -69,7 +71,7 @@ function _createLock (options) {
         caller: options.caller || 'Anonymous'
     };
     if (options.auto === true) {
-        lock.ttl = options.ttl || _DEFAULT_TTL;
+        lock.ttl = options.ttl || _CACHE_TTL;
         lock.hTimeout = setTimeout(_ttlRemoveLock.bind(this, key), lock.ttl);
     }
     return lock;
@@ -196,23 +198,35 @@ class DistributedEntityLocker extends CommonObject {
         this._state = sysdefs.eModuleState.INIT;
         //
         this._persistant = props.persistant !== undefined? props.persistant : false;
-        this._ttl = props.ttl || 10;
         this._locks = {};
         this._redisClient = null;
     }
+    /**
+     * 
+     * @param { Object } config 
+     * @param { string? } config.engine
+     * @param { number? } config.ttl
+     * @param { number? } config.database
+     * @returns 
+     */
     async init (config) {
+        logger.info(`${this.$name}>> init with config: ${tools.inspect(config)}`);
         if (this._state !== sysdefs.eModuleState.INIT) {
             logger.warn(`[${this.$name}]: already initialized.`)
             return true;
         }
         this._engine = config.engine || sysdefs.eCacheEngine.Native;
+        this._ttl = config.ttl || _CACHE_TTL;
+
         if (this._engine === sysdefs.eCacheEngine.Native) {
             this._state = sysdefs.eModuleState.ACTIVE;
             return true;
         }
         // Init redis client
         try {
-            this._redisClient = this._appCtx.redisManager.createClient(`def@${this.$name}`, 'default', config.options);
+            this._redisClient = this._appCtx.redisManager.createClient(`def@${this.$name}`, 'default', {
+                database: config.database || _CACHE_DB
+            });
             this._state = sysdefs.eModuleState.ACTIVE;
             return true;
         } catch (ex) {

@@ -6,6 +6,7 @@ const util = require('util');
 const async = require('async');
 const { createClient } = require('redis');
 // Framework libs
+const Types = require('../../include/types');
 const eRetCodes = require('../../include/retcodes');
 const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
@@ -168,6 +169,7 @@ class RedisClient extends EventObject {
     
     /**
      * Execute the redis command
+     * MSET - args should be string array
      * @param { string } method 
      * @param { *[] } args 
      * @returns 
@@ -187,6 +189,29 @@ class RedisClient extends EventObject {
         return await this._client[method](...args);
     }
     
+    /**
+     * MSET
+     * @param {string[]} dataSet
+     */
+    async mSet(dataSet) {
+        assert(Array.isArray(args))
+        await _ensureConnected.call(this);
+        return this._client.MSET(dataSet);
+    }
+    /**
+     * Set multiple strings with ex
+     * @param { Object } KVs 
+     * @param { Object } options 
+     */
+    async mSetEx(KVs, options) {
+        await _ensureConnected.call(this);
+        let tx = this._client.multi();
+        Object.keys(KVs).forEach(key => {
+            tx.set(key, KVs[key], options);
+        })
+        return tx.exec();
+    }
+
     async dispose () {
         if (this.isConnected()) {
             logger.info(`${this.$name}[${this.state}]: disconnecting...`);
@@ -257,12 +282,7 @@ class RedisManager extends EventModule {
      * 
      * @param { string } name - The client name
      * @param { string } server - The server config key
-     * @param { Object } options
-     * @param { number } options.database - The database number
-     * @param { string } options.host - The host ip
-     * @param { number } options.port - The host port
-     * @param { string } options.user - The username
-     * @param { string } options.password - The password
+     * @param { Types.RedisClientOptions } options
      * @returns 
      */
     createClient(name, server, options) {

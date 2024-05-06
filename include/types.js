@@ -45,6 +45,18 @@
  */
 
 /**
+ * The redis createClient configuration
+ * https://github.com/redis/node-redis/blob/HEAD/docs/client-configuration.md
+ * @typedef { Object } RedisClientOptions
+ * @prop { string } url - The complete connection url
+ * @prop { string } host - The host ip
+ * @prop { number } port - The host port
+ * @prop { string } user - The username
+ * @prop { string } password - The password
+ * @prop { number } database - The database number
+ */
+
+/**
  * @typedef { Object } CacheOptions
  * @prop { boolean } - enabled
  * @prop { CacheSpecOptions } - spec
