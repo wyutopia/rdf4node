@@ -149,7 +149,7 @@ async function _lockManyImpl(entities, options) {
                     clearTimeout(lck.hTimeout);
                 }
             })
-            delete locks;
+            locks = null; // Delete it 
             return Promise.reject(err);
         }
         let keys = Object.keys(locks);
@@ -165,7 +165,7 @@ async function _lockManyImpl(entities, options) {
     entities.forEach(ett => {
         let key = _packKey(ett);
         keys.push(key);
-        args.push(key, ts);
+        args.push(key, `${ts}`);
     })
     // Perform mset command
     try {
