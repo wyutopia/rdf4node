@@ -65,8 +65,8 @@ async function createRateLimit(config) {
     if (options.windowMs === undefined) {
         options.windowMs = 15 * 60 * 1000;
     }
-    if (options.max === undefined) {
-        options.max = 20;
+    if (options.limit === undefined) {
+        options.limit = 10;
     }
     if (options.expireTimeMs === undefined) {
         options.expireTimeMs = 60 * 1000;

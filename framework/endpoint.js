@@ -126,6 +126,7 @@ class HttpEndpoint extends Endpoint {
                 if (req.headers.datasource === undefined) {
                     req.headers.datasource = dsName;
                 }
+                logger.debug(`++++++ The x-forwarded-for: ${req.headers['x-forwarded-for']}`);
                 return next();
             })
             // Step 6: Setup routes
