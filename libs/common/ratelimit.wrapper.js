@@ -62,6 +62,13 @@ async function _makeRealStore(options) {
  */
 async function createRateLimit(config) {
     const options = config.options || {};
+    options.keyGenerator = function (req, res) {
+        let xff = req.headers['x-forwarded-for'];
+        if (xff) {
+            return xff.split(',')[0].trim();
+        }
+        return req.ip;
+    }
     if (options.windowMs === undefined) {
         options.windowMs = 15 * 60 * 1000;
     }
