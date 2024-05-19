@@ -75,7 +75,7 @@ exports.isTypeOfDate = function (obj) {
     return '[object Date]' === Object.prototype.toString.call(obj);
 };
 
-const gPrimitiveTypes = ['undefined', 'boolean', 'number', 'bigint', 'string'];
+const gPrimitiveTypes = ['undefined', 'boolean', 'number', 'bigint', 'string', 'null', 'symbol'];
 function _isTypeOfPrimitive (v) {
     return gPrimitiveTypes.includes(typeof v);
 }
@@ -238,34 +238,55 @@ exports.invokeHttpRequest = function (options, callback) {
     });
 };
 
-function _bodyParser(body) {
+async function _bodyParser(body) {
     if (!body) {
-        throw new Error('Invalid response');
+        return body;
     }
-    if (body.code !== eRetCodes.SUCCESS) {
-        throw new Error(`${body.code}#${body.message}`);
+    if (body.code === 0 || body.code === eRetCodes.SUCCESS) {
+        return body.data;
     }
-    return body.data;
+    return Promise.reject({
+        code: body.code,
+        message: body.message
+    })
 }
 /**
  * 
  * @param {*} options 
  * @param { function? } bodyParser 
  */
-exports.httpAsync = async function (options, bodyParser) {
+exports.httpAsync = async function (options, bodyParser = _bodyParser) {
     const fnFlowCtl = options.fnFlowCtl;
     if (typeof fnFlowCtl === 'function') {
         delete options.fnFlowCtl;
         await fnFlowCtl(options);
     }
-    const rsp = await axios(options);
-    if (bodyParser === undefined) { // null means return raw data body
-        bodyParser = _bodyParser;
+    let rsp = null;
+    try {
+        if (options.timeout === undefined) {
+            options.timeout = 5000; // Default 5s
+        }
+        rsp = await axios(options);
+    } catch(err) {
+        if (err.response) {
+            return Promise.reject({
+                code: err.response.status,
+                message: err.response.statusText,
+                data: err.response.data
+            })
+        }
+        if (err.request) {
+            return Promise.reject({
+                code: eRetCodes.SERVICE_UNAVAILABLE,
+                message: 'No response received.'
+            })
+        }
+        return Promise.reject({
+            code: eRetCodes.OP_FAILED,
+            message: err.message
+        })
     }
-    if (typeof bodyParser === 'function') {
-        return bodyParser(rsp.data);
-    }
-    return rsp;
+    return bodyParser(rsp.data);
 }
 
 function _extractProps (args, propNames) {
