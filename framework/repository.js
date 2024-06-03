@@ -178,6 +178,9 @@ async function _appendCache(data, options) {
     const cacheValues = [];
     const kvMap = {};
     let docs = Array.isArray(data) ? data : [data];
+    if (docs.length === 0) {
+        return docs;
+    }
     docs.forEach(doc => {
         let cacheKey = _parseCacheKey(doc, this.cacheSpec);
         let cacheVal = _parseCacheValue(doc.toObject(), this.cacheSpec.valueKeys);
