@@ -397,7 +397,7 @@ class Repository extends EventObject {
         //
         let query = this._model.findOne(options.filter || {});
         const doc = await _uniQuery.call(this, query, options);
-        await _appendCache.call(this, doc);
+        await _appendCache.call(this, doc, options);
         return doc;
     }
     /**
@@ -416,7 +416,7 @@ class Repository extends EventObject {
         //
         let query = this._model.find(options.filter || {});
         const docs = await _uniQuery.call(this, query, options);
-        await _appendCache.call(this, docs);
+        await _appendCache.call(this, docs, options);
         return docs;
     }
     /**
@@ -476,7 +476,7 @@ class Repository extends EventObject {
                 }
             });
             const docs = await query.exec();
-            await _appendCache.call(this, docs);
+            await _appendCache.call(this, docs, options);
             result.values = docs;
             return result;
         } catch (err) {
@@ -542,11 +542,12 @@ class Repository extends EventObject {
         //
         try {
             const query = this._model.findOneAndUpdate(filter, updates, options);
-            const select = _packCacheSafeSelect(params.select, this.allowCache || false, this.cacheSpec);
+            const allowCache = options.ignoreCache === undefined? (this.allowCache || false) : false;
+            const select = _packCacheSafeSelect(params.select, allowCache, this.cacheSpec);
             if (select) {
                 query.select(select)
             }
-            const populate = _packCacheSafePopulate(params.populate, this.allowCache || false, this.cacheSpec);
+            const populate = _packCacheSafePopulate(params.populate, allowCache, this.cacheSpec);
             if (populate) {
                 query.populate(populate);
             }
@@ -566,7 +567,7 @@ class Repository extends EventObject {
                 })
             }
             // Append cache
-            await _appendCache.call(this, doc, { updates: updates })
+            await _appendCache.call(this, doc, { ignoreCache: !allowCache, updates })
             return doc;
         } catch (err) {
             let msg = `Update ${this.$name} error! - ${err.message}`;
