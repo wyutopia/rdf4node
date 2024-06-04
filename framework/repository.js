@@ -55,11 +55,12 @@ function _packCacheSafePopulate(origPopulate, allowCache, cacheSpec) {
  * @param {Types.QueryOptions} options - The additional query options 
  */
 async function _uniQuery(query, options) {
-    const select = _packCacheSafeSelect(options.select, this.allowCache || false, this.cacheSpec);
+    const allowCache = options.ignoreCache !== undefined? false : (this.allowCache || false);
+    const select = _packCacheSafeSelect(options.select, allowCache, this.cacheSpec);
     if (select) {
         query.select(select)
     }
-    const populate = _packCacheSafePopulate(options.populate, this.allowCache || false, this.cacheSpec);
+    const populate = _packCacheSafePopulate(options.populate, allowCache, this.cacheSpec);
     if (populate) {
         query.populate(populate);
     }
@@ -170,7 +171,7 @@ async function _appendCache(data, options) {
     if (options === undefined) {
         options = { mandatory: true }
     }
-    if (this.allowCache === false || !data || !_cacheValueUpdated(this.cacheSpec.valueKeys, options)) { // Ignore
+    if (this.allowCache === false || options.ignoreCache !== undefined || !data || !_cacheValueUpdated(this.cacheSpec.valueKeys, options)) { // Ignore
         //logger.debug(`Ignore cache updating dur no cacheValue changed!`);
         return data;
     }
