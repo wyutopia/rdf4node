@@ -277,26 +277,7 @@ class EventBus extends EventModule {
         }
         // >>>  Create rabbitmq if configed <<<
         try {
-            // Step 2: Create rascal client
-            let mqConf = config[config.engine] || {};
-            //
-            let vhost = mqConf.vhost;
-            let connection = mqConf.connection;
-            Object.keys(mqConf.channels).forEach(async chn => {
-                let clientId = `${chn}@${config.engine}`;
-                let clientOptions = {
-                    vhost: vhost,
-                    connection: connection,
-                    params: mqConf.channels[chn]
-                }
-                try {
-                    let client = this._rascalFactory.getClient(clientId, clientOptions);
-                    await client.init();
-                    this._clients[clientId] = client;
-                } catch(err) {
-                    logger.error(`*** Create and init rascalClient#${clientId} error! - ${err.message}`);
-                }
-            });
+            this._clients[config.channel] = await this._rascalFactory.getClient(config.channel);;
             logger.info(`>>> rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
             this.state = sysdefs.eModuleState.ACTIVE;
             return true;

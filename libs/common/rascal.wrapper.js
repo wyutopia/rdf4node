@@ -19,6 +19,17 @@ const tools = require('../../utils/tools');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
 
+function _getClientOptions(config, channel) {
+    let keys = channel.split('.');
+    let vhost = keys[0];
+    let chnId = keys[1];
+    return {
+        vhost, 
+        connection: config[vhost].connection,
+        params: config[vhost].channels[chnId]
+    }
+}
+
 // The rascal client factory 
 class RascalFactory extends EventModule {
     constructor(appCtx, props) {
@@ -46,15 +57,17 @@ class RascalFactory extends EventModule {
         if (this._clients[channel] !== undefined) {
             return this._clients[channel];
         }
-        let options = {}
-        this._clients[channel] = new RascalClient({
+        let options = _getClientOptions(this._config, channel);
+        let client = new RascalClient({
             $name: channel,
             //
             parent: this,
             ebus: this._appCtx.ebus,
             options
-        });
-        return this._clients[channel];
+        })
+        await client.init();
+        this._clients[channel] = client;
+        return client;
     }
     async dispose() {
         const clientKeys = Object.keys(this._clients);
