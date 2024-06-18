@@ -86,13 +86,7 @@ class EventLogger extends EventObject {
     }
 }
 
-const _typeEventBusProps = {
-    lo: true,         // Indicate local-loop. default is true: all events consumed localy.
-    persistent: true,
-    disabledEvents: [],
-    chainEvents: [],
-    engine: sysdefs.eEventBusEngine.Native
-};
+
 
 function _parseChainEvents(conf) {
     const chainEvents = [];
@@ -106,6 +100,15 @@ function _parseChainEvents(conf) {
     });
     return chainEvents;
 }
+
+const _typeEventBusProps = {
+    lo: true,         // Indicate local-loop. default is true: all events consumed localy.
+    persistent: true,
+    disabledEvents: [],
+    chainEvents: [],
+    engine: sysdefs.eEventBusEngine.Native,
+    channel: 'app.default'
+};
 
 function _initEventBus(props) {
     // Init module base
@@ -268,24 +271,12 @@ class EventBus extends EventModule {
             return false;
         }
         _initEventBus.call(this, config);
-        // Create eventLogger
-        // const fn = typeof options.fnEventLogger === 'function' ? options.fnEventLogger : EventLogger;
-        // this._eventLogger = new fn(this._appCtx, {
-        //     $name: sysdefs.eFrameworkModules.EVTLOGGER
-        // });
-        if (this._lo === true) { //local loop
+        if (this._engine === sysdefs.eEventBusEngine.Native) { // Using native engine
             this.state = sysdefs.eModuleState.ACTIVE;
             return true;
         }
-        // >>>  Create rabbitmq if necessary <<<
+        // >>>  Create rabbitmq if configed <<<
         try {
-            const { RascalFactory } = require('../libs/common/rascal.wrapper');
-            this._rascalFactory = new RascalFactory(this._appCtx, {
-                $name: sysdefs.eFrameworkModules.RascalFactory,
-                $type: sysdefs.eModuleType.CM,
-                mandatory: true,
-                state: sysdefs.eModuleState.ACTIVE
-            });
             // Step 2: Create rascal client
             let mqConf = config[config.engine] || {};
             //
@@ -303,14 +294,14 @@ class EventBus extends EventModule {
                     await client.init();
                     this._clients[clientId] = client;
                 } catch(err) {
-                    logger.error(`>>> Create and init rascalClient#${clientId} error! - ${err.message}`);
+                    logger.error(`*** Create and init rascalClient#${clientId} error! - ${err.message}`);
                 }
             });
-            logger.info(`>>>>>> rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
+            logger.info(`>>> rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
             this.state = sysdefs.eModuleState.ACTIVE;
             return true;
         } catch (ex) {
-            logger.error(`>>> Initialize rabbitmq(rascal lib) error! - ${ex.message}`);
+            logger.error(`*** Initialize rabbitmq(rascal lib) error! - ${ex.message}`);
             this.state = sysdefs.eModuleState.SUSPEND;
             this.lastError = ex.message;
             return false;

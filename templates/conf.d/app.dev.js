@@ -29,15 +29,8 @@ module.exports = exports = {
     },
     caches: {},
     distLocker: {},
-    eventBus: {
-        lo: true,
-        persistent: true,
-        disabledEvents: [],
-        triggerEvents: [],
-        engine: "native",   // Support engine: rabbitmq
-        // engine: "rabbitmq",
-        rabbitmq: {
-            vhost: "<vhost-name>",
+    rabbitmq: {
+        app: {
             connection: {
                 slashes: true,
                 protocol: 'amqp',
@@ -60,6 +53,14 @@ module.exports = exports = {
                 }
             }
         }
+    },    
+    eventBus: {
+        lo: true,
+        persistent: true,
+        disabledEvents: [],
+        chainEvents: [],
+        engine: "native",   // Support engine: rabbitmq
+        channel: 'app.default'
     },
     dataSources: {
         default: {

@@ -31,36 +31,39 @@ class RascalFactory extends EventModule {
             delete this._clients[name];
         });
     }
-    init(config) {
+    async init(config) {
         this._config = config;
+        return true;
     }
     // Implementing member methods
     /**
      * 
-     * @param {string} name 
+     * @param { string } channel 
      * @param {vhost, connection, params} options 
      * @returns {RascalClient}
      */
-    getClient(name, options) {
-        if (this._clients[name] === undefined) {
-            this._clients[name] = new RascalClient({
-                $name: name,
-                //
-                parent: this,
-                ebus: this._appCtx.ebus,
-                options: options
-            });
+    async getClient(channel) {
+        if (this._clients[channel] !== undefined) {
+            return this._clients[channel];
         }
-        return this._clients[name];
+        let options = {}
+        this._clients[channel] = new RascalClient({
+            $name: channel,
+            //
+            parent: this,
+            ebus: this._appCtx.ebus,
+            options
+        });
+        return this._clients[channel];
     }
     async dispose() {
         const clientKeys = Object.keys(this._clients);
         logger.info(`${this.$name}: Dispose ${clientKeys.length} rascal clients ...`);
-        
+
         const asyncItrs = {};
         clientKeys.forEach(key => {
             let client = this._clients[key];
-            asyncItrs[client.$name] = client.dispose.bind(client); 
+            asyncItrs[client.$name] = client.dispose.bind(client);
         })
         return await async.parallel(asyncItrs);
     }

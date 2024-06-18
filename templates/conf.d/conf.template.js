@@ -31,8 +31,9 @@ module.exports = exports = {
         lo: true,
         persistent: true,
         disabledEvents: [],
-        triggerEvents: [],
+        chainEvents: [],
         engine: "native",
+        channel: 'app.default' // <vhost>.<channel>
     },
     dataSources: {
         default: {

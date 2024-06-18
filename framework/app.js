@@ -254,8 +254,6 @@ class Application extends EventEmitter {
         if (props.consul) { // Consul configured
             this._consulClient = new ConsulClient(props.consul);
         }
-        this.redisManager = null;
-        this.rascalManager = null;
         this.licenseManager = new LicenseManager(this, { $name: sysdefs.eFrameworkModules.LICENSE });
         this.acHelper = new AccHelper(this, { $name: sysdefs.eFrameworkModules.AC });
         // !!! *** ebus should be the first framework component ***
@@ -268,6 +266,9 @@ class Application extends EventEmitter {
         this.distLocker = new DistributedEntityLocker(this, { $name: sysdefs.eFrameworkModules.DLOCKER });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.epFactory = new EndpointFactory(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
+        // The add-on libs
+        this.redisManager = null;   // For redis lib
+        this.rascalFactory = null;  // For rabbitmq rascal lib
     }
     getVersion() {
         if (this._version === null) {
@@ -318,7 +319,8 @@ class Application extends EventEmitter {
         }
         promMonitor.init(this);
         logDirManager.init(this);
-        if (config.redis) {
+        // Create and init optional components
+        if (config.redis) { // redis
             try {
                 const { RedisManager } = require('../libs/common/redis.wrapper');
                 this.redisManager = new RedisManager(this, {
@@ -326,9 +328,24 @@ class Application extends EventEmitter {
                     $type: sysdefs.eModuleType.CM
                 });
                 const r = await this.redisManager.init(config.redis);
-                logger.info(`>>> Init redisManager ${r}.`);
+                logger.info(`>>> Init redisManager: ${r}.`);
             } catch (ex) {
                 logger.error(`*** Create and init redisManager error: ${ex.message}`);
+            }
+        }
+        if (config.rabbitmq) { // rascal
+            try {
+                const { RascalFactory } = require('../libs/common/rascal.wrapper');
+                this.rascalFactory = new RascalFactory(this, {
+                    $name: sysdefs.eFrameworkModules.RascalFactory,
+                    $type: sysdefs.eModuleType.CM,
+                    mandatory: true,
+                    state: sysdefs.eModuleState.ACTIVE
+                })
+                const r = await this.rascalFactory.init(config.rabbitmq);
+                logger.info(`>>> Init rascalFactory: ${r}`);
+            } catch(ex) {
+                logger.error(`*** Create and init rascalFactory error! - ${ex.message}`);
             }
         }
         const results = {};
@@ -356,6 +373,8 @@ class Application extends EventEmitter {
         if (config.license) {
             results['lm'] = await this.licenseManger.init(config.license);
         }
+
+        // The endpoints should be the last
         if (config.endpoints) {
             results['ep'] = await this.epFactory.init(config.endpoints);
         }
