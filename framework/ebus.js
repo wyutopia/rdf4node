@@ -275,9 +275,9 @@ class EventBus extends EventModule {
             this.state = sysdefs.eModuleState.ACTIVE;
             return true;
         }
-        // >>>  Create rabbitmq if configed <<<
+        // Create rabbitmq client if configed <<<
         try {
-            this._clients[config.channel] = await this._rascalFactory.getClient(config.channel);;
+            this._clients[config.channel] = await this._appCtx.rascalFactory.getClient(config.channel);;
             logger.info(`>>> rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
             this.state = sysdefs.eModuleState.ACTIVE;
             return true;

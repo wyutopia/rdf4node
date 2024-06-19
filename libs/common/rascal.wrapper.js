@@ -78,7 +78,10 @@ class RascalFactory extends EventModule {
             let client = this._clients[key];
             asyncItrs[client.$name] = client.dispose.bind(client);
         })
-        return await async.parallel(asyncItrs);
+        const result = {
+            rascal: await async.parallel(asyncItrs)
+        }
+        return result;
     }
 }
 
@@ -219,10 +222,10 @@ class RascalClient extends CommonObject {
             await this._broker.shutdown();
             this._broker = null;
             this.state = eClientState.Closed;
-            return `${this.$name}: shutdown succeed.`;
+            return 'closed';
         } catch (ex) {
             logger.error(`*** ${this.$name}[${this.state}]: shutdown error! - ${ex.message}`);
-            return `${this.$name}: ${ex.message}`
+            return ex.message;
         }
     }
     // Perform publishing

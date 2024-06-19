@@ -73,7 +73,9 @@ class TaskManager extends EventModule {
         try {
             const results = await Promise.all(promises);
             logger.info(`${this.alias}: All backgroud tasks stopped.`);
-            return results;
+            return {
+                xtask: results
+            }
         } catch (ex) {
             logger.error(`${this.alias}: Stop tasks error! - ${tools.inspect(ex)}`);
             return 0;

@@ -520,10 +520,15 @@ class Application extends EventEmitter {
     }
     // Handle graceful Exit
     async gracefulExit() {
+        if ([sysdefs.eModuleState.INIT, sysdefs.eModuleState.STOP_PENDING, sysdefs.eModuleState.OOS].includes(this._state)) {
+            logger.warn(`*** Not active! ***`);
+            return -1;
+        }
+        this._state = sysdefs.eModuleState.STOP_PENDING;
         logger.info('>>> Perform system clean-up before exit... <<<');
         await _fireExitAlarm.call(this);
         //
-        logger.info(`>>>>>> Stop all modules ...`);
+        logger.info(`>>> Stop all modules ... <<<`);
         const promises = [];
         Object.keys(this._arch).forEach(layer => {
             logger.info(`>>>>>> ${layer}: Clean up modules ...`);
@@ -536,6 +541,7 @@ class Application extends EventEmitter {
         const result = await Promise.all(promises);
         logger.info(`>>>>>> All modules disposed. results: ${tools.inspect(result)}`);
         await _deregService.call(this);
+        this._state = sysdefs.eModuleState.READY;
         return 0
     }
 }

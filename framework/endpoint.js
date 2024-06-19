@@ -18,6 +18,7 @@ const { _DS_DEFAULT_ } = require('./repository');
 //const net = require('../libs/common/net.wrapper');
 
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
+const { endianness } = require('os');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 function normalizePort(val) {
@@ -192,7 +193,7 @@ class HttpEndpoint extends Endpoint {
             this._server.listen(this._port);
             return 'ok';
         } catch(ex) {
-            this._state = eModuleState.ERROR;
+            this._state = eModuleState.OOS;
             this.lastError = ex.message;
             logger.error(`!!! ${this.$name}: Start endpoint failure! - ${ex.message}`);
             return ex.message;
@@ -329,7 +330,9 @@ class EndpointFactory extends EventModule {
         try {
             const results = await Promise.all(promises);
             logger.info(`Dispose results: ${tools.inspect(results)}`);
-            return results;
+            return {
+                endpoints: results
+            }
         } catch (ex) {
             logger.error(`Dispose error! - ${tools.inspect(ex)}`);
             return ex;
