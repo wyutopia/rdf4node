@@ -26,7 +26,11 @@ sysdefs.eAppModules = {
     // Services
     UserSvc         : 'UsrSvc',
     // TODO: Other services
-};
-
+    
+    /////////////////////////////
+    // Daemons
+    UserDaemon      : 'userd',
+    // TODO: Other services};
+}
 //
 module.exports = exports = sysdefs;

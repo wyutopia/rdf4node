@@ -13,8 +13,7 @@ const Broker = require('rascal').BrokerAsPromised;
 const sysdefs = require('../../include/sysdefs');
 const eRetCodes = require('../../include/retcodes');
 const eClientState = sysdefs.eClientState;
-const { CommonObject } = require('../../include/base');
-const { EventModule } = require('../../include/events');
+const { EventObject, EventModule } = require('../../include/events');
 const tools = require('../../utils/tools');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
@@ -50,10 +49,10 @@ class RascalFactory extends EventModule {
     /**
      * 
      * @param { string } channel 
-     * @param {vhost, connection, params} options 
+     * @param { string } emitEvent - The event code while emitting received messages to subscribers
      * @returns {RascalClient}
      */
-    async getClient(channel) {
+    async getClient(channel, emitEvent) {
         if (this._clients[channel] !== undefined) {
             return this._clients[channel];
         }
@@ -61,9 +60,10 @@ class RascalFactory extends EventModule {
         let client = new RascalClient({
             $name: channel,
             //
-            parent: this,
-            ebus: this._appCtx.ebus,
-            options
+            options, emitEvent
+        })
+        client.on('client-error', (channel, err) => {
+            logger.info(`!!! TODO: Handle client-error event ...`);
         })
         await client.init();
         this._clients[channel] = client;
@@ -118,7 +118,7 @@ async function _initRascalClient() {
     broker.on('error', err => {
         logger.error(`${this.$name}[${this.state}]: Broker error! - ${err.message}`);
         this.state = eClientState.Null;
-        this.$parent.emit('client-end', this.$name, err);
+        this.emit('client-error', this.$name, err);
     });
     // Parse and save publication keys
     let publications = tools.safeGetJsonValue(this._config, 'params.publications');
@@ -136,18 +136,6 @@ async function _initRascalClient() {
     return 'ok'
 }
 
-function _parseEvent(message, content) {
-    let event = null;
-    // Parsing content to JSON
-    if (message.properties.contentType === 'text/plain') {
-        event = JSON.parse(content);
-    } else if (message.properties.contentType === 'application/json') {
-        event = content
-    } else {
-        throw new Error('Unrecognized contentType! Should be text/plain or application/json.');
-    }
-    return event;
-}
 
 async function _doSubscribe(broker, subscriptions) {
     let keys = Object.keys(subscriptions);
@@ -159,8 +147,7 @@ async function _doSubscribe(broker, subscriptions) {
                 //logger.debug(`${this.$name}[${this.state}]: Content= ${tools.inspect(content)}`);
                 // Processing message
                 try {
-                    let event = _parseEvent(message, content);
-                    this.$ebus.emit('rmq-msg', event);
+                    this.emit(this._emitEvent, message, content);
                     ackOrNack();
                 } catch (ex) {
                     logger.error(`*** ${this.$name}[${this.state}]: Parsing content error! - ${ex.message}`);
@@ -180,22 +167,20 @@ async function _doSubscribe(broker, subscriptions) {
 const _typeClientProps = {
     $id: 'string',
     $name: 'string',
-    $parent: 'object',
     //
     options: 'object'
 };
 
 
 // The client class
-class RascalClient extends CommonObject {
+class RascalClient extends EventObject {
     constructor(props) {
         super(props);
         // Declaring member variables
         this.state = eClientState.Null;
-        this.$parent = props.parent;
-        this.$ebus = props.ebus;
         //
         this._config = props.options; // {vhost, connection, params}
+        this._emitEvent = props.emitEvent || 'rmq-msg';
         this._broker = null;
         this._pubKeys = [];
     }

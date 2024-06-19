@@ -18,7 +18,6 @@ const { _DS_DEFAULT_ } = require('./repository');
 //const net = require('../libs/common/net.wrapper');
 
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
-const { endianness } = require('os');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 function normalizePort(val) {
@@ -48,6 +47,7 @@ class Endpoint extends EventModule {
     }
 }
 
+// The http endpoint
 class HttpEndpoint extends Endpoint {
     constructor(appCtx, props) {
         super(appCtx, props);
@@ -195,7 +195,7 @@ class HttpEndpoint extends Endpoint {
         } catch(ex) {
             this._state = eModuleState.OOS;
             this.lastError = ex.message;
-            logger.error(`!!! ${this.$name}: Start endpoint failure! - ${ex.message}`);
+            logger.error(`!!! ${this.$name}: Start http@endpoint failure! - ${ex.message}`);
             return ex.message;
         }
     }
@@ -215,7 +215,6 @@ class WebSockEndpoint extends Endpoint {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
-        
     }
     init(options) {
         if (this._state !== eModuleState.INIT) {
@@ -223,12 +222,54 @@ class WebSockEndpoint extends Endpoint {
             return null;
         }
         this._config = options;
-        this._port = normalizePort(options.port || process.env.PORT || '3000');
+        this._port = normalizePort(options.port || process.env.WS_PORT || '18080');
+        this._wss = null;
+        this._clients = {};
         // Update state
         this._state = eModuleState.READY;
     }
     async start() {
+        if (this._state !== eModuleState.READY) {
+            logger.error(`${this.$name}: endpoint is not ready!`);
+            return this._state;
+        }
+        try {
+            this._state = eModuleState.START_PENDING;
+            //
+            const WebSocket = require('ws');
+            const WebSocketServer = WebSocket.WebSocketServer;
+            this._wss = new WebSocketServer({
+                port: this._port
+            })
+            this._wss.on('connection', (ws, req) => {
+                logger.debug(`>>>>>> The client ws: ${tools.inspect(wsClient)}`);
+                const ip = req.headers['x-forwarded-for'].split(',')[0].trim();
 
+                logger.deubg(`>>>>>>> TODO save the client for further usage ......`);
+            }).on('error', err => {
+                logger.error(`>>>>>> ${this.$name}: wss error! - ${err.message}`);
+                this._state = eModuleState.OSS;
+            }).on('close', () => {
+                logger.error(`>>>>>> ${this.$name}: wss closed! - ${err.message}`);
+                this._wss = null;
+                this._state = eModuleState.READY;
+            });
+            //
+            this._state = eModuleState.ACTIVE;
+        } catch(err) {
+            this._state = eModuleState.OOS;
+            this.lastError = ex.message;
+            logger.error(`!!! ${this.$name}: Start ws@endpoint failure! - ${ex.message}`);
+            return ex.message;
+        }
+        return this._state;
+    }
+    async dispose() {
+        if (this._wss) {
+            this._wss.close();
+            return `${this.$name} closed.`
+        }
+        return null;
     }
 }
 class gRpcEndpoint extends Endpoint {

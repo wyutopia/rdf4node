@@ -232,6 +232,20 @@ const _typeRegisterOptions = {
     pubKey: 'pubEvent'
 };
 
+
+function _parseEvent(message, content) {
+    let event = null;
+    // Parsing content to JSON
+    if (message.properties.contentType === 'text/plain') {
+        event = JSON.parse(content);
+    } else if (message.properties.contentType === 'application/json') {
+        event = content
+    } else {
+        throw new Error('Unrecognized contentType! Should be text/plain or application/json.');
+    }
+    return event;
+}
+
 /**
  * @typedef RegisterOptions
  * @prop { string[] } subEvents - The 
@@ -253,14 +267,6 @@ class EventBus extends EventModule {
         // For external MQs, identified by channel
         this._clients = {};
         // Define event handler
-        this.on('rmq-msg', async (evt) => {
-            try {
-                const results = await _consumeAsync.call(this, evt);
-                logger.debug(`>>> Handle ${evt.code} results - ${tools.inspect(results)}`);
-            } catch(ex) {
-                logger.error(`*** Handle ${evt.code} error! - ${ex.message}`);
-            }
-        });
         this.on('client-end', clientId => {
             logger.error(`Client#${clientId} end.`);
         });
@@ -277,9 +283,19 @@ class EventBus extends EventModule {
         }
         // Create rabbitmq client if configed <<<
         try {
-            this._clients[config.channel] = await this._appCtx.rascalFactory.getClient(config.channel);;
-            logger.info(`>>> rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
+            let client = await this._appCtx.rascalFactory.getClient(config.channel, 'rmq-msg');
+            client.on('rmq-msg', async (message, content) => {
+                try {
+                    let evt = _parseEvent(message, content);
+                    const results = await _consumeAsync.call(this, evt);
+                    logger.debug(`>>> Handle ${evt.code} results - ${tools.inspect(results)}`);
+                } catch(ex) {
+                    logger.error(`*** Handle ${evt.code} error! - ${ex.message}`);
+                }
+            })
+            this._clients[config.channel] = client;
             this.state = sysdefs.eModuleState.ACTIVE;
+            logger.info(`>>> rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
             return true;
         } catch (ex) {
             logger.error(`*** Initialize rabbitmq(rascal lib) error! - ${ex.message}`);
