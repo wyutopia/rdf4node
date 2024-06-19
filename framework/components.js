@@ -1007,15 +1007,18 @@ class EntityController extends ControllerBase {
             }
         }
     }
-};
+}
 
 // The ServiceBase class
 class ServiceBase extends ControllerBase {
     constructor(props) {
         super(props);
         // Declaring other variables and methods here ...
+        this.start = async (options) => {
+            return false
+        }
     }
-};
+}
 
 // Declaring module exports
 module.exports = exports = {
@@ -1025,4 +1028,4 @@ module.exports = exports = {
         packFindOption: _packFindOption,
         findUpdatedKeys: _findUpdatedKeys
     }
-};
+}

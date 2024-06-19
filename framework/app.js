@@ -177,16 +177,10 @@ function _recursiveLoadDaemons(rootPath, subPath, options) {
         try {
             let daemon = require(filePath);
             let name = this.registry.register(daemon);
-            if (typeof daemon.start === 'function') {
-                try {
-                    daemon.start(options[name] || {});  // With potential configuration identified by name
-                } catch (ex) {
-                    logger.error(`!!! Call start() of ${name} error! - ${ex.message}`);
-                }
-            }
             loaded.push({
                 file: filePath,
-                name: name
+                name: name,
+                module: daemon
             });
         } catch (ex) {
             logger.error(`!!! Load daemon from: ${filePath} error! - ${ex.message}`);
@@ -337,7 +331,7 @@ class Application extends EventEmitter {
             try {
                 const { RascalFactory } = require('../libs/common/rascal.wrapper');
                 this.rascalFactory = new RascalFactory(this, {
-                    $name: sysdefs.eFrameworkModules.RascalFactory,
+                    $name: sysdefs.eFrameworkModules.RASCAL_CM,
                     $type: sysdefs.eModuleType.CM,
                     mandatory: true,
                     state: sysdefs.eModuleState.ACTIVE
@@ -383,7 +377,7 @@ class Application extends EventEmitter {
         this._state = sysdefs.eModuleState.READY;
         return 'ok';
     }
-    loadDaemons(options) {
+    async startDaemons(options) {
         if (options.enabled === undefined) {
             options.enabled = '*';
         }
@@ -391,9 +385,26 @@ class Application extends EventEmitter {
             options.disabled = [];
         }
         logger.info(`>>> Loading daemons with options: ${tools.inspect(options)} ...`);
-        let loaded = _recursiveLoadDaemons.call(this, path.join(appRoot.path, options.pathName || 'daemons'), '', options);
-        logger.debug(`>>> Loaded daemons: ${tools.inspect(loaded)}`);
-        return loaded;
+        const daemons = _recursiveLoadDaemons.call(this, path.join(appRoot.path, options.pathName || 'daemons'), '', options);
+        const results = [];
+        await async.eachLimit(daemons, 3, async daemon => {
+            let result = {
+                file: daemon.file,
+                name: daemon.name,
+                start: null
+            }
+            if (typeof daemon.module.start === 'function') {
+                try {
+                    await daemon.module.start(options[daemon.name] || {});  // With potential configuration identified by name
+                    result.start = 'ok';
+                } catch (ex) {
+                    logger.error(`!!! Call start() of ${daemon.name} error! - ${ex.message}`);
+                    result.start = ex.message;
+                }
+            }
+            results.push(result);
+        })
+        return results;
     }
     loadExtensions(options) {
         if (options.enabled === undefined) {

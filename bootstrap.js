@@ -50,10 +50,10 @@ async function bootstrap() {
         result.framework = await theApp.initFramework(config);
         //
         logger.info('====== Step 2: Load extensions ======');
-        result.daemons = theApp.loadExtensions(config.extensions || {});
+        result.extensions = theApp.loadExtensions(config.extensions || {});
         //
-        logger.info('====== Step 3: Load daemon tasks ======');
-        result.daemons = theApp.loadDaemons(config.daemons || {});
+        logger.info('====== Step 3: Start daemons ======');
+        result.daemons = await theApp.startDaemons(config.daemons || {});
         //
         theApp.setState(sysdefs.eModuleState.READY);
         logger.info('====== Step 4: App startup ======');
