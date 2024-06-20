@@ -79,6 +79,7 @@ function _triggerEvent(event, options, callback) {
 class EventModule extends EventObject {
     constructor(appCtx, props) {
         super(props);
+        this._idGen = 0;  // The 
         this._appCtx = appCtx;
         this._ebus = appCtx.ebus;
         initModule.call(this, props);

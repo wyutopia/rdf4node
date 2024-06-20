@@ -34,9 +34,13 @@ class RascalFactory extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props);
         // The member variables
+        this._idGen = 0;
         this._clients = {};
         // Define event handler
-        this.on('client-end', (name, err) => {
+        this.on('client-error', (id, err) => {
+
+        })
+        this.on('client-end', (id, reason) => {
             logger.info(`${this.$name}: On client [END] - ${name} - ${tools.inspect(err)}`);
             delete this._clients[name];
         });

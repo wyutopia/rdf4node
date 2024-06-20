@@ -125,38 +125,6 @@ function _initEventBus(props) {
 }
 
 /**
- * 
- * @param { Types.EventWrapper } rawEvent 
- * @param { Types.PublishOptions } options 
- * @param { * } callback 
- */
-function _consumeEvent(rawEvent, options, callback) {
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
-    }
-    logger.debug(`Perform consuming event: ${tools.inspect(rawEvent)} - ${tools.inspect(options)}`);
-    let event = (this._lo === true || options.engine === sysdefs.eCacheEngine.Native) ? rawEvent : rawEvent.content;
-    let subscribers = this._subscribers[event.code];
-    if (tools.isTypeOfArray(subscribers)) {
-        subscribers.forEach(moduleName => {
-            let registry = this._registries[moduleName];
-            if (!registry || registry.status !== sysdefs.eStatus.ACTIVE) {
-                logger.info(`Ignore non-active module! - ${moduleName}`);
-            } else {
-                try {
-                    logger.debug(`Emit message for ${registry.moduleRef.$name}`);
-                    registry.moduleRef.emit('message', event);
-                } catch (ex) {
-                    logger.error(`Emit app-event error for module: ${moduleName} - ${tools.inspect(ex)}`);
-                }
-            }
-        });
-    }
-    setTimeout(_pubTriggerEvents.bind(this, event, options, callback), 5);
-}
-
-/**
  * @typedef { Object} TriggerEvent - The TriggerEvent Class
  * @property { String } pattern - The RegExp pattern for matching original event code
  * @property { String } code - The new event code
@@ -192,36 +160,6 @@ function _pubTriggerEvents(evt, options, callback) {
     }, () => {
         return callback();
     });
-}
-
-/**
- * 
- * @param { Types.EventWrapper } event 
- * @param { Types.PublishOptions } options 
- * @param { function } callback 
- * @returns 
- */
-function _extMqPub(event, options, callback) {
-    if (typeof options === 'function') {
-        callback = options;
-        options = _defaultPubOptions;
-    }
-    let engine = options.engine || sysdefs.eEventBusEngine.RabbitMQ;
-    let channel = options.channel || _defaultPubOptions.channel;
-    let pubKey = options.pubKey || _defaultPubOptions.pubKey;
-    // Find client
-    let clientId = `${channel}@${engine}`;
-    let client = this._clients[clientId];
-    if (!client) {
-        return callback({
-            code: eRetCodes.MQ_PUB_ERR,
-            message: `Invalid client! - id=${clientId}`
-        })
-    }
-    // Set triggerOptions for publishing triggerEvents
-    event.headers.triggerOptions = { engine, channel, pubKey };
-    // Invoke publishing
-    return client.publish(pubKey, event, { routingKey: event.code }, callback);
 }
 
 const _typeRegisterOptions = {
@@ -263,9 +201,8 @@ class EventBus extends EventModule {
         this.lastError = '';
         this._registries = {};
         this._subscribers = {};
-        this._queues = {};
         // For external MQs, identified by channel
-        this._clients = {};
+        this._mqClient = null;
         // Define event handler
         this.on('client-end', clientId => {
             logger.error(`Client#${clientId} end.`);
@@ -277,14 +214,15 @@ class EventBus extends EventModule {
             return false;
         }
         _initEventBus.call(this, config);
-        if (this._engine === sysdefs.eEventBusEngine.Native) { // Using native engine
+        if (this._engine !== sysdefs.eEventBusEngine.RabbitMQ) { // Using native engine
+            this._engine === sysdefs.eEventBusEngine.Native; // Set to native!!!
             this.state = sysdefs.eModuleState.ACTIVE;
             return true;
         }
         // Create rabbitmq client if configed <<<
         try {
-            let client = await this._appCtx.rascalFactory.getClient(config.channel, 'rmq-msg');
-            client.on('rmq-msg', async (message, content) => {
+            this._mqClient = await this._appCtx.rascalFactory.getClient(config.channel, 'rmq-msg');
+            this._mqClient.on('rmq-msg', async (message, content) => {
                 try {
                     let evt = _parseEvent(message, content);
                     const results = await _consumeAsync.call(this, evt);
@@ -293,9 +231,7 @@ class EventBus extends EventModule {
                     logger.error(`*** Handle ${evt.code} error! - ${ex.message}`);
                 }
             })
-            this._clients[config.channel] = client;
-            this.state = sysdefs.eModuleState.ACTIVE;
-            logger.info(`>>> rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
+            logger.info(`>>> rabbitmq client: ${config.channel} created.`);
             return true;
         } catch (ex) {
             logger.error(`*** Initialize rabbitmq(rascal lib) error! - ${ex.message}`);
@@ -360,13 +296,15 @@ class EventBus extends EventModule {
             logger.warn(`****** Ignore disabled event: ${event.code}`);
             return true;
         }
-        try {
+        if (this._persistent && this._eventLogger) {
             try {
                 await this._eventLogger.onPublish(event, options);
             } catch (err) {
-                logger.error(`***! Log event error! - ${err.message}`);
+                logger.error(`***! Persistent publish event error! - ${err.message}`);
             }
-            let nextFn = (this._lo === true || options.dest === _DEST_LOCAL_) ? _consumeAsync : _publishAsync;
+        }
+        try {
+            let nextFn = (this._lo === true || this._engine === sysdefs.eEventBusEngine.Native || options.dest === _DEST_LOCAL_) ? _consumeAsync : _publishAsync;
             const original = await nextFn.call(this, event, options);
             const chain = await _triggerChainEvents.call(this, event, options);
             return { original, chain };
@@ -374,35 +312,6 @@ class EventBus extends EventModule {
             logger.error(`***! Publish error: ${tools.inspect(event)} - ${ex.message}`);
             return false;
         }
-    }
-    /**
-     * 
-     * @param { Types.EventWrapper } event 
-     * @param { Types.PublishOptions } options 
-     * @param {Error, Result} callback 
-     * @returns 
-     */
-    publish(event, options, callback) {
-        // if (typeof options === 'function') {
-        //     callback = options;
-        //     options = _defaultPubOptions;
-        // }
-        // logger.debug(`Publish event - ${tools.inspect(event)} - ${tools.inspect(options)}`)
-        // //
-        // if (this._disabledEvents.indexOf(event.code) !== -1) {
-        //     logger.debug(`Ignore disabled event: ${event.code}`);
-        //     return callback();
-        // }
-        // return this._eventLogger.pub(event, options, () => {
-        //     //
-        //     if (this._lo === true || options.engine === sysdefs.eEventBusEngine.Native) {
-        //         return process.nextTick(_consumeEvent.bind(this, event, options, callback));
-        //     }
-        //     return _extMqPub.call(this, event, options, callback);
-        // });
-        this.pubAsync(event, options).then(() => {
-            return callback();
-        }).catch(callback);
     }
 }
 
@@ -480,19 +389,15 @@ async function _triggerChainEvents(originEvent, options) {
  * @param { Types.PublishOptions } options 
  */
 async function _publishAsync(event, options) {
-    let engine = sysdefs.eEventBusEngine.RabbitMQ;
-    let channel = options.channel || _defaultPubOptions.channel;
     let pubKey = options.pubKey || _defaultPubOptions.pubKey;
-    // Find client
-    let clientId = `${channel}@${engine}`;
-    let client = this._clients[clientId];
-    if (!client) {
-        throw new Error(`Invalid client by id: ${clientId}`);
+    // Check client
+    if (!this._mqClient) {
+        throw new Error(`*** Invalid mqClient!`);
     }
     // Set triggerOptions for publishing triggerEvents
     //event.headers.triggerOptions = { engine, channel, pubKey };
     // Invoke publishing
-    return await client.pubAsync(pubKey, event, { routingKey: event.code });
+    return await this._mqClient.pubAsync(pubKey, event, { routingKey: event.code });
 }
 
 // Define module
