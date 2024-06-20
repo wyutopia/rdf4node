@@ -6,6 +6,8 @@ ENV TZ=Asia/Shanghai
 RUN apk add tzdata \
        && cp /usr/share/zoneinfo/${TZ} /etc/localtime \
        && echo "${TZ}" > /etc/timezone
+# Install debug tools
+RUN apk add curl
 
 # Create app directory
 WORKDIR /usr/src/app
@@ -13,11 +15,12 @@ WORKDIR /usr/src/app
 # Install app dependencies
 # A wildcard is used to ensure both package.json AND package-lock.json are copied
 # where avaiable (npm@5+)
-COPY package*.json .
 
 RUN npm config set registry=https://registry.npmmirror.com
-RUN npm config set @icedeer:registry=http://nexus.ice-deer.com:38081/repository/npm/
+RUN npm config set @icedeer:registry=http://npm.ice-deer.com:30873/
 RUN npm install pm2 -g
+
+COPY package.json .
 RUN npm install
 # If you are building your code for production
 # RUN npm ci --only=production
@@ -26,8 +29,6 @@ RUN npm install
 COPY . .
 
 # Set default env
-ENV NODE_ENV=production
-ENV SRV_ROLE=rdf4node
 ENV PORT=3000
 
 EXPOSE 3000
