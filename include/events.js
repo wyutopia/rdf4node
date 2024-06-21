@@ -99,31 +99,6 @@ class EventModule extends EventObject {
             }
         })();
     }
-    /**
-     * 
-     * @param { Object } event 
-     * @param { string } event.code - The event code
-     * @param { Object } options 
-     * @callback callback 
-     * @returns 
-     */
-    pubEvent(event, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = this._eventOptions;
-        }
-        if (event.headers === undefined) {
-            event.headers = {
-                source: this.$name
-            }
-        }
-        return this._ebus.publish(event, options, err => {
-            if (err) {
-                return callback(err);
-            }
-            return _triggerEvent.call(this, event, options, callback);
-        });
-    }
     async pubAsync(event, options) {
         if (options === undefined) {
             options = this._eventOptions;

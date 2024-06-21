@@ -224,7 +224,8 @@ class WebSockEndpoint extends Endpoint {
         this._config = options;
         this._port = normalizePort(options.port || process.env.WS_PORT || '18080');
         this._wss = null;
-        this._clients = {};
+        this._heartbeat = null;
+        this._clientManager = null;
         // Update state
         this._state = eModuleState.READY;
     }
@@ -236,27 +237,49 @@ class WebSockEndpoint extends Endpoint {
         try {
             this._state = eModuleState.START_PENDING;
             //
-            const WebSocket = require('ws');
+            const { WSRouter, WebSocket} = require('../libs/common/ws.wrapper');
+            // 
+            this._router = new WSRouter({});
+            let paths = await this._router.init(this._config.routePath);
+            logger.info(`>>> Supported pathnames: ${tools.inspect(paths)}`);
+            // 
             const WebSocketServer = WebSocket.WebSocketServer;
             this._wss = new WebSocketServer({
                 port: this._port
             })
-            this._wss.on('connection', (ws, req) => {
-                logger.debug(`>>>>>> The client ws: ${tools.inspect(wsClient)}`);
-                const ip = req.headers['x-forwarded-for'].split(',')[0].trim();
-
-                logger.deubg(`>>>>>>> TODO save the client for further usage ......`);
+            this._wss.on('connection', async (ws, req) => {
+                try {
+                    const xff = req.headers['x-forwarded-for'];
+                    const clientIp = xff? xff.split(',')[0].trim() : req.socket.remoteAddress;
+                    //
+                    let url = new URL(`http://localhost${req.url}`);
+                    const r = await this._router.onConnection(ws, {
+                        pathname: url.pathname,
+                        searchParams: url.searchParams,
+                        clientIp
+                    })
+                    if (!r) {
+                        ws.terminate();
+                    }
+                } catch(err) {
+                    logger.error(`*** On connection error! - ${err.message}`);
+                }
             }).on('error', err => {
                 logger.error(`>>>>>> ${this.$name}: wss error! - ${err.message}`);
                 this._state = eModuleState.OSS;
             }).on('close', () => {
-                logger.error(`>>>>>> ${this.$name}: wss closed! - ${err.message}`);
+                logger.error(`>>>>>> ${this.$name}: wss closed!`);
                 this._wss = null;
+                if (this._heartbeat) {
+                    clearInterval(this._heartbeat);
+                    this._heartbeat = null;
+                }
                 this._state = eModuleState.READY;
             });
             //
             this._state = eModuleState.ACTIVE;
-        } catch(err) {
+            logger.info(`${this.$name}: wss started on ${this._port}`);
+        } catch(ex) {
             this._state = eModuleState.OOS;
             this.lastError = ex.message;
             logger.error(`!!! ${this.$name}: Start ws@endpoint failure! - ${ex.message}`);
@@ -267,9 +290,11 @@ class WebSockEndpoint extends Endpoint {
     async dispose() {
         if (this._wss) {
             this._wss.close();
-            return `${this.$name} closed.`
         }
-        return null;
+        if (this._clientManager) {
+            await this._clientManager.dispose();
+        }
+        return true;
     }
 }
 class gRpcEndpoint extends Endpoint {
