@@ -289,9 +289,6 @@ class WebSockEndpoint extends Endpoint {
         if (this._wss) {
             this._wss.close();
         }
-        if (this._router) {
-            await this._router.dispose();
-        }
         return true;
     }
 }

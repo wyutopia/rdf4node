@@ -65,9 +65,9 @@ async function _doValidate(searchParams) {
 }
 
 // The WebSocketConnectionManager class
-class WSConnectionManager extends EventModule {
-    constructor(appCtx, props) {
-        super(appCtx, props);
+class WSConnectionManager extends EventObject {
+    constructor(props) {
+        super(props);
         //
         this._validators = props.validators || {};
         this._connections = {};
@@ -79,7 +79,10 @@ class WSConnectionManager extends EventModule {
             })
         }
         //
-        this.setState(sysdefs.eModuleState.ACTIVE);
+        this._state = sysdefs.eModuleState.ACTIVE;
+    }
+    isActive() {
+        return this._state === sysdefs.eModuleState.ACTIVE;
     }
     async createConnection(ws, searchParams, clientIp) {
         //TODO: check clientIp
