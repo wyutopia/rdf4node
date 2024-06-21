@@ -239,8 +239,8 @@ class WebSockEndpoint extends Endpoint {
             //
             const { WSRouter, WebSocket} = require('../libs/common/ws.wrapper');
             // 
-            this._router = new WSRouter({});
-            let paths = await this._router.init(this._config.routePath);
+            this._router = new WSRouter(this._appCtx, {$name: '_wsrt_'});
+            let paths = await this._router.init(this._config.routePath || 'wss');
             logger.info(`>>> Supported pathnames: ${tools.inspect(paths)}`);
             // 
             const WebSocketServer = WebSocket.WebSocketServer;
@@ -258,17 +258,15 @@ class WebSockEndpoint extends Endpoint {
                         searchParams: url.searchParams,
                         clientIp
                     })
-                    if (!r) {
-                        ws.terminate();
-                    }
                 } catch(err) {
                     logger.error(`*** On connection error! - ${err.message}`);
+                    ws.close();
                 }
             }).on('error', err => {
-                logger.error(`>>>>>> ${this.$name}: wss error! - ${err.message}`);
+                logger.error(`${this.$name} >> wss error! - ${err.message}`);
                 this._state = eModuleState.OSS;
             }).on('close', () => {
-                logger.error(`>>>>>> ${this.$name}: wss closed!`);
+                logger.error(`${this.$name} >> wss closed!`);
                 this._wss = null;
                 if (this._heartbeat) {
                     clearInterval(this._heartbeat);
@@ -278,7 +276,7 @@ class WebSockEndpoint extends Endpoint {
             });
             //
             this._state = eModuleState.ACTIVE;
-            logger.info(`${this.$name}: wss started on ${this._port}`);
+            logger.info(`${this.$name}: wss listening on port ${this._port}`);
         } catch(ex) {
             this._state = eModuleState.OOS;
             this.lastError = ex.message;
@@ -291,8 +289,8 @@ class WebSockEndpoint extends Endpoint {
         if (this._wss) {
             this._wss.close();
         }
-        if (this._clientManager) {
-            await this._clientManager.dispose();
+        if (this._router) {
+            await this._router.dispose();
         }
         return true;
     }
