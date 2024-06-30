@@ -27,13 +27,42 @@ module.exports = exports = {
             port: 8500
         }
     },
+    rabbitmq: {
+        connections: {
+            app: {
+                slashes: true,
+                protocol: 'amqp',
+                hostname: '127.0.0.1',
+                user: '<user-name>',
+                password: '<user-password>',
+                port: 5672,
+                options: {
+                    heartbeat: 4,
+                    prefetch: 1
+                }                
+            }            
+        },
+        channels: {
+            default: {
+                exchanges: {},
+                queues: {},
+                bindings: {},
+                publications: {},
+                subscriptions: {}
+            }
+        }
+    },
     eventBus: {
         lo: true,
         persistent: true,
         disabledEvents: [],
         chainEvents: [],
         engine: "native",
-        channel: 'app.default' // <vhost>.<channel>
+        options: {
+            vhost: '/',
+            connection: 'app',
+            channel: 'default'
+        }
     },
     dataSources: {
         default: {

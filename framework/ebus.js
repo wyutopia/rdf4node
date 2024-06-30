@@ -221,7 +221,10 @@ class EventBus extends EventModule {
         }
         // Create rabbitmq client if configed <<<
         try {
-            this._mqClient = await this._appCtx.rascalFactory.getClient(config.channel, 'rmq-msg');
+            let clientOptions = Object.assign({
+                event: 'rmq-msg'
+            }, config.options);
+            this._mqClient = await this._appCtx.rascalFactory.getClient(clientOptions);
             this._mqClient.on('rmq-msg', async (message, content) => {
                 try {
                     let evt = _parseEvent(message, content);

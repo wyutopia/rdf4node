@@ -30,8 +30,8 @@ module.exports = exports = {
     caches: {},
     distLocker: {},
     rabbitmq: {
-        app: {
-            connection: {
+        connections: {
+            app: {
                 slashes: true,
                 protocol: 'amqp',
                 hostname: '127.0.0.1',
@@ -41,16 +41,16 @@ module.exports = exports = {
                 options: {
                     heartbeat: 4,
                     prefetch: 1
-                }
-            },
-            channels: {
-                default: {
-                    exchanges: {},
-                    queues: {},
-                    bindings: {},
-                    publications: {},
-                    subscriptions: {}
-                }
+                }                
+            }
+        },
+        channels: {
+            default: {
+                exchanges: {},
+                queues: {},
+                bindings: {},
+                publications: {},
+                subscriptions: {}
             }
         }
     },    
@@ -60,7 +60,11 @@ module.exports = exports = {
         disabledEvents: [],
         chainEvents: [],
         engine: "native",   // Support engine: rabbitmq
-        channel: 'app.default'
+        options: {
+            vhost: '/',
+            connection: 'app',
+            channel: 'default'
+        }
     },
     dataSources: {
         default: {

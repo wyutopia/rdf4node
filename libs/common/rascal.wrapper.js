@@ -18,14 +18,11 @@ const tools = require('../../utils/tools');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
 
-function _getClientOptions(config, channel) {
-    let keys = channel.split('.');
-    let vhost = keys[0];
-    let chnId = keys[1];
+function _getClientConfig({vhost, connection, channel}) {
     return {
         vhost, 
-        connection: config[vhost].connection,
-        params: config[vhost].channels[chnId]
+        connection: tools.safeGetJsonValue(this._config, `connections.${connection}`), 
+        params: tools.safeGetJsonValue(this._config, `channels.${channel}`)
     }
 }
 
@@ -35,6 +32,7 @@ class RascalFactory extends EventModule {
         super(appCtx, props);
         // The member variables
         this._idGen = 0;
+        this._config = {};
         this._clients = {};
         // Define event handler
         this.on('client-error', (id, err) => {
@@ -46,32 +44,40 @@ class RascalFactory extends EventModule {
         });
     }
     async init(config) {
+        // Save config
         this._config = config;
         return true;
     }
     // Implementing member methods
     /**
      * 
-     * @param { string } channel 
-     * @param { string } emitEvent - The event code while emitting received messages to subscribers
+     * @param { Object } options 
+     * @param { string } options.vhost
+     * @param { string } options.connection
+     * @param { string } options.channel
+     * @param { string } options.event - The event code while emitting received messages to subscribers
      * @returns {RascalClient}
      */
-    async getClient(channel, emitEvent) {
-        if (this._clients[channel] !== undefined) {
-            return this._clients[channel];
+    async getClient(options) {
+        let vhost = options.vhost || '/';
+        let connection = options.connection || 'app';
+        let channel = options.channel || 'default';
+        const clientId = `${vhost}:${connection}:${channel}`;
+        if (this._clients[clientId] !== undefined) {
+            return this._clients[clientId];
         }
-        let options = _getClientOptions(this._config, channel);
-        let client = new RascalClient({
-            $name: channel,
+        let config = _getClientConfig.call(this, {vhost, connection, channel});
+        this._clients[clientId] = new RascalClient({
+            $name: clientId,
             //
-            options, emitEvent
+            config,
+            event: options.event || 'rmq-msg'
         })
-        client.on('client-error', (channel, err) => {
+        this._clients[clientId].on('client-error', (clientId, err) => {
             logger.info(`!!! TODO: Handle client-error event ...`);
         })
-        await client.init();
-        this._clients[channel] = client;
-        return client;
+        await this._clients[clientId].init();
+        return this._clients[clientId];
     }
     async dispose() {
         const clientKeys = Object.keys(this._clients);
@@ -183,8 +189,8 @@ class RascalClient extends EventObject {
         // Declaring member variables
         this.state = eClientState.Null;
         //
-        this._config = props.options; // {vhost, connection, params}
-        this._emitEvent = props.emitEvent || 'rmq-msg';
+        this._config = props.config; // {vhost, connection, params}
+        this._emitEvent = props.event;
         this._broker = null;
         this._pubKeys = [];
     }
