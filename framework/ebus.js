@@ -18,8 +18,8 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 const _defaultPubOptions = {
     pubKey: _DEFAULT_PUBKEY_,
-    routingKey: _DEFAULT_ROUTINGKEY_,
-    dest: _DEST_LOCAL_
+    routingKey: _DEFAULT_ROUTINGKEY_
+    //dest: _DEST_LOCAL_
 };
 
 // Define the eventLogger instance
@@ -102,38 +102,6 @@ const _typeTriggerEvent = {
     code: 'string',
     ignore: 'string',
     select: 'string'
-};
-
-function _pubTriggerEvents(evt, options, callback) {
-    if (!this._chainEvents || this._chainEvents.length === 0) {
-        return callback();
-    }
-    async.eachLimit(this._chainEvents, 3, (chainEvent, next) => {
-        if (chainEvent.ignore.indexOf(evt.code) !== -1) {
-            return process.nextTick(next);
-        }
-        let result = chainEvent.pattern.exec(evt.code);
-        if (!result) {
-            return process.nextTick(next);
-        }
-        let event = {
-            code: chainEvent.code,
-            headers: evt.headers,
-            body: chainEvent.select ? _buildChainEventBody(evt.body, chainEvent.select) : evt.body
-        }
-        logger.debug(`Chained event: ${chainEvent.code} triggered for ${evt.code}`);
-        return this.publish(event, evt.headers.triggerOptions || options, next);
-    }, () => {
-        return callback();
-    });
-}
-
-const _typeRegisterOptions = {
-    subEvents: 'Array<String>', // Conditional on engine = 'native'
-    // For message queue
-    engine: 'native',
-    channel: 'default',
-    pubKey: 'pubEvent'
 };
 
 
@@ -260,7 +228,7 @@ class EventBus extends EventModule {
         let pubOpt = Object.assign({}, _defaultPubOptions, options || {});
         logger.debug(`*** Publish event: ${tools.inspect(event)} - ${tools.inspect(pubOpt)}`);
         if (this._disabledEvents.includes(event.code)) {
-            logger.warn(`****** Ignore disabled event: ${event.code}`);
+            logger.warn(`!!! Ignore disabled event: ${event.code}`);
             return true;
         }
         if (this._persistent && this._eventLogger) {
