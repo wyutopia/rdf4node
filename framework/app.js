@@ -177,16 +177,10 @@ function _recursiveLoadDaemons(rootPath, subPath, options) {
         try {
             let daemon = require(filePath);
             let name = this.registry.register(daemon);
-            if (typeof daemon.start === 'function') {
-                try {
-                    daemon.start(options[name] || {});  // With potential configuration identified by name
-                } catch (ex) {
-                    logger.error(`!!! Call start() of ${name} error! - ${ex.message}`);
-                }
-            }
             loaded.push({
                 file: filePath,
-                name: name
+                name: name,
+                module: daemon
             });
         } catch (ex) {
             logger.error(`!!! Load daemon from: ${filePath} error! - ${ex.message}`);
@@ -254,8 +248,6 @@ class Application extends EventEmitter {
         if (props.consul) { // Consul configured
             this._consulClient = new ConsulClient(props.consul);
         }
-        this.redisManager = null;
-        this.rascalManager = null;
         this.licenseManager = new LicenseManager(this, { $name: sysdefs.eFrameworkModules.LICENSE });
         this.acHelper = new AccHelper(this, { $name: sysdefs.eFrameworkModules.AC });
         // !!! *** ebus should be the first framework component ***
@@ -268,6 +260,9 @@ class Application extends EventEmitter {
         this.distLocker = new DistributedEntityLocker(this, { $name: sysdefs.eFrameworkModules.DLOCKER });
         this.repoFactory = new RepositoryFactory(this, { $name: sysdefs.eFrameworkModules.REPOSITORY });
         this.epFactory = new EndpointFactory(this, { $name: sysdefs.eFrameworkModules.ENDPOINT });
+        // The add-on libs
+        this.redisManager = null;   // For redis lib
+        this.rascalFactory = null;  // For rabbitmq rascal lib
     }
     getVersion() {
         if (this._version === null) {
@@ -318,7 +313,8 @@ class Application extends EventEmitter {
         }
         promMonitor.init(this);
         logDirManager.init(this);
-        if (config.redis) {
+        // Create and init optional components
+        if (config.redis) { // redis
             try {
                 const { RedisManager } = require('../libs/common/redis.wrapper');
                 this.redisManager = new RedisManager(this, {
@@ -326,9 +322,24 @@ class Application extends EventEmitter {
                     $type: sysdefs.eModuleType.CM
                 });
                 const r = await this.redisManager.init(config.redis);
-                logger.info(`>>> Init redisManager ${r}.`);
+                logger.info(`>>> Init redisManager: ${r}.`);
             } catch (ex) {
                 logger.error(`*** Create and init redisManager error: ${ex.message}`);
+            }
+        }
+        if (config.rabbitmq) { // rascal
+            try {
+                const { RascalFactory } = require('../libs/common/rascal.wrapper');
+                this.rascalFactory = new RascalFactory(this, {
+                    $name: sysdefs.eFrameworkModules.RASCAL_CM,
+                    $type: sysdefs.eModuleType.CM,
+                    mandatory: true,
+                    state: sysdefs.eModuleState.ACTIVE
+                })
+                const r = await this.rascalFactory.init(config.rabbitmq);
+                logger.info(`>>> Init rascalFactory: ${r}`);
+            } catch(ex) {
+                logger.error(`*** Create and init rascalFactory error! - ${ex.message}`);
             }
         }
         const results = {};
@@ -356,6 +367,8 @@ class Application extends EventEmitter {
         if (config.license) {
             results['lm'] = await this.licenseManger.init(config.license);
         }
+
+        // The endpoints should be the last
         if (config.endpoints) {
             results['ep'] = await this.epFactory.init(config.endpoints);
         }
@@ -364,7 +377,7 @@ class Application extends EventEmitter {
         this._state = sysdefs.eModuleState.READY;
         return 'ok';
     }
-    loadDaemons(options) {
+    async startDaemons(options) {
         if (options.enabled === undefined) {
             options.enabled = '*';
         }
@@ -372,9 +385,26 @@ class Application extends EventEmitter {
             options.disabled = [];
         }
         logger.info(`>>> Loading daemons with options: ${tools.inspect(options)} ...`);
-        let loaded = _recursiveLoadDaemons.call(this, path.join(appRoot.path, options.pathName || 'daemons'), '', options);
-        logger.debug(`>>> Loaded daemons: ${tools.inspect(loaded)}`);
-        return loaded;
+        const daemons = _recursiveLoadDaemons.call(this, path.join(appRoot.path, options.pathName || 'daemons'), '', options);
+        const results = [];
+        await async.eachLimit(daemons, 3, async daemon => {
+            let result = {
+                file: daemon.file,
+                name: daemon.name,
+                start: null
+            }
+            if (typeof daemon.module.start === 'function') {
+                try {
+                    await daemon.module.start(options[daemon.name] || {});  // With potential configuration identified by name
+                    result.start = 'ok';
+                } catch (ex) {
+                    logger.error(`!!! Call start() of ${daemon.name} error! - ${ex.message}`);
+                    result.start = ex.message;
+                }
+            }
+            results.push(result);
+        })
+        return results;
     }
     loadExtensions(options) {
         if (options.enabled === undefined) {
@@ -501,10 +531,15 @@ class Application extends EventEmitter {
     }
     // Handle graceful Exit
     async gracefulExit() {
+        if ([sysdefs.eModuleState.INIT, sysdefs.eModuleState.STOP_PENDING, sysdefs.eModuleState.OOS].includes(this._state)) {
+            logger.warn(`*** Not active! ***`);
+            return -1;
+        }
+        this._state = sysdefs.eModuleState.STOP_PENDING;
         logger.info('>>> Perform system clean-up before exit... <<<');
         await _fireExitAlarm.call(this);
         //
-        logger.info(`>>>>>> Stop all modules ...`);
+        logger.info(`>>> Stop all modules ... <<<`);
         const promises = [];
         Object.keys(this._arch).forEach(layer => {
             logger.info(`>>>>>> ${layer}: Clean up modules ...`);
@@ -517,6 +552,7 @@ class Application extends EventEmitter {
         const result = await Promise.all(promises);
         logger.info(`>>>>>> All modules disposed. results: ${tools.inspect(result)}`);
         await _deregService.call(this);
+        this._state = sysdefs.eModuleState.READY;
         return 0
     }
 }

@@ -13,56 +13,85 @@ const Broker = require('rascal').BrokerAsPromised;
 const sysdefs = require('../../include/sysdefs');
 const eRetCodes = require('../../include/retcodes');
 const eClientState = sysdefs.eClientState;
-const { CommonObject } = require('../../include/base');
-const { EventModule } = require('../../include/events');
+const { EventObject, EventModule } = require('../../include/events');
 const tools = require('../../utils/tools');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'rdf4node');
+
+function _getClientConfig({vhost, connection, channel}) {
+    return {
+        vhost, 
+        connection: tools.safeGetJsonValue(this._config, `connections.${connection}`), 
+        params: tools.safeGetJsonValue(this._config, `channels.${channel}`)
+    }
+}
 
 // The rascal client factory 
 class RascalFactory extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props);
         // The member variables
+        this._idGen = 0;
+        this._config = {};
         this._clients = {};
         // Define event handler
-        this.on('client-end', (name, err) => {
+        this.on('client-error', (id, err) => {
+
+        })
+        this.on('client-end', (id, reason) => {
             logger.info(`${this.$name}: On client [END] - ${name} - ${tools.inspect(err)}`);
             delete this._clients[name];
         });
     }
-    init(config) {
+    async init(config) {
+        // Save config
         this._config = config;
+        return true;
     }
     // Implementing member methods
     /**
      * 
-     * @param {string} name 
-     * @param {vhost, connection, params} options 
+     * @param { Object } options 
+     * @param { string } options.vhost
+     * @param { string } options.connection
+     * @param { string } options.channel
+     * @param { string } options.event - The event code while emitting received messages to subscribers
      * @returns {RascalClient}
      */
-    getClient(name, options) {
-        if (this._clients[name] === undefined) {
-            this._clients[name] = new RascalClient({
-                $name: name,
-                //
-                parent: this,
-                ebus: this._appCtx.ebus,
-                options: options
-            });
+    async getClient(options) {
+        let vhost = options.vhost || '/';
+        let connection = options.connection || 'app';
+        let channel = options.channel || 'default';
+        const clientId = `${vhost}:${connection}:${channel}`;
+        if (this._clients[clientId] !== undefined) {
+            return this._clients[clientId];
         }
-        return this._clients[name];
+        let config = _getClientConfig.call(this, {vhost, connection, channel});
+        this._clients[clientId] = new RascalClient({
+            $name: clientId,
+            //
+            config,
+            event: options.event || 'rmq-msg'
+        })
+        this._clients[clientId].on('client-error', (clientId, err) => {
+            logger.info(`!!! TODO: Handle client-error event ...`);
+        })
+        await this._clients[clientId].init();
+        return this._clients[clientId];
     }
     async dispose() {
         const clientKeys = Object.keys(this._clients);
         logger.info(`${this.$name}: Dispose ${clientKeys.length} rascal clients ...`);
-        
+
         const asyncItrs = {};
         clientKeys.forEach(key => {
             let client = this._clients[key];
-            asyncItrs[client.$name] = client.dispose.bind(client); 
+            asyncItrs[client.$name] = client.dispose.bind(client);
         })
-        return await async.parallel(asyncItrs);
+        const result = {
+            rascal: await async.parallel(asyncItrs)
+        }
+        return result;
     }
 }
 
@@ -99,7 +128,7 @@ async function _initRascalClient() {
     broker.on('error', err => {
         logger.error(`${this.$name}[${this.state}]: Broker error! - ${err.message}`);
         this.state = eClientState.Null;
-        this.$parent.emit('client-end', this.$name, err);
+        this.emit('client-error', this.$name, err);
     });
     // Parse and save publication keys
     let publications = tools.safeGetJsonValue(this._config, 'params.publications');
@@ -117,18 +146,6 @@ async function _initRascalClient() {
     return 'ok'
 }
 
-function _parseEvent(message, content) {
-    let event = null;
-    // Parsing content to JSON
-    if (message.properties.contentType === 'text/plain') {
-        event = JSON.parse(content);
-    } else if (message.properties.contentType === 'application/json') {
-        event = content
-    } else {
-        throw new Error('Unrecognized contentType! Should be text/plain or application/json.');
-    }
-    return event;
-}
 
 async function _doSubscribe(broker, subscriptions) {
     let keys = Object.keys(subscriptions);
@@ -140,8 +157,7 @@ async function _doSubscribe(broker, subscriptions) {
                 //logger.debug(`${this.$name}[${this.state}]: Content= ${tools.inspect(content)}`);
                 // Processing message
                 try {
-                    let event = _parseEvent(message, content);
-                    this.$ebus.emit('rmq-msg', event);
+                    this.emit(this._emitEvent, message, content);
                     ackOrNack();
                 } catch (ex) {
                     logger.error(`*** ${this.$name}[${this.state}]: Parsing content error! - ${ex.message}`);
@@ -161,22 +177,20 @@ async function _doSubscribe(broker, subscriptions) {
 const _typeClientProps = {
     $id: 'string',
     $name: 'string',
-    $parent: 'object',
     //
     options: 'object'
 };
 
 
 // The client class
-class RascalClient extends CommonObject {
+class RascalClient extends EventObject {
     constructor(props) {
         super(props);
         // Declaring member variables
         this.state = eClientState.Null;
-        this.$parent = props.parent;
-        this.$ebus = props.ebus;
         //
-        this._config = props.options; // {vhost, connection, params}
+        this._config = props.config; // {vhost, connection, params}
+        this._emitEvent = props.event;
         this._broker = null;
         this._pubKeys = [];
     }
@@ -203,10 +217,10 @@ class RascalClient extends CommonObject {
             await this._broker.shutdown();
             this._broker = null;
             this.state = eClientState.Closed;
-            return `${this.$name}: shutdown succeed.`;
+            return 'closed';
         } catch (ex) {
             logger.error(`*** ${this.$name}[${this.state}]: shutdown error! - ${ex.message}`);
-            return `${this.$name}: ${ex.message}`
+            return ex.message;
         }
     }
     // Perform publishing

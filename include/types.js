@@ -163,9 +163,8 @@
 /**
  * The publish options
  * @typedef { Object } PublishOptions
- * @property { string } engine
  * @property { string } pubKey
- * @property { string } channel
+ * @property { string } routingKey
  * @property { string } dest
  */
 

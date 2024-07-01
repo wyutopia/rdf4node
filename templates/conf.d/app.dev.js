@@ -29,16 +29,9 @@ module.exports = exports = {
     },
     caches: {},
     distLocker: {},
-    eventBus: {
-        lo: true,
-        persistent: true,
-        disabledEvents: [],
-        triggerEvents: [],
-        engine: "native",   // Support engine: rabbitmq
-        // engine: "rabbitmq",
-        rabbitmq: {
-            vhost: "<vhost-name>",
-            connection: {
+    rabbitmq: {
+        connections: {
+            app: {
                 slashes: true,
                 protocol: 'amqp',
                 hostname: '127.0.0.1',
@@ -48,17 +41,29 @@ module.exports = exports = {
                 options: {
                     heartbeat: 4,
                     prefetch: 1
-                }
-            },
-            channels: {
-                default: {
-                    exchanges: {},
-                    queues: {},
-                    bindings: {},
-                    publications: {},
-                    subscriptions: {}
-                }
+                }                
             }
+        },
+        channels: {
+            default: {
+                exchanges: {},
+                queues: {},
+                bindings: {},
+                publications: {},
+                subscriptions: {}
+            }
+        }
+    },    
+    eventBus: {
+        lo: true,
+        persistent: true,
+        disabledEvents: [],
+        chainEvents: [],
+        engine: "native",   // Support engine: rabbitmq
+        options: {
+            vhost: '/',
+            connection: 'app',
+            channel: 'default'
         }
     },
     dataSources: {

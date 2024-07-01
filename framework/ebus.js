@@ -11,16 +11,15 @@ const eRetCodes = require('../include/retcodes');
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.EBUS;
 const { initObject, initModule } = require('../include/base');
-const { eSysEvents, EventObject, EventModule, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEST_LOCAL_ } = require('../include/events');
+const { eSysEvents, EventObject, EventModule, _DEFAULT_ROUTINGKEY_, _DEFAULT_PUBKEY_, _DEST_LOCAL_ } = require('../include/events');
 const tools = require('../utils/tools');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 const _defaultPubOptions = {
-    engine: sysdefs.eEventBusEngine.Native,
-    pubKey: _DEFAULT_PUBKEY_,
-    channel: _DEFAULT_CHANNEL_,
-    dest: _DEST_LOCAL_
+    pubKey: _DEFAULT_PUBKEY_
+    //routingKey: _DEFAULT_ROUTINGKEY_
+    //dest: _DEST_LOCAL_
 };
 
 // Define the eventLogger instance
@@ -34,37 +33,6 @@ class EventLogger extends EventObject {
             return true;
         }
     }
-    pub(evt, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
-        let src = tools.safeGetJsonValue(evt, 'headers.source');
-        // if (process.env.NODE_ENV === 'production') {
-        //     logger.info(`Publish event: ${evt.code} - ${src}`);
-        // } else {
-        //     logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)} - ${tools.inspect(options)}`);
-        // }
-        this._persistentAsync({
-            publisher: src,
-            code: evt.code,
-            headers: evt.headers,
-            body: evt.body,
-            options: options
-        }).then(() => { return callback(); }).catch(callback);
-    }
-    publish = this.pub;
-    con(evt, consumer, callback) {
-        let src = tools.safeGetJsonValue(evt, 'headers.source');
-        logger.debug(`Consume event: ${evt.code} - ${src} - ${consumer}`);
-        return this._persistentAsync({
-            consumer: consumer,
-            code: evt.code,
-            headers: evt.headers,
-            body: evt.body
-        }).then(() => { return callback(); }).catch(callback);
-    }
-    consume = this.con;
     // Followings are async methods
     async onPublish(evt, options) {
         return await this._persistentAsync({
@@ -86,14 +54,6 @@ class EventLogger extends EventObject {
     }
 }
 
-const _typeEventBusProps = {
-    lo: true,         // Indicate local-loop. default is true: all events consumed localy.
-    persistent: true,
-    disabledEvents: [],
-    chainEvents: [],
-    engine: sysdefs.eEventBusEngine.Native
-};
-
 function _parseChainEvents(conf) {
     const chainEvents = [];
     conf.forEach(item => {
@@ -106,6 +66,15 @@ function _parseChainEvents(conf) {
     });
     return chainEvents;
 }
+
+const _typeEventBusProps = {
+    lo: true,         // Indicate local-loop. default is true: all events consumed localy.
+    persistent: true,
+    disabledEvents: [],
+    chainEvents: [],
+    engine: sysdefs.eEventBusEngine.Native,
+    channel: 'app.default'
+};
 
 function _initEventBus(props) {
     // Init module base
@@ -122,38 +91,6 @@ function _initEventBus(props) {
 }
 
 /**
- * 
- * @param { Types.EventWrapper } rawEvent 
- * @param { Types.PublishOptions } options 
- * @param { * } callback 
- */
-function _consumeEvent(rawEvent, options, callback) {
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
-    }
-    logger.debug(`Perform consuming event: ${tools.inspect(rawEvent)} - ${tools.inspect(options)}`);
-    let event = (this._lo === true || options.engine === sysdefs.eCacheEngine.Native) ? rawEvent : rawEvent.content;
-    let subscribers = this._subscribers[event.code];
-    if (tools.isTypeOfArray(subscribers)) {
-        subscribers.forEach(moduleName => {
-            let registry = this._registries[moduleName];
-            if (!registry || registry.status !== sysdefs.eStatus.ACTIVE) {
-                logger.info(`Ignore non-active module! - ${moduleName}`);
-            } else {
-                try {
-                    logger.debug(`Emit message for ${registry.moduleRef.$name}`);
-                    registry.moduleRef.emit('message', event);
-                } catch (ex) {
-                    logger.error(`Emit app-event error for module: ${moduleName} - ${tools.inspect(ex)}`);
-                }
-            }
-        });
-    }
-    setTimeout(_pubTriggerEvents.bind(this, event, options, callback), 5);
-}
-
-/**
  * @typedef { Object} TriggerEvent - The TriggerEvent Class
  * @property { String } pattern - The RegExp pattern for matching original event code
  * @property { String } code - The new event code
@@ -167,67 +104,19 @@ const _typeTriggerEvent = {
     select: 'string'
 };
 
-function _pubTriggerEvents(evt, options, callback) {
-    if (!this._chainEvents || this._chainEvents.length === 0) {
-        return callback();
-    }
-    async.eachLimit(this._chainEvents, 3, (chainEvent, next) => {
-        if (chainEvent.ignore.indexOf(evt.code) !== -1) {
-            return process.nextTick(next);
-        }
-        let result = chainEvent.pattern.exec(evt.code);
-        if (!result) {
-            return process.nextTick(next);
-        }
-        let event = {
-            code: chainEvent.code,
-            headers: evt.headers,
-            body: chainEvent.select ? _buildChainEventBody(evt.body, chainEvent.select) : evt.body
-        }
-        logger.debug(`Chained event: ${chainEvent.code} triggered for ${evt.code}`);
-        return this.publish(event, evt.headers.triggerOptions || options, next);
-    }, () => {
-        return callback();
-    });
-}
 
-/**
- * 
- * @param { Types.EventWrapper } event 
- * @param { Types.PublishOptions } options 
- * @param { function } callback 
- * @returns 
- */
-function _extMqPub(event, options, callback) {
-    if (typeof options === 'function') {
-        callback = options;
-        options = _defaultPubOptions;
+function _parseEvent(message, content) {
+    let event = null;
+    // Parsing content to JSON
+    if (message.properties.contentType === 'text/plain') {
+        event = JSON.parse(content);
+    } else if (message.properties.contentType === 'application/json') {
+        event = content
+    } else {
+        throw new Error('Unrecognized contentType! Should be text/plain or application/json.');
     }
-    let engine = options.engine || sysdefs.eEventBusEngine.RabbitMQ;
-    let channel = options.channel || _defaultPubOptions.channel;
-    let pubKey = options.pubKey || _defaultPubOptions.pubKey;
-    // Find client
-    let clientId = `${channel}@${engine}`;
-    let client = this._clients[clientId];
-    if (!client) {
-        return callback({
-            code: eRetCodes.MQ_PUB_ERR,
-            message: `Invalid client! - id=${clientId}`
-        })
-    }
-    // Set triggerOptions for publishing triggerEvents
-    event.headers.triggerOptions = { engine, channel, pubKey };
-    // Invoke publishing
-    return client.publish(pubKey, event, { routingKey: event.code }, callback);
+    return event;
 }
-
-const _typeRegisterOptions = {
-    subEvents: 'Array<String>', // Conditional on engine = 'native'
-    // For message queue
-    engine: 'native',
-    channel: 'default',
-    pubKey: 'pubEvent'
-};
 
 /**
  * @typedef RegisterOptions
@@ -246,18 +135,9 @@ class EventBus extends EventModule {
         this.lastError = '';
         this._registries = {};
         this._subscribers = {};
-        this._queues = {};
         // For external MQs, identified by channel
-        this._clients = {};
+        this._mqClient = null;
         // Define event handler
-        this.on('rmq-msg', async (evt) => {
-            try {
-                const results = await _consumeAsync.call(this, evt);
-                logger.debug(`>>> Handle ${evt.code} results - ${tools.inspect(results)}`);
-            } catch(ex) {
-                logger.error(`*** Handle ${evt.code} error! - ${ex.message}`);
-            }
-        });
         this.on('client-end', clientId => {
             logger.error(`Client#${clientId} end.`);
         });
@@ -268,49 +148,30 @@ class EventBus extends EventModule {
             return false;
         }
         _initEventBus.call(this, config);
-        // Create eventLogger
-        // const fn = typeof options.fnEventLogger === 'function' ? options.fnEventLogger : EventLogger;
-        // this._eventLogger = new fn(this._appCtx, {
-        //     $name: sysdefs.eFrameworkModules.EVTLOGGER
-        // });
-        if (this._lo === true) { //local loop
+        if (this._engine !== sysdefs.eEventBusEngine.RabbitMQ) { // Using native engine
+            this._engine === sysdefs.eEventBusEngine.Native; // Set to native!!!
             this.state = sysdefs.eModuleState.ACTIVE;
             return true;
         }
-        // >>>  Create rabbitmq if necessary <<<
+        // Create rabbitmq client if configed <<<
         try {
-            const { RascalFactory } = require('../libs/common/rascal.wrapper');
-            this._rascalFactory = new RascalFactory(this._appCtx, {
-                $name: sysdefs.eFrameworkModules.RascalFactory,
-                $type: sysdefs.eModuleType.CM,
-                mandatory: true,
-                state: sysdefs.eModuleState.ACTIVE
-            });
-            // Step 2: Create rascal client
-            let mqConf = config[config.engine] || {};
-            //
-            let vhost = mqConf.vhost;
-            let connection = mqConf.connection;
-            Object.keys(mqConf.channels).forEach(async chn => {
-                let clientId = `${chn}@${config.engine}`;
-                let clientOptions = {
-                    vhost: vhost,
-                    connection: connection,
-                    params: mqConf.channels[chn]
-                }
+            let clientOptions = Object.assign({
+                event: 'rmq-msg'
+            }, config.options);
+            this._mqClient = await this._appCtx.rascalFactory.getClient(clientOptions);
+            this._mqClient.on('rmq-msg', async (message, content) => {
                 try {
-                    let client = this._rascalFactory.getClient(clientId, clientOptions);
-                    await client.init();
-                    this._clients[clientId] = client;
-                } catch(err) {
-                    logger.error(`>>> Create and init rascalClient#${clientId} error! - ${err.message}`);
+                    let evt = _parseEvent(message, content);
+                    const results = await _consumeAsync.call(this, evt);
+                    logger.debug(`>>> Handle ${evt.code} results - ${tools.inspect(results)}`);
+                } catch(ex) {
+                    logger.error(`*** Handle ${evt.code} error! - ${ex.message}`);
                 }
-            });
-            logger.info(`>>>>>> rabbitmq clients - ${tools.inspect(Object.keys(this._clients))}`);
-            this.state = sysdefs.eModuleState.ACTIVE;
+            })
+            logger.info(`>>> rabbitmq client: ${tools.inspect(clientOptions)} created.`);
             return true;
         } catch (ex) {
-            logger.error(`>>> Initialize rabbitmq(rascal lib) error! - ${ex.message}`);
+            logger.error(`*** Initialize rabbitmq(rascal lib) error! - ${ex.message}`);
             this.state = sysdefs.eModuleState.SUSPEND;
             this.lastError = ex.message;
             return false;
@@ -364,65 +225,37 @@ class EventBus extends EventModule {
      * @param { Types.PublishOptions? } options 
      */
     async pubAsync(event, options) {
-        if (options === undefined) {
-            options = _defaultPubOptions;
-        }
-        logger.debug(`*** Publish event: ${tools.inspect(event)} - ${tools.inspect(options)}`);
+        let pubOpt = Object.assign({}, _defaultPubOptions, options || {});
+        logger.debug(`*** Publish event: ${tools.inspect(event)} - ${tools.inspect(pubOpt)}`);
         if (this._disabledEvents.includes(event.code)) {
-            logger.warn(`****** Ignore disabled event: ${event.code}`);
+            logger.warn(`!!! Ignore disabled event: ${event.code}`);
             return true;
         }
-        try {
+        if (this._persistent && this._eventLogger) {
             try {
-                await this._eventLogger.onPublish(event, options);
+                await this._eventLogger.onPublish(event, pubOpt);
             } catch (err) {
-                logger.error(`***! Log event error! - ${err.message}`);
+                logger.error(`***! Persistent publish event error! - ${err.message}`);
             }
-            let nextFn = (this._lo === true || options.dest === _DEST_LOCAL_) ? _consumeAsync : _publishAsync;
-            const original = await nextFn.call(this, event, options);
-            const chain = await _triggerChainEvents.call(this, event, options);
+        }
+        try {
+            let nextFn = (this._lo === true || this._engine === sysdefs.eEventBusEngine.Native || pubOpt.dest === _DEST_LOCAL_) ? _consumeAsync : _publishAsync;
+            const original = await nextFn.call(this, event, pubOpt);
+            const chain = await _triggerChainEvents.call(this, event, pubOpt);
             return { original, chain };
         } catch (ex) {
             logger.error(`***! Publish error: ${tools.inspect(event)} - ${ex.message}`);
             return false;
         }
     }
-    /**
-     * 
-     * @param { Types.EventWrapper } event 
-     * @param { Types.PublishOptions } options 
-     * @param {Error, Result} callback 
-     * @returns 
-     */
-    publish(event, options, callback) {
-        // if (typeof options === 'function') {
-        //     callback = options;
-        //     options = _defaultPubOptions;
-        // }
-        // logger.debug(`Publish event - ${tools.inspect(event)} - ${tools.inspect(options)}`)
-        // //
-        // if (this._disabledEvents.indexOf(event.code) !== -1) {
-        //     logger.debug(`Ignore disabled event: ${event.code}`);
-        //     return callback();
-        // }
-        // return this._eventLogger.pub(event, options, () => {
-        //     //
-        //     if (this._lo === true || options.engine === sysdefs.eEventBusEngine.Native) {
-        //         return process.nextTick(_consumeEvent.bind(this, event, options, callback));
-        //     }
-        //     return _extMqPub.call(this, event, options, callback);
-        // });
-        this.pubAsync(event, options).then(() => {
-            return callback();
-        }).catch(callback);
-    }
 }
 
 /**
  * 
- * @param { Types.EventWrapper } event 
+ * @param { Types.EventWrapper } event
+ * * @param { Types.PublishOptions? } options 
  */
-async function _consumeAsync(event) {
+async function _consumeAsync(event, options) {
     let subscribers = this._subscribers[event.code] || [];
     if (!Array.isArray(subscribers) || subscribers.length === 0) {
         logger.warn(`### No consumers.`);
@@ -461,6 +294,12 @@ function _buildChainEventBody(originBody, select) {
     return body;
 }
 
+/**
+ * 
+ * @param { Types.EventWrapper } originEvent 
+ * @param { Types.PublishOptions } options 
+ * @returns 
+ */
 async function _triggerChainEvents(originEvent, options) {
     if (!this._chainEvents || this._chainEvents.length === 0) {
         return 'noop';
@@ -492,19 +331,15 @@ async function _triggerChainEvents(originEvent, options) {
  * @param { Types.PublishOptions } options 
  */
 async function _publishAsync(event, options) {
-    let engine = sysdefs.eEventBusEngine.RabbitMQ;
-    let channel = options.channel || _defaultPubOptions.channel;
     let pubKey = options.pubKey || _defaultPubOptions.pubKey;
-    // Find client
-    let clientId = `${channel}@${engine}`;
-    let client = this._clients[clientId];
-    if (!client) {
-        throw new Error(`Invalid client by id: ${clientId}`);
+    // Check client
+    if (!this._mqClient) {
+        throw new Error(`*** Invalid mqClient!`);
     }
     // Set triggerOptions for publishing triggerEvents
     //event.headers.triggerOptions = { engine, channel, pubKey };
     // Invoke publishing
-    return await client.pubAsync(pubKey, event, { routingKey: event.code });
+    return await this._mqClient.pubAsync(pubKey, event, { routingKey: event.code });
 }
 
 // Define module

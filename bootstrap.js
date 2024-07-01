@@ -36,7 +36,6 @@ async function bootstrap() {
     global.theApp = theApp;
     process.on('SIGINT', async () => {
         logger.info('>>> On SIGINT <<<');
-        theApp.setState(sysdefs.eModuleState.STOP_PENDING);
         try {
             const code = await theApp.gracefulExit();
             return process.exit(code);
@@ -51,15 +50,18 @@ async function bootstrap() {
         result.framework = await theApp.initFramework(config);
         //
         logger.info('====== Step 2: Load extensions ======');
-        result.daemons = theApp.loadExtensions(config.extensions || {});
+        result.extensions = theApp.loadExtensions(config.extensions || {});
         //
-        logger.info('====== Step 3: Load daemon tasks ======');
-        result.daemons = theApp.loadDaemons(config.daemons || {});
+        logger.info('====== Step 3: Start daemons ======');
+        result.daemons = await theApp.startDaemons(config.daemons || {});
         //
+        theApp.setState(sysdefs.eModuleState.READY);
         logger.info('====== Step 4: App startup ======');
         result.start = await theApp.start();
+        theApp.setState(sysdefs.eModuleState.ACTIVE);
     } catch (ex) {
         logger.error(`!!! Bootstrap error! - ${tools.inspect(ex)}`);
+        theApp.setState(sysdefs.eModuleState.OOS);
     }
     return result;
 }

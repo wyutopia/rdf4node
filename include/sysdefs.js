@@ -71,13 +71,13 @@ const eFrameworkModules = {
 exports.eFrameworkModules = eFrameworkModules;
 
 const eModuleState = {
-    INIT          : 'init',
-    READY         : 'ready',
-    START_PENDING : 'start_p',
-    ACTIVE        : 'active',
-    SUSPEND       : 'suspend',
-    STOP_PENDING  : 'stop_p',
-    ERROR         : 'error'
+    INIT          : 'Init',
+    READY         : 'Ready',
+    START_PENDING : 'StartPending',
+    ACTIVE        : 'Active',
+    SUSPEND       : 'Suspend',
+    STOP_PENDING  : 'StopPending',
+    OOS           : 'OutOfService'
 };
 exports.eModuleState = eModuleState;
 exports.isValidModuleStatus = function (s) {
