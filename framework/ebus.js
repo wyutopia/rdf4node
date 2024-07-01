@@ -200,7 +200,7 @@ class EventBus extends EventModule {
                     logger.error(`*** Handle ${evt.code} error! - ${ex.message}`);
                 }
             })
-            logger.info(`>>> rabbitmq client: ${config.channel} created.`);
+            logger.info(`>>> rabbitmq client: ${tools.inspect(clientOptions)} created.`);
             return true;
         } catch (ex) {
             logger.error(`*** Initialize rabbitmq(rascal lib) error! - ${ex.message}`);
@@ -371,7 +371,7 @@ async function _publishAsync(event, options) {
     // Set triggerOptions for publishing triggerEvents
     //event.headers.triggerOptions = { engine, channel, pubKey };
     // Invoke publishing
-    return await this._mqClient.pubAsync(pubKey, event, { routingKey: options.routingKey || event.code });
+    return await this._mqClient.pubAsync(pubKey, event, { routingKey: event.code });
 }
 
 // Define module
