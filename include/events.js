@@ -20,6 +20,7 @@ const tools = require('../utils/tools');
 //
 const _DEFAULT_CHANNEL_ = 'default';
 const _DEFAULT_PUBKEY_ = 'pubApp';
+const _DEFAULT_ROUTINGKEY_ = 'app.#';
 const _DEST_LOCAL_ = 'local';
 
 const eDomainEvent = {
@@ -65,16 +66,6 @@ class EventObject extends EventEmitter {
     }
 }
 
-const _baseEventOptions = {
-    engine: sysdefs.eEventBusEngine.Native,
-    channel: _DEFAULT_CHANNEL_,
-    pubKey: _DEFAULT_PUBKEY_
-}
-
-function _triggerEvent(event, options, callback) {
-    return callback();
-}
-
 // Declaring the EventModule
 class EventModule extends EventObject {
     constructor(appCtx, props) {
@@ -85,7 +76,9 @@ class EventModule extends EventObject {
         initModule.call(this, props);
         // Save event properties
         this._eventHandlers = props.eventHandlers || {};
-        this._eventOptions = Object.assign({}, _baseEventOptions, props.eventOptions || {});
+        this._eventOptions = Object.assign({
+            pubKey: _DEFAULT_PUBKEY_
+        }, props.eventOptions || {});
         this.on('message', (msg) => {
             setTimeout(this.onMessage.bind(this, msg), 5);
         });
@@ -129,6 +122,6 @@ class EventModule extends EventObject {
 
 // Declaring module exports
 module.exports = exports = {
-    eDomainEvent, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEST_LOCAL_,
+    eDomainEvent, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEST_LOCAL_, _DEFAULT_ROUTINGKEY_,
     EventObject, EventModule,
 };

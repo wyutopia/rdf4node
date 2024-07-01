@@ -11,15 +11,14 @@ const eRetCodes = require('../include/retcodes');
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.EBUS;
 const { initObject, initModule } = require('../include/base');
-const { eSysEvents, EventObject, EventModule, _DEFAULT_CHANNEL_, _DEFAULT_PUBKEY_, _DEST_LOCAL_ } = require('../include/events');
+const { eSysEvents, EventObject, EventModule, _DEFAULT_ROUTINGKEY_, _DEFAULT_PUBKEY_, _DEST_LOCAL_ } = require('../include/events');
 const tools = require('../utils/tools');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 const _defaultPubOptions = {
-    engine: sysdefs.eEventBusEngine.Native,
     pubKey: _DEFAULT_PUBKEY_,
-    channel: _DEFAULT_CHANNEL_,
+    routingKey: _DEFAULT_ROUTINGKEY_,
     dest: _DEST_LOCAL_
 };
 
@@ -34,37 +33,6 @@ class EventLogger extends EventObject {
             return true;
         }
     }
-    pub(evt, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = {};
-        }
-        let src = tools.safeGetJsonValue(evt, 'headers.source');
-        // if (process.env.NODE_ENV === 'production') {
-        //     logger.info(`Publish event: ${evt.code} - ${src}`);
-        // } else {
-        //     logger.debug(`Publish event: ${evt.code} - ${src} - ${tools.inspect(evt.body)} - ${tools.inspect(options)}`);
-        // }
-        this._persistentAsync({
-            publisher: src,
-            code: evt.code,
-            headers: evt.headers,
-            body: evt.body,
-            options: options
-        }).then(() => { return callback(); }).catch(callback);
-    }
-    publish = this.pub;
-    con(evt, consumer, callback) {
-        let src = tools.safeGetJsonValue(evt, 'headers.source');
-        logger.debug(`Consume event: ${evt.code} - ${src} - ${consumer}`);
-        return this._persistentAsync({
-            consumer: consumer,
-            code: evt.code,
-            headers: evt.headers,
-            body: evt.body
-        }).then(() => { return callback(); }).catch(callback);
-    }
-    consume = this.con;
     // Followings are async methods
     async onPublish(evt, options) {
         return await this._persistentAsync({
@@ -85,8 +53,6 @@ class EventLogger extends EventObject {
         })
     }
 }
-
-
 
 function _parseChainEvents(conf) {
     const chainEvents = [];
@@ -291,25 +257,23 @@ class EventBus extends EventModule {
      * @param { Types.PublishOptions? } options 
      */
     async pubAsync(event, options) {
-        if (options === undefined) {
-            options = _defaultPubOptions;
-        }
-        logger.debug(`*** Publish event: ${tools.inspect(event)} - ${tools.inspect(options)}`);
+        let pubOpt = Object.assign({}, _defaultPubOptions, options || {});
+        logger.debug(`*** Publish event: ${tools.inspect(event)} - ${tools.inspect(pubOpt)}`);
         if (this._disabledEvents.includes(event.code)) {
             logger.warn(`****** Ignore disabled event: ${event.code}`);
             return true;
         }
         if (this._persistent && this._eventLogger) {
             try {
-                await this._eventLogger.onPublish(event, options);
+                await this._eventLogger.onPublish(event, pubOpt);
             } catch (err) {
                 logger.error(`***! Persistent publish event error! - ${err.message}`);
             }
         }
         try {
-            let nextFn = (this._lo === true || this._engine === sysdefs.eEventBusEngine.Native || options.dest === _DEST_LOCAL_) ? _consumeAsync : _publishAsync;
-            const original = await nextFn.call(this, event, options);
-            const chain = await _triggerChainEvents.call(this, event, options);
+            let nextFn = (this._lo === true || this._engine === sysdefs.eEventBusEngine.Native || pubOpt.dest === _DEST_LOCAL_) ? _consumeAsync : _publishAsync;
+            const original = await nextFn.call(this, event, pubOpt);
+            const chain = await _triggerChainEvents.call(this, event, pubOpt);
             return { original, chain };
         } catch (ex) {
             logger.error(`***! Publish error: ${tools.inspect(event)} - ${ex.message}`);
@@ -320,9 +284,10 @@ class EventBus extends EventModule {
 
 /**
  * 
- * @param { Types.EventWrapper } event 
+ * @param { Types.EventWrapper } event
+ * * @param { Types.PublishOptions? } options 
  */
-async function _consumeAsync(event) {
+async function _consumeAsync(event, options) {
     let subscribers = this._subscribers[event.code] || [];
     if (!Array.isArray(subscribers) || subscribers.length === 0) {
         logger.warn(`### No consumers.`);
@@ -361,6 +326,12 @@ function _buildChainEventBody(originBody, select) {
     return body;
 }
 
+/**
+ * 
+ * @param { Types.EventWrapper } originEvent 
+ * @param { Types.PublishOptions } options 
+ * @returns 
+ */
 async function _triggerChainEvents(originEvent, options) {
     if (!this._chainEvents || this._chainEvents.length === 0) {
         return 'noop';
@@ -400,7 +371,7 @@ async function _publishAsync(event, options) {
     // Set triggerOptions for publishing triggerEvents
     //event.headers.triggerOptions = { engine, channel, pubKey };
     // Invoke publishing
-    return await this._mqClient.pubAsync(pubKey, event, { routingKey: event.code });
+    return await this._mqClient.pubAsync(pubKey, event, { routingKey: options.routingKey || event.code });
 }
 
 // Define module
