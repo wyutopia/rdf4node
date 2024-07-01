@@ -17,8 +17,8 @@ const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 
 const _defaultPubOptions = {
-    pubKey: _DEFAULT_PUBKEY_,
-    routingKey: _DEFAULT_ROUTINGKEY_
+    pubKey: _DEFAULT_PUBKEY_
+    //routingKey: _DEFAULT_ROUTINGKEY_
     //dest: _DEST_LOCAL_
 };
 
