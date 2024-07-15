@@ -107,9 +107,11 @@ class HttpEndpoint extends Endpoint {
             }
             // Step 4: Setup customer specified middlewares
             if (this._config.middlewares) {
+                let pathName = this._config.middlewares.path || 'endpoints';
+                let fileName = this._config.middlewares.file || 'middlewares.express.js';
                 try {
                     const result = {};
-                    let fullPath = path.join(appRoot.path, this._config.middlewares);
+                    let fullPath = path.join(appRoot.path, pathName, fileName);
                     const mws = require(fullPath);
                     mws.forEach(mw => {
                         try {
