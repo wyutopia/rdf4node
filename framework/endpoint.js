@@ -13,10 +13,6 @@ const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 // The endpoint kinds
 const { eProtocol } = require('../include/endpoint');
 
-
-
-
-
 // Define the endpoint constructor map
 const _epConstructor = {};
 function _getEpModule(proto) {

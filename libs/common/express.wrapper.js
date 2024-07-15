@@ -1,8 +1,9 @@
 /**
  * Created by Eric on 16/4/2.
  */
+const path = require('path');
 const appRoot = require('app-root-path');
-const { eRequestAuthType } = require('../../include/sysdefs');
+const { eRequestAuthType, eModuleState } = require('../../include/sysdefs');
 const express = require('express');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger();

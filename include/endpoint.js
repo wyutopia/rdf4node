@@ -1,8 +1,8 @@
 /**
  * Created by Eric on 2024/07/13
  */
+const { eModuleState } = require('./sysdefs');
 const { EventModule } = require('./events');
-
 function normalizePort(val) {
     let port = parseInt(val, 10);
     if (isNaN(port)) {
@@ -40,5 +40,5 @@ const eProtocol = {
 
 //
 module.exports = exports = {
-    Endpoint, normalizePort
+    Endpoint, normalizePort, eProtocol
 }
