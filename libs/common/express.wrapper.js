@@ -6,7 +6,7 @@ const appRoot = require('app-root-path');
 const { eRequestAuthType, eModuleState } = require('../../include/sysdefs');
 const express = require('express');
 const { WinstonLogger } = require('../base/winston.wrapper');
-const logger = WinstonLogger();
+const logger = WinstonLogger(process.env.SRV_ROLE);
 const tools = require('../../utils/tools');
 
 // Get prototype of HttpResponse

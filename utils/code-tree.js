@@ -2,7 +2,7 @@
  * Created by Eric on 2024/07/06
  */
 const { WinstonLogger } = require('../libs/base/winston.wrapper')
-const logger = WinstonLogger();
+const logger = WinstonLogger(process.env.SRV_ROLE || 'codetree');
 
 
 // The node class
