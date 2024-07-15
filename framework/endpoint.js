@@ -12,20 +12,31 @@ const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 // The endpoint kinds
 const { eProtocol } = require('../include/endpoint');
-const { HttpEndpoint } = require('../libs/common/express.wrapper');
-const { gRpcEndpoint } = require('../libs/common/grpc.wrapper');
-const { TcpEndpoint, UdpEndpoint } = require('../libs/common/net.wrapper');
-const { WebSockEndpoint } = require('../libs/common/ws.wrapper');
+
+
+
 
 
 // Define the endpoint constructor map
 const _epConstructor = {};
-_epConstructor[eProtocol.HTTP] = HttpEndpoint;
-_epConstructor[eProtocol.WebSock] = WebSockEndpoint;
-_epConstructor[eProtocol.gRPC] = gRpcEndpoint;
-_epConstructor[eProtocol.TCP] = TcpEndpoint;
-_epConstructor[eProtocol.UDP] = UdpEndpoint;
-
+function _getEpModule(proto) {
+    if (!_epConstructor[proto]) {
+        if (proto === eProtocol.HTTP) {
+            const { HttpEndpoint } = require('../libs/common/express.wrapper');
+            _epConstructor[proto] = HttpEndpoint;
+        } else if (proto === eProtocol.WebSock) {
+            const { WebSockEndpoint } = require('../libs/common/ws.wrapper');
+            _epConstructor[eProtocol.WebSock]
+        } else if (proto === eProtocol.gRPC) {
+            const { gRpcEndpoint } = require('../libs/common/grpc.wrapper');
+            _epConstructor[eProtocol.gRPC] = gRpcEndpoint;
+        } else if (proto === eProtocol.TCP || proto === eProtocol.UDP) {
+            const { TcpEndpoint, UdpEndpoint } = require('../libs/common/net.wrapper');
+            _epConstructor[proto] = proto === eProtocol.TCP? TcpEndpoint : UdpEndpoint;
+        }
+    }
+    return _epConstructor[proto];
+}
 
 // The Endpoint factory class
 class EndpointFactory extends EventModule {
@@ -49,7 +60,7 @@ class EndpointFactory extends EventModule {
         const arr = tools.isTypeOfArray(config) ? config : [config];
         await async.each(arr, async item => {
             try {
-                const EpModule = _epConstructor[item.protocol];
+                const EpModule = _getEpModule(item.protocol);
                 const ep = new EpModule(this._appCtx, { 
                     $name: `${item.name}@${this.$name}`,
                     managed: true
