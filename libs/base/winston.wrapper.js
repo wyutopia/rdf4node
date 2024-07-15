@@ -37,6 +37,10 @@ const jsonFormatter = (logEntry) => {
 
 let gLoggers = {};
 class WinstonLogger {
+    /**
+     * Create a logger by name
+     * @param { string? } name 
+     */
     constructor(name) {
         this._logger = winston.createLogger({
             level: logLevel,

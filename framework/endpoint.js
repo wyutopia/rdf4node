@@ -3,330 +3,38 @@
  * Updated by Eric on 2024/01/20
  */
 const async = require('async');
-const appRoot = require('app-root-path');
-const util = require('util');
-const path = require('path');
 //
 const { EventModule } = require('../include/events');
-const { eFrameworkModules, eModuleState, eRequestAuthType } = require('../include/sysdefs');
-const _MODULE_NAME = eFrameworkModules.ENDPOINT;
+const { eFrameworkModules, eModuleState } = require('../include/sysdefs');
 const tools = require('../utils/tools');
-// The endpoint kinds
-const { _DS_DEFAULT_ } = require('./repository');
-
-//const gRpc = require('../libs/common/grpc.wrapper');
-//const net = require('../libs/common/net.wrapper');
-
+const _MODULE_NAME = eFrameworkModules.ENDPOINT;
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
+// The endpoint kinds
+const { eProtocol } = require('../include/endpoint');
 
-function normalizePort(val) {
-    let port = parseInt(val, 10);
-    if (isNaN(port)) {
-        // named pipe
-        return val;
-    }
-    if (port >= 0) {
-        // port number
-        return port;
-    }
-    return 3000;
-}
-
-// The class
-class Endpoint extends EventModule {
-    constructor(appCtx, props) {
-        super(appCtx, props);
-        // Define the public member variables
-        this._server = null;
-        this._config = null;
-        this._state = eModuleState.INIT;
-    }
-    async dispose() {
-        return 'ok';
-    }
-}
-
-// The http endpoint
-class HttpEndpoint extends Endpoint {
-    constructor(appCtx, props) {
-        super(appCtx, props);
-        //
-        this._routeManager = null;
-    }
-    init(options) {
-        if (this._state !== eModuleState.INIT) {
-            logger.error(`${this.$name}: Already initialized!`);
-            return null;
-        }
-        this._config = options;
-        this._port = normalizePort(options.port || process.env.PORT || '3000');
-        // Update state
-        this._state = eModuleState.READY;
-    }
-    async start() {
-        if (this._state !== eModuleState.READY) {
-            logger.error(`${this.$name}: endpoint is not ready!`);
-            return false;
-        }
-        try {
-            this._state = eModuleState.START_PENDING;
-            // Dynamicly load http and express libs
-            const http = require('http');
-            const cookieParser = require('cookie-parser');
-            const createError = require('http-errors');
-            const express = require('../libs/base/express.wrapper');
-            const router = express.Router();
-            const MorganWrapper = require('../libs/base/morgan.wrapper');
-            const httpLogger = MorganWrapper(process.env.SRV_ROLE);
-            const { RouteManager } = require('../libs/common/router');
-            const { createRateLimit } = require('../libs/common/ratelimit.wrapper');            
-            //
-            const app = express();
-            if (this._config.trustProxy !== undefined) {
-                try {
-                    let numberOfProxies = parseInt(this._config.trustProxy);
-                    app.set('trust proxy', numberOfProxies);    
-                } catch (ex) {
-                    logger.error(`!!! Set trust-proxy error! - ${ex.message}`);
-                }
-            }
-            // Step 1: Setup view engine
-            app.set('views', this._config.viewPath || path.join(appRoot.path, 'views'));
-            app.set('view engine', this._config.engine || 'ejs');
-            // Step 2: Setup middlewares
-            app.use(httpLogger);
-            app.use(express.json({ limit: this._config.payloadLimit || '50mb' }));
-            app.use(express.urlencoded({ extended: false }));
-            app.use(cookieParser());
-            app.use(express.static(this._config.staticPath || path.join(appRoot.path, 'public')));
-            // Step 3: Set rateLimit on demand
-            if (this._config.enableRateLimit && this._config.rateLimit) {
-                let limiter = await createRateLimit(this._config.rateLimit);
-                app.use(limiter);
-                logger.info('>>>>>> Rate limitation enabled. <<<<<<');
-            } else {
-                logger.info('>>>>>> Rate limitation disabled. <<<<<<');
-            }
-            // Step 4: Setup middleware session while authType is cookie
-            const authConfig = this._config.authentication;
-            if (authConfig && authConfig.type === eRequestAuthType.COOKIE) {
-                try {
-                    const session = require('./session')(authConfig.store, authConfig.options);
-                    app.use(session);
-                } catch (ex) {
-                    logger.error(`!!! Setup session error! - ${ex.message}`);
-                }
-            }
-            // Step 5: Setup dataSource middleware
-            const dsName = process.env.DS_DEFAULT || _DS_DEFAULT_;
-            app.use((req, res, next) => {
-                req.dataSource = {
-                    dsName: dsName
-                };
-                if (req.headers.datasource === undefined) {
-                    req.headers.datasource = dsName;
-                }
-                logger.debug(`++++++ The x-forwarded-for: ${req.headers['x-forwarded-for']}`);
-                return next();
-            })
-            // Step 6: Setup routes
-            this._routeManager = new RouteManager({
-                $name: `${this.$name}@ep`
-            });
-            this._routeManager.init(router, this._config);
-            app.use('/', router);
-            // The 404 and forware to error handler
-            app.use(function (req, res, next) {
-                next(createError(404));
-            })
-            app.use(function (err, req, res, next) {
-                // set locals, only providing error in development
-                logger.error(err, err.stack);
-                res.locals.message = err.message;
-                //
-                if (req.app.get('env') === 'development') {
-                    res.locals.error = err;
-                } else {
-                    res.locals.error = {};
-                }
-                // render the error page
-                res.status(err.status || 500);
-                res.render('error');
-            });
-            app.set('port', this._port);
-            this._server = http.createServer(app);
-            this._server.on('error', (error) => {
-                if (error.syscall !== 'listen') {
-                    throw error;
-                }
-                let bind = typeof this._port === 'string'
-                    ? 'Pipe ' + this._port
-                    : 'Port ' + this._port;
-    
-                // handle specific listen errors with friendly messages
-                switch (error.code) {
-                    case 'EACCES':
-                        console.error(bind + ' requires elevated privileges');
-                        //
-                        theApp.emit('app.exit', 1);
-                        //process.exit(1);
-                        break;
-                    case 'EADDRINUSE':
-                        console.error(bind + ' is already in use');
-                        theApp.emit('app.exit', 1);
-                        //process.exit(1);
-                        break;
-                    default:
-                        throw error;
-                }
-            });
-            this._server.on('listening', () => {
-                let addr = this._server.address();
-                let bind = typeof addr === 'string'
-                    ? 'pipe ' + addr
-                    : 'port ' + addr.port;
-                logger.info('Listening on ' + bind);
-                //
-                this._state = eModuleState.ACTIVE;
-            });
-            this._server.listen(this._port);
-            return 'ok';
-        } catch(ex) {
-            this._state = eModuleState.OOS;
-            this.lastError = ex.message;
-            logger.error(`!!! ${this.$name}: Start http@endpoint failure! - ${ex.message}`);
-            return ex.message;
-        }
-    }
-    getInstance() {
-        return this._server;
-    }
-    async dispose() {
-        if (this._server) {
-            this._server.close();
-            return `${this.$name} closed`;
-        }
-        return 0;
-    }
-}
-
-class WebSockEndpoint extends Endpoint {
-    constructor(appCtx, props) {
-        super(appCtx, props);
-        //
-    }
-    init(options) {
-        if (this._state !== eModuleState.INIT) {
-            logger.error(`${this.$name}: Already initialized!`);
-            return null;
-        }
-        this._config = options;
-        this._port = normalizePort(options.port || process.env.WS_PORT || '18080');
-        this._wss = null;
-        this._heartbeat = null;
-        this._clientManager = null;
-        // Update state
-        this._state = eModuleState.READY;
-    }
-    async start() {
-        if (this._state !== eModuleState.READY) {
-            logger.error(`${this.$name}: endpoint is not ready!`);
-            return this._state;
-        }
-        try {
-            this._state = eModuleState.START_PENDING;
-            //
-            const { WSRouter, WebSocket} = require('../libs/common/ws.wrapper');
-            // 
-            this._router = new WSRouter(this._appCtx, {$name: '_wsrt_'});
-            let paths = await this._router.init(this._config.routePath || 'wss');
-            logger.info(`>>> Supported pathnames: ${tools.inspect(paths)}`);
-            // 
-            const WebSocketServer = WebSocket.WebSocketServer;
-            this._wss = new WebSocketServer({
-                port: this._port
-            })
-            this._wss.on('connection', async (ws, req) => {
-                try {
-                    const xff = req.headers['x-forwarded-for'];
-                    const clientIp = xff? xff.split(',')[0].trim() : req.socket.remoteAddress;
-                    //
-                    let url = new URL(`http://localhost${req.url}`);
-                    const r = await this._router.onConnection(ws, {
-                        pathname: url.pathname,
-                        searchParams: url.searchParams,
-                        clientIp
-                    })
-                } catch(err) {
-                    logger.error(`*** On connection error! - ${err.message}`);
-                    ws.close();
-                }
-            }).on('error', err => {
-                logger.error(`${this.$name} >> wss error! - ${err.message}`);
-                this._state = eModuleState.OSS;
-            }).on('close', () => {
-                logger.error(`${this.$name} >> wss closed!`);
-                this._wss = null;
-                if (this._heartbeat) {
-                    clearInterval(this._heartbeat);
-                    this._heartbeat = null;
-                }
-                this._state = eModuleState.READY;
-            });
-            //
-            this._state = eModuleState.ACTIVE;
-            logger.info(`${this.$name}: wss listening on port ${this._port}`);
-        } catch(ex) {
-            this._state = eModuleState.OOS;
-            this.lastError = ex.message;
-            logger.error(`!!! ${this.$name}: Start ws@endpoint failure! - ${ex.message}`);
-            return ex.message;
-        }
-        return this._state;
-    }
-    async dispose() {
-        if (this._wss) {
-            this._wss.close();
-        }
-        return true;
-    }
-}
-class gRpcEndpoint extends Endpoint {
-    constructor(appCtx, props) {
-        super(appCtx, props);
-        //
-    }
-}
-
-class TcpEndpoint extends Endpoint {
-    constructor(appCtx, props) {
-        super(appCtx, props);
-        //
-    }
-}
-
-class UdpEndpoint extends Endpoint {
-    constructor(appCtx, props) {
-        super(appCtx, props);
-        //
-    }
-}
-
-const eProtocol = {
-    HTTP       : 'http',
-    WebSock    : 'ws',
-    gRPC       : 'gRpc',
-    TCP        : 'tcp',
-    UDP        : 'udp'
-};
+// Define the endpoint constructor map
 const _epConstructor = {};
-_epConstructor[eProtocol.HTTP] = HttpEndpoint;
-_epConstructor[eProtocol.WebSock] = WebSockEndpoint;
-_epConstructor[eProtocol.gRPC] = gRpcEndpoint;
-_epConstructor[eProtocol.TCP] = TcpEndpoint;
-_epConstructor[eProtocol.UDP] = UdpEndpoint;
+function _getEpModule(proto) {
+    if (!_epConstructor[proto]) {
+        if (proto === eProtocol.HTTP) {
+            const { HttpEndpoint } = require('../libs/common/express.wrapper');
+            _epConstructor[proto] = HttpEndpoint;
+        } else if (proto === eProtocol.WebSock) {
+            const { WebSockEndpoint } = require('../libs/common/ws.wrapper');
+            _epConstructor[eProtocol.WebSock]
+        } else if (proto === eProtocol.gRPC) {
+            const { gRpcEndpoint } = require('../libs/common/grpc.wrapper');
+            _epConstructor[eProtocol.gRPC] = gRpcEndpoint;
+        } else if (proto === eProtocol.TCP || proto === eProtocol.UDP) {
+            const { TcpEndpoint, UdpEndpoint } = require('../libs/common/net.wrapper');
+            _epConstructor[proto] = proto === eProtocol.TCP? TcpEndpoint : UdpEndpoint;
+        }
+    }
+    return _epConstructor[proto];
+}
 
+// The Endpoint factory class
 class EndpointFactory extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props);
@@ -348,7 +56,7 @@ class EndpointFactory extends EventModule {
         const arr = tools.isTypeOfArray(config) ? config : [config];
         await async.each(arr, async item => {
             try {
-                const EpModule = _epConstructor[item.protocol];
+                const EpModule = _getEpModule(item.protocol);
                 const ep = new EpModule(this._appCtx, { 
                     $name: `${item.name}@${this.$name}`,
                     managed: true

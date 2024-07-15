@@ -10,12 +10,13 @@ const net = require('net');
 const theApp = global._$theApp;
 const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
-const {EventObject} =  require('../../include/events');
+const eRetCodes = require('../../include/retcodes');
+const { EventObject } =  require('../../include/events');
+const { Endpoint } = require('../../include/endpoint');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'grpc');
 const tools = require('../../utils/tools');
-const eRetCodes = require('../../include/retcodes');
 
 const MODULE_NAME = 'NET_CONN';
 const eMetricsName = {
@@ -51,14 +52,6 @@ const metricsCollector = mntService.regMetrics({
     }]
 });
 
-class TcpServer extends EventObject {
-    constructor(options) {
-        super(options);
-        //
-        this.state = eClientState.Null;
-    }
-}
-exports.TcpServer = TcpServer;
 
 /**
  * The TcpClient Object
@@ -156,12 +149,22 @@ class TcpClient extends EventObject {
         }
     }
 }
-exports.TcpClient = TcpClient;
 
-class UdpServer extends EventObject {
-    constructor(options) {
-        super(options);
+
+class TcpEndpoint extends Endpoint {
+    constructor(appCtx, props) {
+        super(appCtx, props);
         //
     }
 }
-exports.UdpServer = UdpServer;
+
+class UdpEndpoint extends Endpoint {
+    constructor(appCtx, props) {
+        super(appCtx, props);
+        //
+    }
+}
+
+module.exports = exports = {
+    TcpEndpoint, TcpClient, UdpEndpoint
+}

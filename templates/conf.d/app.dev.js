@@ -107,6 +107,10 @@ module.exports = exports = {
                     type: "mongo",
                     confPath: "dataSources.default.config"
                 }
+            },
+            middlewares: {
+                path: 'endpoints',  // The relative path from app root
+                file: 'middlewares.express.js'   // The middlewares file
             }
         }
     }],
