@@ -30,6 +30,14 @@ class Endpoint extends EventModule {
     }
 }
 
+const eProtocol = {
+    HTTP       : 'http',
+    WebSock    : 'ws',
+    gRPC       : 'gRpc',
+    TCP        : 'tcp',
+    UDP        : 'udp'
+};
+
 //
 module.exports = exports = {
     Endpoint, normalizePort

@@ -9,10 +9,11 @@ const protoLoader = require('@grpc/proto-loader');
 // Project modules
 const sysdefs = require("../../include/sysdefs");
 const {grpc: config} =  require('../../include/config');
-const mntService = require('../base/prom.wrapper');
-const {WinstonLogger} = require('../base/winston.wrapper');
-const logger = WinstonLogger(process.env.SRV_ROLE || 'grpc');
 const tools = require('../../utils/tools');
+const mntService = require('../base/prom.wrapper');
+const { WinstonLogger } = require('../base/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'grpc');
+const { Endpoint } = require('../../include/endpoint');
 
 const MODULE_NAME_PREFIX = 'GRPC_PD';
 /*********************************************
@@ -201,4 +202,14 @@ exports.getProtoDescriptor = function (options) {
     return gDescriptors[key];
 };
 
+class gRpcEndpoint extends Endpoint {
+    constructor(appCtx, props) {
+        super(appCtx, props);
+        //
+    }
+}
 
+//
+module.exports = exports = {
+    gRpcEndpoint
+}

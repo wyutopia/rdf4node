@@ -2,9 +2,11 @@
  * Created by Eric on 16/4/2.
  */
 const appRoot = require('app-root-path');
+const { eRequestAuthType } = require('../../include/sysdefs');
 const express = require('express');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger();
+const tools = require('../../utils/tools');
 
 // Get prototype of HttpResponse
 const responseWrapper = Object.getPrototypeOf(express.response);
@@ -60,10 +62,8 @@ class HttpEndpoint extends Endpoint {
             const cookieParser = require('cookie-parser');
             const createError = require('http-errors');
             const router = express.Router();
-            const MorganWrapper = require('../libs/base/morgan.wrapper');
+            const MorganWrapper = require('../base/morgan.wrapper');
             const httpLogger = MorganWrapper(process.env.SRV_ROLE);
-            const { RouteManager } = require('./router');
-            const { createRateLimit } = require('../libs/common/ratelimit.wrapper');
             //
             const app = express();
             if (this._config.trustProxy !== undefined) {
@@ -84,29 +84,18 @@ class HttpEndpoint extends Endpoint {
             app.use(cookieParser());
             app.use(express.static(this._config.staticPath || path.join(appRoot.path, 'public')));
             if (this._config.enableRateLimit && this._config.rateLimit) {
-                let limiter = await createRateLimit(this._config.rateLimit);
-                app.use(limiter);
-                logger.info('>>>>>> Rate limitation enabled. <<<<<<');
+                try {
+                    const { createRateLimit } = require('./ratelimit.wrapper');
+                    let limiter = await createRateLimit(this._config.rateLimit);
+                    app.use(limiter);
+                    logger.info('>>>>>> Rate limitation enabled. <<<<<<');
+                } catch(err) {
+                    logger.error(`****** Setup limitation error! - ${err.message}`);
+                }
             } else {
                 logger.info('>>>>>> Rate limitation disabled. <<<<<<');
             }
-            // Step 3: Setup customer specified middlewares
-            if (this._config.middlewares) {
-                try {
-                    let fullPath = path.join(appRoot.path, this._config.middlewares);
-                    const mws = require(fullPath);
-                    mws.forEach(mw => {
-                        try {
-                            app.use(mw.fn);
-                        } catch(err) {
-                            logger.error(`****** Load middleware: ${mw.name} error! - ${err.message}`);
-                        }
-                    })
-                } catch (err) {
-                    logger.error(`*** Load middlewares from file: ${fullPath} error! - ${err.message}`)
-                }
-            }
-            // Step 4: Setup middleware session while authType is cookie
+            // Step 3: Setup cookie if configed
             const authConfig = this._config.authentication;
             if (authConfig && authConfig.type === eRequestAuthType.COOKIE) {
                 try {
@@ -116,24 +105,36 @@ class HttpEndpoint extends Endpoint {
                     logger.error(`!!! Setup session error! - ${ex.message}`);
                 }
             }
-            // Step 5: Setup dataSource middleware
-            const dsName = process.env.DS_DEFAULT || _DS_DEFAULT_;
-            app.use((req, res, next) => {
-                req.dataSource = {
-                    dsName: dsName
-                };
-                if (req.headers.datasource === undefined) {
-                    req.headers.datasource = dsName;
+            // Step 4: Setup customer specified middlewares
+            if (this._config.middlewares) {
+                try {
+                    const result = {};
+                    let fullPath = path.join(appRoot.path, this._config.middlewares);
+                    const mws = require(fullPath);
+                    mws.forEach(mw => {
+                        try {
+                            app.use(mw.fn);
+                            result[mw.name] = 'ok'
+                        } catch(err) {
+                            result[mw.name] = err.message;
+                        }
+                    })
+                    logger.info(`>>> Load express middlewares: ${tools.inspect(result)}`);
+                } catch (err) {
+                    logger.error(`*** Load middlewares from file: ${fullPath} error! - ${err.message}`)
                 }
-                logger.debug(`++++++ The x-forwarded-for: ${req.headers['x-forwarded-for']}`);
-                return next();
-            })
-            // Step 6: Setup routes
-            this._routeManager = new RouteManager({
-                $name: `${this.$name}@ep`
-            });
-            this._routeManager.init(router, this._config);
-            app.use('/', router);
+            }
+            // Step 5: Setup routes
+            try {
+                const { RouteManager } = require('./router');
+                this._routeManager = new RouteManager({
+                    $name: `${this.$name}@ep`
+                });
+                this._routeManager.init(router, this._config);
+                app.use('/', router);    
+            } catch(err) {
+                logger.error(`*** Setup routes error! - ${err.message}`);
+            }
             // The 404 and forware to error handler
             app.use(function (req, res, next) {
                 next(createError(404));
