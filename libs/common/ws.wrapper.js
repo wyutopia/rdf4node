@@ -118,7 +118,7 @@ class WSRouter extends EventModule {
     /**
      * 
      * @param { string } pathName
-     * @param { string } options 
+     * @param { Object } options 
      */
     async init(pathName, options) {
         if (this.$state !== sysdefs.eModuleState.INIT) {
@@ -205,8 +205,6 @@ class WebSockEndpoint extends Endpoint {
         }
         try {
             this._state = eModuleState.START_PENDING;
-            //
-            const { WSRouter, WebSocket} = require('../libs/common/ws.wrapper');
             // 
             this._router = new WSRouter(this._appCtx, {$name: '_wsrt_'});
             let paths = await this._router.init(this._config.routePath || 'wss');
