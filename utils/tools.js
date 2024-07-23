@@ -365,28 +365,21 @@ exports.genInvitation = function() {
     return _generateRandom(6, 'hex');
 };
 
-exports.md5Sign = function() {
-    let seed = '';
-    for (let i = 0; i < arguments.length; i ++) {
-        seed += arguments[i];
-    }
-    return crypto.createHash('md5').update(seed).digest('hex');
+exports.md5Sign = function(...args) {
+    return crypto.createHash('md5').update(args.join('')).digest('hex');
 };
 
-exports.sha1Sign = function() {
-    let seed = '';
-    for (let i = 0; i < arguments.length; i ++) {
-        seed += arguments[i];
-    }
-    return crypto.createHash('sha1').update(seed).digest('hex');
+/**
+ * 
+ * @param  { string[] } args 
+ * @returns 
+ */
+exports.sha1Sign = function(...args) {
+    return crypto.createHash('sha1').update(args.join('')).digest('hex');
 };
 
-exports.sha256Hash = function() {
-    let seed = '';
-    for (let i = 0; i < arguments.length; i ++) {
-        seed += arguments[i];
-    }
-    return crypto.createHash('sha256').update(seed).digest('hex');
+exports.sha256Hash = function(...args) {
+    return crypto.createHash('sha256').update(args.join('')).digest('hex');
 }
 
 function _isEmail (email) {
@@ -407,11 +400,10 @@ function _isIpAddr (ip) {
 }
 exports.isIpAddr = _isIpAddr;
 
-function _deepAssign () {
-    let target = arguments[0];
-    for (i = 1; i < arguments.length; i++) {
-        Object.keys(arguments[i]).forEach(key => {
-            target[key] = structuredClone(arguments[i][key]);
+function _deepAssign (target, ...args) {
+    for (i = 1; i < args.length; i++) {
+        Object.keys(args[i]).forEach(key => {
+            target[key] = structuredClone(args[i][key]);
         });
     }
     return target;
