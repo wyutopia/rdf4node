@@ -22,7 +22,7 @@ function _getEpModule(proto) {
             _epConstructor[proto] = HttpEndpoint;
         } else if (proto === eProtocol.WebSock) {
             const { WebSockEndpoint } = require('../libs/common/ws.wrapper');
-            _epConstructor[eProtocol.WebSock]
+            _epConstructor[eProtocol.WebSock] = WebSockEndpoint;
         } else if (proto === eProtocol.gRPC) {
             const { gRpcEndpoint } = require('../libs/common/grpc.wrapper');
             _epConstructor[eProtocol.gRPC] = gRpcEndpoint;
