@@ -401,7 +401,7 @@ function _isIpAddr (ip) {
 exports.isIpAddr = _isIpAddr;
 
 function _deepAssign (target, ...args) {
-    for (i = 1; i < args.length; i++) {
+    for (i = 0; i < args.length; i++) {
         Object.keys(args[i]).forEach(key => {
             target[key] = structuredClone(args[i][key]);
         });
