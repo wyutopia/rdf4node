@@ -319,6 +319,9 @@ const _defaultCtlSpec = {
     },
     afterAdd: async function (req, doc) { return doc; },
     //
+    allowUpdate: async function(req, repo) {
+        return true;
+    },
     beforeUpdate: async function (req) {
         let setData = tools.deepAssign({}, req.$args);
         delete setData.id;
@@ -862,6 +865,7 @@ class EntityController extends ControllerBase {
                 try {
                     const dsName = req.dataSource.dsName || _DS_DEFAULT_;
                     const repo = this.getRepo(this.modelName, dsName);
+                    await this._allowUpdate(req, repo);
                     const params = await this._beforeUpdate(req);
                     this.emit('before_update_one', req, params);
                     const doc = await repo.updateOneAsync(params);
