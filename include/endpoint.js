@@ -16,7 +16,7 @@ function normalizePort(val) {
     return 3000;
 }
 
-// The class
+// The endpoint super class
 class Endpoint extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props);
@@ -24,6 +24,20 @@ class Endpoint extends EventModule {
         this._server = null;
         this._config = null;
         this._state = eModuleState.INIT;
+    }
+    /**
+     * Init with configuration
+     * @param { Object } config 
+     */
+    init(config) {
+        console.warn('### ');
+    }
+    /**
+     * Start with options
+     * @param { Object } options 
+     */
+    async start(options) {
+        console.warn();
     }
     async dispose() {
         return 'ok';

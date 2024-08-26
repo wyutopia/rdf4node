@@ -5,6 +5,7 @@ const appRoot = require('app-root-path');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
+const WebSocketServer = WebSocket.WebSocketServer;
 //
 const sysdefs = require('../../include/sysdefs');
 const eRetCodes = require('../../include/retcodes');
@@ -13,20 +14,98 @@ const { Endpoint } = require('../../include/endpoint');
 //
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'wss');
+const tools = require('../../utils/tools');
 
-// The WebSocket connection wrapper object
-class WSConnection extends EventObject {
+const eOrigin = {
+    INBOUND     : 0,
+    OUTBOUND    : 1
+};
+
+function _invokeConnect() {
+    try {
+        if (this._origin === eOrigin.OUTBOUND) {
+            this._ws = new WebSocket(this._url, {
+                perMessageDeflate: false
+            })
+        }
+        this._ws.on('error', err => {
+            logger.error(`${this.$name}[${this._state}]>> ws error! - ${tools.inspect(err)}`);
+            this._lastError = err;
+            try {
+                this.emit('client-error', this.$id, err);
+            } catch(err) {
+                logger.error(`${this.$name}[${this._state}]>> emit client-error error! - ${err.message}`);
+            }
+        })
+        this._ws.on('open', () => {
+            this._state = sysdefs.eClientState.Conn;
+            // Start heartbeat if enabled
+            if (this._enableHeartbeat) {
+                this._heartbeat = setInterval(() => {
+                    if (this._state === sysdefs.eClientState.Conn) {
+                        this._ws.ping(0x66);
+                    }
+                }, this._intervalMs);
+            }
+            logger.info(`${this.$name}[${this._state}]>> connection established (hb: ${this._intervalMs}ms). waiting for data...`);
+            //
+            try {
+                this.emit('client-open', this.$id);
+            } catch(err) {
+                logger.error(`${this.$name}[${this._state}]>> emit client-open error! - ${err.message}`);
+            }
+        })
+        this._ws.on('message', (data, isBinary) => {
+            try {
+                this.emit('client-message', this.$id, data, isBinary);
+            } catch(err) {
+                logger.error(`${this.$name}[${this._state}]>> emit client-message error! - ${err.message}`);
+            }
+        })        
+        this._ws.on('close', () => {
+            this.emit('client-close', this.$id);
+            if (this._reconnect) {
+                logger.info(`${this.$name}[${this._state}]>> disconnected. re-connecting after ${this._retryDelayMs}ms ...`);
+                setTimeout(_invokeConnect.bind(this), this._retryDelayMs);
+            }
+        })
+    } catch(err) {
+        return true;
+    }
+}
+
+// The ws client wrapper object
+class WebSocketClient extends EventObject {
     constructor(props) {
         super(props);
         //
-        this._ws = props.ws;
-        this._ws.on('error', err => {
-            this.emit('client-error', this.$id, err);
-        })
-        this._ws.on('close', () => {
-            this.emit('client-close', this.$id);
-        })
+        this._ws = props.ws || null;
+        this._origin = props.origin || eOrigin.OUTBOUND;
+        this._url = props.url || '';
+        //
+        this._reconnect = props.reconnect !== undefined? props.reconnect : true; 
+        this._retryDelayMs = props.retryDelayMs || 2000;
+        //
+        this._enableHeartbeat = props.enableHeartbeat !== undefined? props.enableHeartbeat : true;
+        this._intervalMs = props.intervalMs || 5000;
+        this._heartbeat = null;
+        //
+        this._lastError = null;
+        this._state = sysdefs.eClientState.Init;
     }
+    /**
+     * 
+     * @param { Object } options - The 
+     */
+    async start(options) {
+        if (this._state !== sysdefs.eClientState.Init) {
+            logger.error(`${this.$name} already started.`);
+            return false;
+        }
+        await _invokeConnect.call(this);
+        return true;
+    }
+
     async dispose() {
         let result = {};
         try {
@@ -65,11 +144,16 @@ async function _doValidate(searchParams) {
     return args;
 }
 
-// The WebSocketConnectionManager class
-class WSConnectionManager extends EventObject {
+function _genClientId() {
+    return ++this._id;
+}
+
+// The WebSocket ConnectionManager class
+class ConnectionManager extends EventObject {
     constructor(props) {
         super(props);
         //
+        this._id = 0;
         this._validators = props.validators || {};
         this._connections = {};
         //
@@ -184,6 +268,9 @@ class WebSockEndpoint extends Endpoint {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
+        this._cm = new ConnectionManager({
+            $name: '_wscm_'
+        });
     }
     init(options) {
         if (this._state !== eModuleState.INIT) {
@@ -198,7 +285,7 @@ class WebSockEndpoint extends Endpoint {
         // Update state
         this._state = eModuleState.READY;
     }
-    async start() {
+    async start(options) {
         if (this._state !== eModuleState.READY) {
             logger.error(`${this.$name}: endpoint is not ready!`);
             return this._state;
