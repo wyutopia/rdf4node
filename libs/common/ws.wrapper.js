@@ -64,7 +64,7 @@ function _invokeConnect() {
         })        
         this._ws.on('close', () => {
             this.emit('client-close', this.$id);
-            if (this._reconnect) {
+            if (this._origin === eOrigin.OUTBOUND && this._reconnect) {
                 logger.info(`${this.$name}[${this._state}]>> disconnected. re-connecting after ${this._retryDelayMs}ms ...`);
                 setTimeout(_invokeConnect.bind(this), this._retryDelayMs);
             }
@@ -74,16 +74,18 @@ function _invokeConnect() {
     }
 }
 
+
 // The ws client wrapper object
 class WebSocketClient extends EventObject {
     constructor(props) {
         super(props);
         //
         this._ws = props.ws || null;
-        this._origin = props.origin || eOrigin.OUTBOUND;
+        this._origin = this._ws? eOrigin.INBOUND : eOrigin.OUTBOUND;
         this._url = props.url || '';
+        this._clientIp = props.clientIp;
         //
-        this._reconnect = props.reconnect !== undefined? props.reconnect : true; 
+        this._reconnect = this._ws? false : (props.reconnect !== undefined? props.reconnect : true); 
         this._retryDelayMs = props.retryDelayMs || 2000;
         //
         this._enableHeartbeat = props.enableHeartbeat !== undefined? props.enableHeartbeat : true;
