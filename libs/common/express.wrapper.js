@@ -3,11 +3,13 @@
  */
 const path = require('path');
 const appRoot = require('app-root-path');
-const { eRequestAuthType, eModuleState } = require('../../include/sysdefs');
 const express = require('express');
+// The project libs
+const { eRequestAuthType, eModuleState } = require('../../include/sysdefs');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE);
 const tools = require('../../utils/tools');
+const { RouteManager } = require('./router');
 
 // Get prototype of HttpResponse
 const responseWrapper = Object.getPrototypeOf(express.response);
@@ -39,15 +41,18 @@ class HttpEndpoint extends Endpoint {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
-        this._routeManager = null;
+        this._server = null;
+        this._routeManager = new RouteManager({
+            $name: `${this.$name}@ep`
+        });        
     }
-    init(options) {
+    init(config) {
         if (this._state !== eModuleState.INIT) {
             logger.error(`${this.$name}: Already initialized!`);
             return null;
         }
-        this._config = options;
-        this._port = normalizePort(options.port || process.env.PORT || '3000');
+        this._config = config;
+        this._port = normalizePort(config.port || process.env.PORT || '3000');
         // Update state
         this._state = eModuleState.READY;
     }
@@ -127,10 +132,6 @@ class HttpEndpoint extends Endpoint {
             }
             // Step 5: Setup routes
             try {
-                const { RouteManager } = require('./router');
-                this._routeManager = new RouteManager({
-                    $name: `${this.$name}@ep`
-                });
                 this._routeManager.init(router, this._config);
                 app.use('/', router);    
             } catch(err) {

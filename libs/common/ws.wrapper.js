@@ -64,7 +64,7 @@ function _invokeConnect() {
         })        
         this._ws.on('close', () => {
             this.emit('client-close', this.$id);
-            if (this._origin === eOrigin.OUTBOUND && this._reconnect) {
+            if (this._origin === eOrigin.OUTBOUND && this._reconnect) { // Only outbound connection need reconnecting
                 logger.info(`${this.$name}[${this._state}]>> disconnected. re-connecting after ${this._retryDelayMs}ms ...`);
                 setTimeout(_invokeConnect.bind(this), this._retryDelayMs);
             }
@@ -275,7 +275,7 @@ class WebSockEndpoint extends Endpoint {
         });
     }
     init(options) {
-        if (this._state !== eModuleState.INIT) {
+        if (this._state !== sysdefs.eModuleState.INIT) {
             logger.error(`${this.$name}: Already initialized!`);
             return null;
         }
@@ -285,15 +285,15 @@ class WebSockEndpoint extends Endpoint {
         this._heartbeat = null;
         this._clientManager = null;
         // Update state
-        this._state = eModuleState.READY;
+        this._state = sysdefs.eModuleState.READY;
     }
     async start(options) {
-        if (this._state !== eModuleState.READY) {
+        if (this._state !== sysdefs.eModuleState.READY) {
             logger.error(`${this.$name}: endpoint is not ready!`);
             return this._state;
         }
         try {
-            this._state = eModuleState.START_PENDING;
+            this._state = sysdefs.eModuleState.START_PENDING;
             // 
             this._router = new WSRouter(this._appCtx, {$name: '_wsrt_'});
             let paths = await this._router.init(this._config.routePath || 'wss');
@@ -320,7 +320,7 @@ class WebSockEndpoint extends Endpoint {
                 }
             }).on('error', err => {
                 logger.error(`${this.$name} >> wss error! - ${err.message}`);
-                this._state = eModuleState.OSS;
+                this._state = sysdefs.eModuleState.OSS;
             }).on('close', () => {
                 logger.error(`${this.$name} >> wss closed!`);
                 this._wss = null;
@@ -328,13 +328,13 @@ class WebSockEndpoint extends Endpoint {
                     clearInterval(this._heartbeat);
                     this._heartbeat = null;
                 }
-                this._state = eModuleState.READY;
+                this._state = sysdefs.eModuleState.READY;
             });
             //
-            this._state = eModuleState.ACTIVE;
+            this._state = sysdefs.eModuleState.ACTIVE;
             logger.info(`${this.$name}: wss listening on port ${this._port}`);
         } catch(ex) {
-            this._state = eModuleState.OOS;
+            this._state =sysdefs.eModuleState.OOS;
             this.lastError = ex.message;
             logger.error(`!!! ${this.$name}: Start ws@endpoint failure! - ${ex.message}`);
             return ex.message;
@@ -351,5 +351,5 @@ class WebSockEndpoint extends Endpoint {
 
 //
 module.exports = exporst = {
-    WebSocket, WSRouter, WSConnection, WSConnectionManager, WebSockEndpoint
+    WebSocket, WSRouter, WebSocketClient, ConnectionManager, WebSockEndpoint
 }
