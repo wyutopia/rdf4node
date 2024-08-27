@@ -12,7 +12,7 @@ const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
 const eRetCodes = require('../../include/retcodes');
 const { EventObject } =  require('../../include/events');
-const { Endpoint } = require('../../include/endpoint');
+const { Endpoint, normalizePort } = require('../../include/endpoint');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'grpc');
@@ -166,7 +166,8 @@ class TcpEndpoint extends Endpoint {
         this._port = props.port || 13000;
         this._exclusive = props.exclusive !== undefined? props.exclusive : false;
     }
-    init(config) {
+    
+    async init(config) {
 
     }
     async start(options) {

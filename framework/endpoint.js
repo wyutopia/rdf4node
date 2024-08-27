@@ -34,6 +34,18 @@ function _getEpModule(proto) {
     return _epConstructor[proto];
 }
 
+/**
+ * @typedef EndpointConfig
+ * @property { string } name - The endpoint name
+ * @property { 'http'|'ws|'grpc'|'tcp'|'udp' } protocol - The endpoint protocol.
+ * @property { Object? } options - The config options
+ * @property { string? } options.viewPath - The view template path
+ * @property { string? } options.engine - The view template engine
+ * @property { string? } options.payloadLimit - The http payload limitation
+ * @property { Object? } options.rateLimit - The rateLimit options
+ * @property { string? } options.routePath - The route root path
+ */
+
 // The Endpoint factory class
 class EndpointFactory extends EventModule {
     constructor(appCtx, props) {
@@ -43,14 +55,8 @@ class EndpointFactory extends EventModule {
     }
     /**
      * 
-     * @param { 'http'|'ws|'grpc'|'tcp'|'udp' } protocol - The endpoint protocol.
-     * @param { string } name - The endpoint name
-     * @param { Object } options - The endpoint options
-     * @param { string? } options.viewPath - The view template path
-     * @param { string? } options.engine - The view template engine
-     * @param { string? } options.payloadLimit - The http payload limitation
-     * @param { Object? } options.rateLimit - The rateLimit options
-     * @param { string? } options.routePath - The route root path
+     * @param { EndpointConfig | EndpointConfig[] } config - The configuration
+     * @returns 
      */
     async init(config) {
         const arr = tools.isTypeOfArray(config) ? config : [config];
@@ -63,7 +69,7 @@ class EndpointFactory extends EventModule {
                 });
                 this._endpoints[item.name] = ep;
                 //
-                ep.init(item.options);
+                await ep.init(item.options);
             } catch(ex) {
                 logger.error(`!!! [${this.$name}]: Create and init ${item.protocol} endpoint#${item.name} error! - ${ex.message}`);
             }

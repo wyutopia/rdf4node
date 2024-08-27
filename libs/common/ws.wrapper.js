@@ -10,7 +10,7 @@ const WebSocketServer = WebSocket.WebSocketServer;
 const sysdefs = require('../../include/sysdefs');
 const eRetCodes = require('../../include/retcodes');
 const { EventObject, EventModule } = require('../../include/events');
-const { Endpoint } = require('../../include/endpoint');
+const { Endpoint, normalizePort } = require('../../include/endpoint');
 //
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'wss');
@@ -270,23 +270,25 @@ class WebSockEndpoint extends Endpoint {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
+        this._wss = null;
+        this._heartbeat = null;
         this._cm = new ConnectionManager({
             $name: '_wscm_'
         });
     }
-    init(options) {
+
+    async init(config) {
         if (this._state !== sysdefs.eModuleState.INIT) {
             logger.error(`${this.$name}: Already initialized!`);
             return null;
         }
-        this._config = options;
-        this._port = normalizePort(options.port || process.env.WS_PORT || '18080');
-        this._wss = null;
-        this._heartbeat = null;
-        this._clientManager = null;
+        this._config = config;
+        this._port = normalizePort(config.port || process.env.WS_PORT || '10086');
         // Update state
         this._state = sysdefs.eModuleState.READY;
+        return true;
     }
+
     async start(options) {
         if (this._state !== sysdefs.eModuleState.READY) {
             logger.error(`${this.$name}: endpoint is not ready!`);

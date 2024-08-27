@@ -6,6 +6,7 @@ const appRoot = require('app-root-path');
 const express = require('express');
 // The project libs
 const { eRequestAuthType, eModuleState } = require('../../include/sysdefs');
+const { Endpoint, normalizePort } = require('../../include/endpoint');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE);
 const tools = require('../../utils/tools');
@@ -34,8 +35,6 @@ responseWrapper.sendIntSrvErr = function () {
     this.sendRsp(500, 'Internal server error!');
 };
 
-const { Endpoint, normalizePort } = require('../../include/endpoint');
-
 // The http endpoint
 class HttpEndpoint extends Endpoint {
     constructor(appCtx, props) {
@@ -46,7 +45,8 @@ class HttpEndpoint extends Endpoint {
             $name: `${this.$name}@ep`
         });        
     }
-    init(config) {
+    
+    async init(config) {
         if (this._state !== eModuleState.INIT) {
             logger.error(`${this.$name}: Already initialized!`);
             return null;
@@ -55,7 +55,9 @@ class HttpEndpoint extends Endpoint {
         this._port = normalizePort(config.port || process.env.PORT || '3000');
         // Update state
         this._state = eModuleState.READY;
+        return true;
     }
+
     async start() {
         if (this._state !== eModuleState.READY) {
             logger.error(`${this.$name}: endpoint is not ready!`);

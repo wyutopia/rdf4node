@@ -29,15 +29,17 @@ class Endpoint extends EventModule {
      * Init with configuration
      * @param { Object } config 
      */
-    init(config) {
-        console.warn('### ');
+    async init(config) {
+        console.warn('### Override this to perform actual initializing work!!!');
+        return true;
     }
     /**
      * Start with options
      * @param { Object } options 
      */
     async start(options) {
-        console.warn();
+        console.warn('### Override this to perform actual startup codes!!!');
+        return true;
     }
     async dispose() {
         return 'ok';
