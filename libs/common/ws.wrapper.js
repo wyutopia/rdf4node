@@ -32,7 +32,7 @@ function _invokeConnect() {
             logger.error(`${this.$name}[${this._state}]>> ws error! - ${tools.inspect(err)}`);
             this._lastError = err;
             try {
-                this.emit('client-error', this.$id, err);
+                this.emit('error', this.$id, err);
             } catch(err) {
                 logger.error(`${this.$name}[${this._state}]>> emit client-error error! - ${err.message}`);
             }
@@ -50,21 +50,22 @@ function _invokeConnect() {
             logger.info(`${this.$name}[${this._state}]>> connection established (hb: ${this._intervalMs}ms). waiting for data...`);
             //
             try {
-                this.emit('client-open', this.$id);
+                this.emit('open', this.$id);
             } catch(err) {
                 logger.error(`${this.$name}[${this._state}]>> emit client-open error! - ${err.message}`);
             }
         })
         this._ws.on('message', (data, isBinary) => {
             try {
-                this.emit('client-message', this.$id, data, isBinary);
+                this.emit('message', this.$id, data, isBinary);
             } catch(err) {
                 logger.error(`${this.$name}[${this._state}]>> emit client-message error! - ${err.message}`);
             }
         })        
         this._ws.on('close', () => {
-            this.emit('client-close', this.$id);
-            if (this._origin === eOrigin.OUTBOUND && this._reconnect) { // Only outbound connection need reconnecting
+            let retain = this._origin === eOrigin.OUTBOUND && this._reconnect;
+            this.emit('close', this.$id, retain);
+            if (retain) { // Only outbound connection need reconnecting
                 logger.info(`${this.$name}[${this._state}]>> disconnected. re-connecting after ${this._retryDelayMs}ms ...`);
                 setTimeout(_invokeConnect.bind(this), this._retryDelayMs);
             }
@@ -83,12 +84,12 @@ class WebSocketClient extends EventObject {
         this._ws = props.ws || null;
         this._origin = this._ws? eOrigin.INBOUND : eOrigin.OUTBOUND;
         this._url = props.url || '';
-        this._clientIp = props.clientIp;
+        this._remoteClientIp = props.clientIp;
         //
         this._reconnect = this._ws? false : (props.reconnect !== undefined? props.reconnect : true); 
         this._retryDelayMs = props.retryDelayMs || 2000;
         //
-        this._enableHeartbeat = props.enableHeartbeat !== undefined? props.enableHeartbeat : true;
+        this._enableHeartbeat = this._ws? false : (props.enableHeartbeat !== undefined? props.enableHeartbeat : true);
         this._intervalMs = props.intervalMs || 5000;
         this._heartbeat = null;
         //
@@ -120,15 +121,18 @@ class WebSocketClient extends EventObject {
     }
 }
 
-async function _doValidate(searchParams) {
+async function _validateParameters(searchParams) {
     let args = {};
-    let keys = Object.keys(this._validators);
+    let keys = Object.keys(this._validator);
+    if (keys.length === 0) { // Empty parameter list
+        return args;
+    }
     let err = null;
     let i = 0;
     while(i < keys.length && !err) {
         let key = keys[i++];
         //
-        let val = this._validators[key];
+        let val = this._validator[key];
         let arg = searchParams.get(key);
         //
         if (arg === undefined && val.required) {
@@ -150,36 +154,94 @@ function _genClientId() {
     return ++this._id;
 }
 
+const _fakeController = {
+    emit: function() {},
+    on: function () {}
+}
+
+const eWebSockEvent = {
+    
+}
+
 // The WebSocket ConnectionManager class
-class ConnectionManager extends EventObject {
+class WebSockConnectionManager extends EventObject {
     constructor(props) {
         super(props);
         //
         this._id = 0;
-        this._validators = props.validators || {};
-        this._connections = {};
+        this._validator = props.validator || {};
+        this._clients = {};
         //
-        this.realCreate = async (ws, args) => {
-            return Promise.reject({
-                code: 404,
-                message: `+++ Need override to take effect! +++`
-            })
-        }
+        this._controller = props.controller || _fakeController;
+        this._controller.on('', () => {});
         //
         this._state = sysdefs.eModuleState.ACTIVE;
     }
+    
     isActive() {
         return this._state === sysdefs.eModuleState.ACTIVE;
     }
-    async createConnection(ws, searchParams, clientIp) {
-        //TODO: check clientIp
-        const args = await _doValidate.call(this, searchParams);
-        return await this.realCreate(ws, args);
+
+    /**
+     *  Handle inbound connection
+     * @param { WebSocket } ws 
+     * @param { Object } options
+     * @param { Map } options.searchParams 
+     * @param { string } options.clientIp
+     * @returns 
+     */
+    async inbound(ws, options) {
+        const args = await _parseParamters(this._validator, options.searchParams || {});
+        //
+        let cid = _genClientId.call(this);
+        let client = new WebSocketClient({
+            $id: cid,
+            //
+            ws,
+            clientIp: options.clientIp
+        });
+        client.on('error', (cid, err) => {
+            try {
+                this._controller.emit('ws-error', cid, err);
+            } catch(err) {
+                logger.error(err.message);
+            }
+        }).on('open', cid => {
+            try {
+                this._controller.emit('ws-open', cid, args);
+            } catch(err) {
+                logger.error(err.message);
+            }
+        }).on('message', (cid, data, isBinary) => {
+            try {
+                this._controller.emit('ws-message', cid);
+            } catch(err) {
+                logger.error(err.message);
+            }
+        }).on('close', (cid, retain = false) => {
+            this._consumers.forEach(consumer => {
+                try {
+                    consumer.emit('ws-close', cid);
+                } catch(err) {
+                    logger.error(err.message);
+                }
+            })
+            //
+            delete this._clients[cid];
+        })
+        await client.start();
+        this._clients[cid] = client;
+        return true;
     }
+
+    async outbound(url, params) {
+
+    }
+
     async dispose() {
         logger.info(`${this.$name} >> Close all connections...`);
         let promises = [];
-        Object.keys(this._connections).forEach( key => {
+        Object.keys(this._clients).forEach( key => {
             let conn = this._connections[key];
             if (typeof conn.dispose === 'function') {
                 promises.push(conn.dispose());
@@ -194,12 +256,12 @@ class ConnectionManager extends EventObject {
 const _reSysFile = new RegExp(/^\./)
 
 // The WebSocketRouter class
-class WSRouter extends EventModule {
+class WebSockRouter extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
         this._routes = {};
-        this.setState(sysdefs.eModuleState.INIT);
+        this._state = sysdefs.eModuleState.INIT;
     }
     /**
      * 
@@ -207,12 +269,13 @@ class WSRouter extends EventModule {
      * @param { Object } options 
      */
     async init(pathName, options) {
-        if (this.$state !== sysdefs.eModuleState.INIT) {
-            return logger.warn(`*** Already initialized.`);
+        if (this._state !== sysdefs.eModuleState.INIT) {
+            logger.warn(`### ${this.$name}[${this._state}]>> Already initialized.`);
+            return false;
         }
         let loaded = [];
         let currentDir = path.join(appRoot.path, pathName);
-        logger.info(`${this.$name} >> scan directory: ${currentDir}`);
+        logger.info(`${this.$name}[${this._state}]>> scan directory: ${currentDir}`);
         const entries = fs.readdirSync(currentDir, { withFileTypes: true });
         entries.forEach(dirent => {
             if (dirent.isDirectory() || _reSysFile.test(dirent.name)) { // Ignore sub-dirs and system files
@@ -228,26 +291,26 @@ class WSRouter extends EventModule {
                 logger.error(`*** Load ${filePath} error! - ${ex.message}`);
             }
         })
-        this.setState(sysdefs.eModuleState.ACTIVE);
+        this._state = sysdefs.eModuleState.ACTIVE;
         return loaded;
     }
     /**
-     * 
-     * @param { * } ws 
+     * Handle inbound ws connection
+     * @param { string } pathname
+     * @param { WebSocket } ws 
      * @param { Object } options
-     * @param { string } options.pathname
      * @param { map } options.searchParams
      * @param { string } options.clientIp
      * @returns 
      */
-    async onConnection(ws, options) {
-        let cm = this._routes[options.pathname];
+    async inboundConnection(pathname, ws, options) {
+        let cm = this._routes[pathname];
         if (cm && cm.isActive()) {
-            return await cm.createConnection(ws, options.searchParams, options.clientIp);
+            return await cm.inbound(ws, options);
         }
         return Promise.reject({
             code: 600,
-            message: `*** No active handler for ${options.pathname}`
+            message: `*** No active handler for ${pathname}`
         })
     }
     async dispose() {
@@ -271,19 +334,28 @@ class WebSockEndpoint extends Endpoint {
         super(appCtx, props);
         //
         this._wss = null;
-        this._heartbeat = null;
-        this._cm = new ConnectionManager({
-            $name: '_wscm_'
-        });
+        this._router = new WebSockRouter(appCtx, {$name: '_wsrt_'});
+        // this._heartbeat = null;
+        // this._cm = new ConnectionManager({
+        //     $name: '_wscm_'
+        // });
     }
 
-    async init(config) {
+    /**
+     * 
+     * @param { Object } config 
+     * @returns 
+     */
+    async init(config = {}) {
         if (this._state !== sysdefs.eModuleState.INIT) {
-            logger.error(`${this.$name}: Already initialized!`);
+            logger.error(`${this.$name}[${this._state}]>> Already initialized!`);
             return null;
         }
         this._config = config;
         this._port = normalizePort(config.port || process.env.WS_PORT || '10086');
+        // Load routes
+        let paths = await this._router.init(config.routePath || 'wss');
+        logger.info(`${this.$name}[${this._state}]>> Supported paths: ${tools.inspect(paths)}`);
         // Update state
         this._state = sysdefs.eModuleState.READY;
         return true;
@@ -291,17 +363,11 @@ class WebSockEndpoint extends Endpoint {
 
     async start(options) {
         if (this._state !== sysdefs.eModuleState.READY) {
-            logger.error(`${this.$name}: endpoint is not ready!`);
+            logger.error(`*** ${this.$name}[${this._state}]>> endpoint is not ready!`);
             return this._state;
         }
+        this._state = sysdefs.eModuleState.START_PENDING;
         try {
-            this._state = sysdefs.eModuleState.START_PENDING;
-            // 
-            this._router = new WSRouter(this._appCtx, {$name: '_wsrt_'});
-            let paths = await this._router.init(this._config.routePath || 'wss');
-            logger.info(`>>> Supported pathnames: ${tools.inspect(paths)}`);
-            // 
-            const WebSocketServer = WebSocket.WebSocketServer;
             this._wss = new WebSocketServer({
                 port: this._port
             })
@@ -311,17 +377,16 @@ class WebSockEndpoint extends Endpoint {
                     const clientIp = xff? xff.split(',')[0].trim() : req.socket.remoteAddress;
                     //
                     let url = new URL(`http://localhost${req.url}`);
-                    const r = await this._router.onConnection(ws, {
-                        pathname: url.pathname,
+                    const r = await this._router.inboundConnection(url.pathname, ws, {
                         searchParams: url.searchParams,
                         clientIp
                     })
                 } catch(err) {
-                    logger.error(`*** On connection error! - ${err.message}`);
+                    logger.error(`*** ${this.$name}[${this._state}]>> On connection error! - ${err.message}`);
                     ws.close();
                 }
             }).on('error', err => {
-                logger.error(`${this.$name} >> wss error! - ${err.message}`);
+                logger.error(`${this.$name}[${this._state}]>> wss error! - ${err.message}`);
                 this._state = sysdefs.eModuleState.OSS;
             }).on('close', () => {
                 logger.error(`${this.$name} >> wss closed!`);
@@ -334,14 +399,14 @@ class WebSockEndpoint extends Endpoint {
             });
             //
             this._state = sysdefs.eModuleState.ACTIVE;
-            logger.info(`${this.$name}: wss listening on port ${this._port}`);
+            logger.info(`${this.$name}[${this._state}]>> wss listening on port ${this._port}`);
+            return 'ok';
         } catch(ex) {
             this._state =sysdefs.eModuleState.OOS;
             this.lastError = ex.message;
-            logger.error(`!!! ${this.$name}: Start ws@endpoint failure! - ${ex.message}`);
+            logger.error(`*** ${this.$name}[${this._state}]>> Start ws@endpoint failure! - ${ex.message}`);
             return ex.message;
         }
-        return this._state;
     }
     async dispose() {
         if (this._wss) {
@@ -352,6 +417,12 @@ class WebSockEndpoint extends Endpoint {
 }
 
 //
-module.exports = exporst = {
-    WebSocket, WSRouter, WebSocketClient, ConnectionManager, WebSockEndpoint
+module.exports = exports = {
+    WebSocket, 
+    //
+    eWebSockEvent,
+    WebSockRouter, 
+    WebSocketClient, 
+    WebSockConnectionManager, 
+    WebSockEndpoint
 }
