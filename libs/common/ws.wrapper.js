@@ -121,9 +121,9 @@ class WebSocketClient extends EventObject {
     }
 }
 
-async function _validateParameters(searchParams) {
+async function _parseParamters(validator, searchParams) {
     let args = {};
-    let keys = Object.keys(this._validator);
+    let keys = Object.keys(validator);
     if (keys.length === 0) { // Empty parameter list
         return args;
     }
@@ -132,7 +132,7 @@ async function _validateParameters(searchParams) {
     while(i < keys.length && !err) {
         let key = keys[i++];
         //
-        let val = this._validator[key];
+        let val = validator[key];
         let arg = searchParams.get(key);
         //
         if (arg === undefined && val.required) {
@@ -160,7 +160,10 @@ const _fakeController = {
 }
 
 const eWebSockEvent = {
-    
+    Error    : 'ws-error',
+    Open     : 'ws-open',
+    Message  : 'ws-message',
+    Close    : 'ws-close' 
 }
 
 // The WebSocket ConnectionManager class
@@ -265,16 +268,16 @@ class WebSockRouter extends EventModule {
     }
     /**
      * 
-     * @param { string } pathName
+     * @param { string } rootPath
      * @param { Object } options 
      */
-    async init(pathName, options) {
+    async init(rootPath, options) {
         if (this._state !== sysdefs.eModuleState.INIT) {
             logger.warn(`### ${this.$name}[${this._state}]>> Already initialized.`);
             return false;
         }
         let loaded = [];
-        let currentDir = path.join(appRoot.path, pathName);
+        let currentDir = path.join(appRoot.path, rootPath);
         logger.info(`${this.$name}[${this._state}]>> scan directory: ${currentDir}`);
         const entries = fs.readdirSync(currentDir, { withFileTypes: true });
         entries.forEach(dirent => {
@@ -284,9 +287,9 @@ class WebSockRouter extends EventModule {
             let filePath = path.join(currentDir, dirent.name);
             try {
                 let m = require(filePath);
-                this._routes[m.pathname] = m.handler;
+                this._routes[m.path] = m.handler;
                 //
-                loaded.push(m.pathname);
+                loaded.push(m.path);
             } catch(ex) {
                 logger.error(`*** Load ${filePath} error! - ${ex.message}`);
             }
@@ -399,7 +402,7 @@ class WebSockEndpoint extends Endpoint {
             });
             //
             this._state = sysdefs.eModuleState.ACTIVE;
-            logger.info(`${this.$name}[${this._state}]>> wss listening on port ${this._port}`);
+            logger.info(`${this.$name}[${this._state}]>> wss start listening on port ${this._port}`);
             return 'ok';
         } catch(ex) {
             this._state =sysdefs.eModuleState.OOS;
