@@ -217,18 +217,16 @@ class WebSockConnectionManager extends EventObject {
             }
         }).on('message', (cid, data, isBinary) => {
             try {
-                this._controller.emit('ws-message', cid);
+                this._controller.emit('ws-message', cid, data, isBinary);
             } catch(err) {
                 logger.error(err.message);
             }
         }).on('close', (cid, retain = false) => {
-            this._consumers.forEach(consumer => {
-                try {
-                    consumer.emit('ws-close', cid);
-                } catch(err) {
-                    logger.error(err.message);
-                }
-            })
+            try {
+                this._controller.emit('ws-close', cid);
+            } catch(err) {
+                logger.error(err.message);
+            }
             //
             delete this._clients[cid];
         })
