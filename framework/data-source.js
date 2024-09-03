@@ -2,7 +2,6 @@
  * Created by Eric on 2023/02/08
  */
 const async = require('async');
-const mongoose = require('mongoose');
 //
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.DATASOURCE;
@@ -14,27 +13,48 @@ const tools = require('../utils/tools');
 const _DS_DEFAULT = 'default';
 
 /**
+ * @typedef DataSourceConfig
+ * @property { 'mongo'|'mysql' } type
+ * @property { Object } Object
+ */
+
+/**
+ * @typedef DataSourceWrapper
+ * @property 
+ */
+
+/**
  * @typedef DataModelOptions
  * @prop { string } dsName
  * @prop { Object? } modification
  */
 
 async function _initMongoConnection(config) {
-    const options = {
-        useUnifiedTopology: true,
-        useNewUrlParser: true
-    };
-    let uri = tools.packMongoUri(config);
-    this._conn = mongoose.createConnection(uri, options);
-    logger.debug(`>>> ${this.$name}: mongodb://${config.host} connected.`);
-    this.isConnected = true;
+    try {
+        const mongoose = require('mongoose');
+        const options = {
+            useUnifiedTopology: true,
+            useNewUrlParser: true
+        };
+        let uri = tools.packMongoUri(config);
+        this._conn = mongoose.createConnection(uri, options);
+        logger.debug(`>>> ${this.$name}: mongodb://${config.host} connected.`);
+        this.isConnected = true;
+    } catch(err) {
+        return err.message;
+    }
 }
 
 function _initProcMemoryStorage(config) {
     this._memStorage = {};
 }
 
-function _initMySqlConnection(config) {
+async function _initMySqlConnection(config) {
+    try {
+
+    } catch(err) {
+
+    }
 
 }
 
@@ -44,23 +64,26 @@ class DataSource extends EventObject {
         super(props);
         // Save class properites
         this.dbType = props.dbType || sysdefs.eDbType.NATIVE;
-        this.conf = props.conf || {};
         // Declaring member variables
         this.isConnected = false;
         this._conn = null;
         this._models = {};
     }
-    async init() {
+    /**
+     * Initialize the dataSource instance
+     * @param { DataSourceConfig } config 
+     */
+    async init(config) {
         let fn = null;
         switch (this.dbType) {
             case sysdefs.eDbType.NATIVE:
-                fn = _initProcMemoryStorage.bind(this, this.conf);
+                fn = _initProcMemoryStorage.bind(this, config);
                 break;
             case sysdefs.eDbType.MONGO:
-                fn = _initMongoConnection.bind(this, this.conf);
+                fn = _initMongoConnection.bind(this, config);
                 break;
             case sysdefs.eDbType.MYSQL:
-                fn = _initMySqlConnection.bind(this, this.conf);
+                fn = _initMySqlConnection.bind(this, config);
                 break;
             default:
                 break;
@@ -122,6 +145,11 @@ class DataSourceFactory extends EventModule {
             return ackOrNack(true);
         }
     }
+    /**
+     * 
+     * @param {Object<string, DataSourceConfig>} config 
+     * @returns 
+     */
     async init(config) {
         let keys = Object.keys(config);
         await async.eachSeries(keys, async (dsName) => {
