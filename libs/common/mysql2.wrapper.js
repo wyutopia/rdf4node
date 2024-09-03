@@ -16,7 +16,7 @@
  
  const mntService = require('../base/prom.monitor');
  
- const MODULE_NAME = 'MYSQL_CM';  //
+ const _MODULE_NAME = 'MYSQL_CM';  //
  /*********************************************
   * Set monitor metrics
   *********************************************/
@@ -31,7 +31,7 @@ const eMetricsName = {
 };
 
 const metricsCollector = mntService.regMetrics({
-    moduleName: MODULE_NAME,
+    moduleName: _MODULE_NAME,
     metrics: [{
         name: eMetricsName.poolActive,
         type: sysdefs.eMetricType.Gauge
@@ -373,7 +373,7 @@ class MysqlWrapper extends EventModule {
 }
  
  const mysqlWrapper = new MysqlWrapper({
-     $name: MODULE_NAME,
+     $name: _MODULE_NAME,
      $type: sysdefs.eModuleType.CM,
      //
      mandatory: true,

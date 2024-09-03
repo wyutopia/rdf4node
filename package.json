@@ -1,6 +1,6 @@
 {
     "name": "@icedeer/rdf4node",
-    "version": "0.82.1",
+    "version": "0.85.0",
     "description": "A rapid develop framework based on express for nodejs",
     "author": {
         "name": "Eric Wang",
@@ -46,7 +46,7 @@
         "ldap-authentication": "^3.0.3",
         "moment": "^2.29.4",
         "mongoose": "^6.12.3",
-        "mysql2": "^3.9.7",
+        "mysql2": "^3.11.0",
         "pg": "^8.11.3",
         "rascal": "^17.0.1",
         "rate-limit-mongo": "^2.3.2",
