@@ -34,7 +34,7 @@ function _invokeConnect() {
             try {
                 this.emit('error', this.$id, err);
             } catch(err) {
-                logger.error(`${this.$name}[${this._state}]>> emit client-error error! - ${err.message}`);
+                logger.error(`${this.$name}[${this._state}]>> emit ws-error error! - ${err.message}`);
             }
         })
         this._ws.on('open', () => {
@@ -52,19 +52,25 @@ function _invokeConnect() {
             try {
                 this.emit('open', this.$id);
             } catch(err) {
-                logger.error(`${this.$name}[${this._state}]>> emit client-open error! - ${err.message}`);
+                logger.error(`${this.$name}[${this._state}]>> emit ws-open error! - ${err.message}`);
             }
         })
         this._ws.on('message', (data, isBinary) => {
             try {
+                logger.debug(`${this.$name}[${this._state}]>> on message: ${tools.inspect(data)} - ${isBinary}`);
                 this.emit('message', this.$id, data, isBinary);
             } catch(err) {
-                logger.error(`${this.$name}[${this._state}]>> emit client-message error! - ${err.message}`);
+                logger.error(`${this.$name}[${this._state}]>> emit ws-message error! - ${err.message}`);
             }
         })        
         this._ws.on('close', () => {
             let retain = this._origin === eOrigin.OUTBOUND && this._reconnect;
-            this.emit('close', this.$id, retain);
+            logger.info(`${this.$name}[${this._state}]>> on close. - retain=${retain}`);
+            try {
+                this.emit('close', this.$id, retain);    
+            } catch(err) {
+                logger.error(`${this.$name}[${this._state}]>> emit ws-close error! - ${err.message}`);
+            }
             if (retain) { // Only outbound connection need reconnecting
                 logger.info(`${this.$name}[${this._state}]>> disconnected. re-connecting after ${this._retryDelayMs}ms ...`);
                 setTimeout(_invokeConnect.bind(this), this._retryDelayMs);
@@ -205,25 +211,25 @@ class WebSockConnectionManager extends EventObject {
         });
         client.on('error', (cid, err) => {
             try {
-                this._controller.emit('ws-error', cid, err);
+                this._controller.emit(eWebSockEvent.Error, cid, err);
             } catch(err) {
                 logger.error(err.message);
             }
         }).on('open', cid => {
             try {
-                this._controller.emit('ws-open', cid, args);
+                this._controller.emit(eWebSockEvent.Open, cid, args);
             } catch(err) {
                 logger.error(err.message);
             }
         }).on('message', (cid, data, isBinary) => {
             try {
-                this._controller.emit('ws-message', cid, data, isBinary);
+                this._controller.emit(eWebSockEvent.Message, cid, data, isBinary);
             } catch(err) {
                 logger.error(err.message);
             }
         }).on('close', (cid, retain = false) => {
             try {
-                this._controller.emit('ws-close', cid);
+                this._controller.emit(eWebSockEvent.Close, cid);
             } catch(err) {
                 logger.error(err.message);
             }
