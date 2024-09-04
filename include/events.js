@@ -53,7 +53,9 @@ const eDomainEvent = {
     MSG_CREATE         : 'msg.create',
     MSG_UPDATE         : 'msg.update',
     MSG_DELETE         : 'msg.delete',
-    MSG_READ           : 'msg.read'
+    MSG_READ           : 'msg.read',
+    // Endpoints
+    EP_HTTP_EXT_WSS    : 'ep.http.ext.wss'
     // Append new events here ...
 };
 

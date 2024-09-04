@@ -4,8 +4,15 @@
 const path = require('path');
 const appRoot = require('app-root-path');
 const express = require('express');
+const http = require('http');
+const cookieParser = require('cookie-parser');
+const createError = require('http-errors');
+const router = express.Router();
+const MorganWrapper = require('../base/morgan.wrapper');
+const httpLogger = MorganWrapper(process.env.SRV_ROLE);
 // The project libs
 const { eRequestAuthType, eModuleState } = require('../../include/sysdefs');
+const { eDomainEvent } = require('../../include/events');
 const { Endpoint, normalizePort } = require('../../include/endpoint');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE);
@@ -43,36 +50,32 @@ class HttpEndpoint extends Endpoint {
         this._server = null;
         this._routeManager = new RouteManager({
             $name: `${this.$name}@ep`
-        });        
+        });
+        this._state = eModuleState.CREATE;
     }
     
     async init(config) {
-        if (this._state !== eModuleState.INIT) {
+        if (this._state !== eModuleState.CREATE) {
             logger.error(`${this.$name}: Already initialized!`);
             return null;
         }
+        this._state !== eModuleState.INIT
         this._config = config;
         this._port = normalizePort(config.port || process.env.PORT || '3000');
+        // TODO: additional initialiazing codes go here ...
         // Update state
         this._state = eModuleState.READY;
         return true;
     }
 
-    async start() {
+    async start(options) {
         if (this._state !== eModuleState.READY) {
             logger.error(`${this.$name}: endpoint is not ready!`);
             return false;
         }
         try {
             this._state = eModuleState.START_PENDING;
-            // Dynamicly load http and express libs
-            const http = require('http');
-            const cookieParser = require('cookie-parser');
-            const createError = require('http-errors');
-            const router = express.Router();
-            const MorganWrapper = require('../base/morgan.wrapper');
-            const httpLogger = MorganWrapper(process.env.SRV_ROLE);
-            //
+            // Create and initialize the express instance
             const app = express();
             if (this._config.trustProxy !== undefined) {
                 try {
@@ -158,6 +161,7 @@ class HttpEndpoint extends Endpoint {
                 res.render('error');
             });
             app.set('port', this._port);
+            // Start http server
             this._server = http.createServer(app);
             this._server.on('error', (error) => {
                 if (error.syscall !== 'listen') {
@@ -194,6 +198,14 @@ class HttpEndpoint extends Endpoint {
                 this._state = eModuleState.ACTIVE;
             });
             this._server.listen(this._port);
+            // Start combined wss if configed
+            if (this._config.wss) {
+                try {
+                    this.emit(eDomainEvent.EP_HTTP_EXT_WSS, this._server, this._config.wss);
+                } catch(err) {
+                    logger.error(`*** ${this.$name}[${this._state}]: `)
+                }
+            }
             return 'ok';
         } catch (ex) {
             this._state = eModuleState.OOS;

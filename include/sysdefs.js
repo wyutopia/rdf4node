@@ -71,6 +71,7 @@ const eFrameworkModules = {
 exports.eFrameworkModules = eFrameworkModules;
 
 const eModuleState = {
+    CREATE        : 'cr',
     INIT          : 'Init',
     READY         : 'Ready',
     START_PENDING : 'StartPending',

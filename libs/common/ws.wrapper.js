@@ -341,23 +341,25 @@ class WebSockEndpoint extends Endpoint {
         //
         this._wss = null;
         this._router = new WebSockRouter(appCtx, {$name: '_wsrt_'});
-        // this._heartbeat = null;
-        // this._cm = new ConnectionManager({
-        //     $name: '_wscm_'
-        // });
+        //
+        this._state = sysdefs.eModuleState.CREATE;
     }
 
     /**
      * 
-     * @param { Object } config 
+     * @param { Object } config
+     * @param { Object? } options
+     * @param { Object } options.httpServer
      * @returns 
      */
-    async init(config = {}) {
-        if (this._state !== sysdefs.eModuleState.INIT) {
+    async init(config, options = {}) {
+        if (this._state !== sysdefs.eModuleState.CREATE) {
             logger.error(`${this.$name}[${this._state}]>> Already initialized!`);
             return null;
         }
-        this._config = config;
+        this._state = sysdefs.eModuleState.INIT;
+        //
+        this._httpServer = options?.httpServer;
         this._port = normalizePort(config.port || process.env.WS_PORT || '10086');
         // Load routes
         let paths = await this._router.init(config.routePath || 'wss');
@@ -374,9 +376,13 @@ class WebSockEndpoint extends Endpoint {
         }
         this._state = sysdefs.eModuleState.START_PENDING;
         try {
-            this._wss = new WebSocketServer({
+            let params = this._httpServer? {
+                server: this._httpServer
+            } : {
                 port: this._port
-            })
+            }
+            logger.info(`${this.$name}[${this._state}]>> The create parameters: ${tools.inspect(params)}`);
+            this._wss = new WebSocketServer(params);
             this._wss.on('connection', async (ws, req) => {
                 try {
                     const xff = req.headers['x-forwarded-for'];
@@ -405,12 +411,16 @@ class WebSockEndpoint extends Endpoint {
             });
             //
             this._state = sysdefs.eModuleState.ACTIVE;
-            logger.info(`${this.$name}[${this._state}]>> wss start listening on port ${this._port}`);
+            if (this._httpServer) {
+                logger.info(`${this.$name}[${this._state}]>> embedded wss started.`);
+            } else {
+                logger.info(`${this.$name}[${this._state}]>> wss start listening on port ${this._port}`);
+            }
             return 'ok';
         } catch(ex) {
             this._state =sysdefs.eModuleState.OOS;
             this.lastError = ex.message;
-            logger.error(`*** ${this.$name}[${this._state}]>> Start ws@endpoint failure! - ${ex.message}`);
+            logger.error(`*** ${this.$name}[${this._state}]>> Start wss failure! - ${ex.message}`);
             return ex.message;
         }
     }

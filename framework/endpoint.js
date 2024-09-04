@@ -4,7 +4,7 @@
  */
 const async = require('async');
 //
-const { EventModule } = require('../include/events');
+const { EventModule, eDomainEvent } = require('../include/events');
 const { eFrameworkModules, eModuleState } = require('../include/sysdefs');
 const tools = require('../utils/tools');
 const _MODULE_NAME = eFrameworkModules.ENDPOINT;
@@ -68,6 +68,19 @@ class EndpointFactory extends EventModule {
                     managed: true
                 });
                 this._endpoints[item.name] = ep;
+                ep.on(eDomainEvent.EP_HTTP_EXT_WSS, async (config, httpServer) => {
+                    try {
+                        let name = `${item.name}:wss`;
+                        let ep = _getEpModule(eProtocol.WebSock)(this._appCtx, {
+                            $name: `${name}@${this.$name}`,
+                            managed: true
+                        })
+                        this._endpoints[name] = ep;
+                        await ep.init(config, { httpServer });
+                    } catch(err) {
+                        logger.error(`*** `)
+                    }
+                })
                 //
                 await ep.init(item.options);
             } catch(ex) {
