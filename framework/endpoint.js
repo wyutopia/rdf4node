@@ -71,7 +71,8 @@ class EndpointFactory extends EventModule {
                 ep.on(eDomainEvent.EP_HTTP_EXT_WSS, async (config, httpServer) => {
                     try {
                         let name = `${item.name}:wss`;
-                        let ep = _getEpModule(eProtocol.WebSock)(this._appCtx, {
+                        let EpWs = _getEpModule(eProtocol.WebSock);
+                        let ep = new EpWs(this._appCtx, {
                             $name: `${name}@${this.$name}`,
                             managed: true
                         })
