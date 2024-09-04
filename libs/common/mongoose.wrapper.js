@@ -13,20 +13,23 @@ const tools = require("../../utils/tools");
 
 // Add new SchemaDL class into mongoose lib
 
-/**
- * @constructor
- * @param {Object} options - The schema spec
- */
-function SchemaDL (options) {
-    this.spec = options;
+
+class SchemaDL {
+    /**
+     * @constructor
+     * @param {Object} ddl - The schema spec ddl
+     */
+    constructor(ddl) {
+        this.spec = ddl;
+    }
     /**
      * Extract validators from schema sdl based on paths and options
      * @param {string[]} paths - The path array
      * @param {*} options 
      * @returns 
      */
-    this.extractValidators = (paths, options = {}) => {
-        const isSearch = options.isSearch !== undefined? options.isSearch : false;
+    extractValidators = (paths, options = {}) => {
+        const isSearch = options.isSearch !== undefined ? options.isSearch : false;
         const doc = {};
         paths.forEach(key => {
             if (this.spec[key] !== undefined) {
@@ -34,8 +37,8 @@ function SchemaDL (options) {
             }
         });
         return _extractValidatorsFromDoc(doc, isSearch);
-    };
-    this.extractRefs = () => {
+    }
+    extractRefs = () => {
         const refs = [];
         Object.keys(this.spec).forEach(path => {
             _parseRefs(this.spec[path]).forEach(ref => {
@@ -49,12 +52,12 @@ function SchemaDL (options) {
 }
 mongoose.SchemaDL = SchemaDL;
 
-function _parseRefs (doc) {
+function _parseRefs(doc) {
     const refs = [];
     if (doc === undefined) {
         return refs;
     }
-    const prop = tools.isTypeOfArray(doc)? doc[0] : doc;
+    const prop = tools.isTypeOfArray(doc) ? doc[0] : doc;
     if (prop === undefined || prop instanceof Schema) { // Maybe extract ref from Schema in the future
         return refs;
     }
@@ -81,7 +84,7 @@ const _constValProps = ['min', 'max', 'minLength', 'maxLength', 'enum', 'match',
 function _parseValProps(doc, val) {
     _constValProps.forEach(key => {
         if (doc[key]) {
-            let valKey = key === 'match'? 'regexp' : key;
+            let valKey = key === 'match' ? 'regexp' : key;
             val[valKey] = doc[key];
         }
     });
@@ -100,7 +103,7 @@ function _parseValidator(doc, isSearch) {
         _parseValProps(doc, validator);
     } else if (tools.isTypeOfArray(doc)) {
         if (doc[0].type) {
-            validator.type = isSearch? doc[0].type.name : `Array<${doc[0].type.name}>`;  // No Array required on search request
+            validator.type = isSearch ? doc[0].type.name : `Array<${doc[0].type.name}>`;  // No Array required on search request
             _parseValProps(doc[0], validator);
         } else {
             validator.type = 'Array<EmbeddedObject>';
@@ -191,11 +194,11 @@ function _extractValidator3 (path, options) {
 */
 module.exports = exports = mongoose;
 
- //http://mongoosejs.com/docs/middleware.html
- //https://mongoosejs.com/docs/deprecations.html#-findandmodify-
+//http://mongoosejs.com/docs/middleware.html
+//https://mongoosejs.com/docs/deprecations.html#-findandmodify-
 
- //Replace update() with updateOne(), updateMany(), or replaceOne()
- //Replace remove() with deleteOne() or deleteMany().
- //Replace count() with countDocuments(),
- // unless you want to count how many documents are in the whole collection (no filter).
- // In the latter case, use estimatedDocumentCount().
+//Replace update() with updateOne(), updateMany(), or replaceOne()
+//Replace remove() with deleteOne() or deleteMany().
+//Replace count() with countDocuments(),
+// unless you want to count how many documents are in the whole collection (no filter).
+// In the latter case, use estimatedDocumentCount().
