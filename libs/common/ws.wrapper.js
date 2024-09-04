@@ -242,16 +242,15 @@ class WebSockConnectionManager extends EventObject {
     }
 
     async outbound(url, params) {
-
+        return false;
     }
 
     async dispose() {
         logger.info(`${this.$name} >> Close all connections...`);
         let promises = [];
-        Object.keys(this._clients).forEach( key => {
-            let conn = this._connections[key];
-            if (typeof conn.dispose === 'function') {
-                promises.push(conn.dispose());
+        Object.values(this._clients).forEach( client => {
+            if (typeof client.dispose === 'function') {
+                promises.push(client.dispose());
             }
         })
         let result = {};
