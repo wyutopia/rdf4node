@@ -381,7 +381,6 @@ class WebSockEndpoint extends Endpoint {
             } : {
                 port: this._port
             }
-            logger.info(`${this.$name}[${this._state}]>> The create parameters: ${tools.inspect(params)}`);
             this._wss = new WebSocketServer(params);
             this._wss.on('connection', async (ws, req) => {
                 try {
@@ -428,7 +427,7 @@ class WebSockEndpoint extends Endpoint {
         if (this._wss) {
             this._wss.close();
         }
-        return true;
+        return `${this.$name} closed.`;
     }
 }
 

@@ -77,8 +77,9 @@ class EndpointFactory extends EventModule {
                         })
                         this._endpoints[name] = ep;
                         await ep.init(config, { httpServer });
+                        await ep.start();
                     } catch(err) {
-                        logger.error(`*** `)
+                        logger.error(`*** Handle ${eDomainEvent.EP_HTTP_EXT_WSS} error! - ${err.message}`);
                     }
                 })
                 //

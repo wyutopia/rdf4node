@@ -163,6 +163,13 @@ class HttpEndpoint extends Endpoint {
             app.set('port', this._port);
             // Start http server
             this._server = http.createServer(app);
+            if (this._config.wss) { // Start combined wss if configed
+                try {
+                    this.emit(eDomainEvent.EP_HTTP_EXT_WSS, this._config.wss, this._server);
+                } catch(err) {
+                    logger.error(`*** ${this.$name}[${this._state}]: `)
+                }
+            }
             this._server.on('error', (error) => {
                 if (error.syscall !== 'listen') {
                     throw error;
@@ -198,14 +205,6 @@ class HttpEndpoint extends Endpoint {
                 this._state = eModuleState.ACTIVE;
             });
             this._server.listen(this._port);
-            // Start combined wss if configed
-            if (this._config.wss) {
-                try {
-                    this.emit(eDomainEvent.EP_HTTP_EXT_WSS, this._server, this._config.wss);
-                } catch(err) {
-                    logger.error(`*** ${this.$name}[${this._state}]: `)
-                }
-            }
             return 'ok';
         } catch (ex) {
             this._state = eModuleState.OOS;
@@ -220,9 +219,8 @@ class HttpEndpoint extends Endpoint {
     async dispose() {
         if (this._server) {
             this._server.close();
-            return `${this.$name} closed`;
         }
-        return 0;
+        return `${this.$name} closed.`;
     }
 }
 
