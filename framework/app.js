@@ -523,7 +523,7 @@ class Application extends EventEmitter {
             return 0;
         }
         await _regService.call(this);
-        await this.epFactory.startAll();
+        await this.epFactory.start();
         //Register to the centered regsitry
         //fire app startup alarm
         //Change state to ACTIVE
