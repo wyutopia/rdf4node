@@ -270,7 +270,7 @@ class WebSockRouter extends EventModule {
     /**
      * 
      * @param { string } rootPath
-     * @param { Object } options 
+     * @param { Object } options
      */
     async init(rootPath, options) {
         if (this._state !== sysdefs.eModuleState.INIT) {
