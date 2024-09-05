@@ -12,7 +12,7 @@ const sysdefs = require('../../include/sysdefs');
 const eClientState = sysdefs.eClientState;
 const eRetCodes = require('../../include/retcodes');
 const { EventObject } =  require('../../include/events');
-const { Endpoint } = require('../../include/endpoint');
+const { Endpoint, normalizePort } = require('../../include/endpoint');
 const mntService = require('../base/prom.wrapper');
 const {WinstonLogger} = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'grpc');
@@ -150,11 +150,52 @@ class TcpClient extends EventObject {
     }
 }
 
+class NetClientManager extends EventObject {
+    constructor(props) {
+        super(props);
+    }
+    //
+
+}
 
 class TcpEndpoint extends Endpoint {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
+        this._host = props.host || '';
+        this._port = props.port || 13000;
+        this._exclusive = props.exclusive !== undefined? props.exclusive : false;
+    }
+    
+    async init(config) {
+
+    }
+    async start(options) {
+        this._server = new net.Server();
+        this._server.on('error', err => {
+            logger.error(`${this.$name}[${this._state}]: ${err.code}#${err.message}`);
+            if (err.code === 'EADDRINUSE') {
+
+            }
+        })
+        this._server.on('listening', () => {
+
+        })
+        this._server.on('drop', () => {
+            // Fire alarm 
+        })
+        this._server = net.Server.listen({
+            host: this._host,
+            port: this._port,
+            exclusive: this._exclusive
+        });
+    }
+    async dispose() {
+        if (this._server !== null) {
+
+            return `${this.$name}: closed`;
+        }
+        return `${this.$name}: ignored`;
     }
 }
 

@@ -4,7 +4,7 @@
  */
 const async = require('async');
 //
-const { EventModule } = require('../include/events');
+const { EventModule, eDomainEvent } = require('../include/events');
 const { eFrameworkModules, eModuleState } = require('../include/sysdefs');
 const tools = require('../utils/tools');
 const _MODULE_NAME = eFrameworkModules.ENDPOINT;
@@ -34,6 +34,18 @@ function _getEpModule(proto) {
     return _epConstructor[proto];
 }
 
+/**
+ * @typedef EndpointConfig
+ * @property { string } name - The endpoint name
+ * @property { 'http'|'ws|'grpc'|'tcp'|'udp' } protocol - The endpoint protocol.
+ * @property { Object? } options - The config options
+ * @property { string? } options.viewPath - The view template path
+ * @property { string? } options.engine - The view template engine
+ * @property { string? } options.payloadLimit - The http payload limitation
+ * @property { Object? } options.rateLimit - The rateLimit options
+ * @property { string? } options.routePath - The route root path
+ */
+
 // The Endpoint factory class
 class EndpointFactory extends EventModule {
     constructor(appCtx, props) {
@@ -43,14 +55,8 @@ class EndpointFactory extends EventModule {
     }
     /**
      * 
-     * @param { 'http'|'ws|'grpc'|'tcp'|'udp' } protocol - The endpoint protocol.
-     * @param { string } name - The endpoint name
-     * @param { Object } options - The endpoint options
-     * @param { string? } options.viewPath - The view template path
-     * @param { string? } options.engine - The view template engine
-     * @param { string? } options.payloadLimit - The http payload limitation
-     * @param { Object? } options.rateLimit - The rateLimit options
-     * @param { string? } options.routePath - The route root path
+     * @param { EndpointConfig | EndpointConfig[] } config - The configuration
+     * @returns 
      */
     async init(config) {
         const arr = tools.isTypeOfArray(config) ? config : [config];
@@ -62,8 +68,22 @@ class EndpointFactory extends EventModule {
                     managed: true
                 });
                 this._endpoints[item.name] = ep;
+                ep.on(eDomainEvent.EP_HTTP_EXT_WSS, async (config, httpServer) => {
+                    try {
+                        let name = `${item.name}:wss`;
+                        let EpWs = _getEpModule(eProtocol.WebSock);
+                        let ep = new EpWs(this._appCtx, {
+                            $name: `${name}@${this.$name}`,
+                            managed: true
+                        })
+                        this._endpoints[name] = ep;
+                        await ep.init(config, { httpServer });
+                    } catch(err) {
+                        logger.error(`*** Handle ${eDomainEvent.EP_HTTP_EXT_WSS} error! - ${err.message}`);
+                    }
+                })
                 //
-                ep.init(item.options);
+                await ep.init(item.options);
             } catch(ex) {
                 logger.error(`!!! [${this.$name}]: Create and init ${item.protocol} endpoint#${item.name} error! - ${ex.message}`);
             }
@@ -74,13 +94,7 @@ class EndpointFactory extends EventModule {
         const ep = this._endpoints[name];
         return ep ? ep.getInstance() : ep;
     }
-    start(name) {
-
-    }
-    stop(name) {
-
-    }
-    async startAll() {
+    async start() {
         const promises = [];
         Object.values(this._endpoints).forEach(ep => {
             promises.push(ep.start());

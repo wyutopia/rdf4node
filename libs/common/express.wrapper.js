@@ -3,11 +3,21 @@
  */
 const path = require('path');
 const appRoot = require('app-root-path');
-const { eRequestAuthType, eModuleState } = require('../../include/sysdefs');
 const express = require('express');
+const http = require('http');
+const cookieParser = require('cookie-parser');
+const createError = require('http-errors');
+const router = express.Router();
+const MorganWrapper = require('../base/morgan.wrapper');
+const httpLogger = MorganWrapper(process.env.SRV_ROLE);
+// The project libs
+const { eRequestAuthType, eModuleState } = require('../../include/sysdefs');
+const { eDomainEvent } = require('../../include/events');
+const { Endpoint, normalizePort } = require('../../include/endpoint');
 const { WinstonLogger } = require('../base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE);
 const tools = require('../../utils/tools');
+const { RouteManager } = require('./router');
 
 // Get prototype of HttpResponse
 const responseWrapper = Object.getPrototypeOf(express.response);
@@ -32,164 +42,209 @@ responseWrapper.sendIntSrvErr = function () {
     this.sendRsp(500, 'Internal server error!');
 };
 
-const { Endpoint, normalizePort } = require('../../include/endpoint');
+
+/**
+ * @typedef RateLimitProps
+ * @property { number } windowMs - The control period
+ * @property { number } max - The limitation threshold value 
+ * @property { number } expireTimeMs - The restriction duration
+ */
+
+/**
+ * @typedef RateLimitStore
+ * @property { 'mongo' | 'redis' } type - The database type. Default: 'mongo'
+ * @property { string } confPath - The database configure path
+ */
+
+/**
+ * @typedef HttpEndpointConfig
+ * @property { string? } viewPath - The view components' root directory name. default: 'views'
+ * @property { string? } viewEngin - The SSR engine. default: 'ejs'
+ * @property { string? } routePath - The route modules' root directory name. Default: 'routes'
+ * @property { number? } trustProxy - The number of proxies
+ * @property { number? | string } port - The port value. Default: 3000
+ * @property { string? } payloadLimit - The payloadLimit value. Default: '5mb'
+ * @property { boolean? } enableRateLimit - Enable or disable rateLimit controll. default: false
+ * @property { Object } rateLimit - The rateLimit configure wrapper
+ * @property { RateLimitProps } rateLimit.options
+ * @property { RateLimitStore } rateLimit.store
+ * @
+ */
+
 
 // The http endpoint
 class HttpEndpoint extends Endpoint {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
-        this._routeManager = null;
+        /**
+         * @member
+         */
+        this._app = null;
+        this._port = null;
+        this._server = null;
+        this._routeManager = new RouteManager({
+            $name: `${this.$name}@ep`
+        });
+        this._state = eModuleState.CREATE;
     }
-    init(options) {
-        if (this._state !== eModuleState.INIT) {
+    /**
+     * 
+     * @param {HttpEndpointConfig} config 
+     * @returns 
+     */
+    async init(config) {
+        if (this._state !== eModuleState.CREATE) {
             logger.error(`${this.$name}: Already initialized!`);
             return null;
         }
-        this._config = options;
-        this._port = normalizePort(options.port || process.env.PORT || '3000');
+        this._state !== eModuleState.INIT
+        // Create and initialize the express instance
+        this._port = normalizePort(config.port || process.env.PORT || '3000');
+        this._app = express();
+        if (config.trustProxy !== undefined) {
+            try {
+                let numberOfProxies = parseInt(config.trustProxy);
+                this._app.set('trust proxy', numberOfProxies);
+            } catch (ex) {
+                logger.error(`!!! Set trust-proxy error! - ${ex.message}`);
+            }
+        }
+        // Step 1: Setup view engine
+        this._app.set('views', path.join(appRoot.path, config.viewPath || 'views'));
+        this._app.set('view engine', config.engine || 'ejs');
+        // Step 2: Setup mandatory middlewares
+        this._app.use(httpLogger);
+        this._app.use(express.json({ limit: config.payloadLimit || '50mb' }));
+        this._app.use(express.urlencoded({ extended: false }));
+        this._app.use(cookieParser());
+        this._app.use(express.static(path.join(appRoot.path, config.staticPath || 'public')));
+        if (config.enableRateLimit && config.rateLimit) {
+            try {
+                const { createRateLimit } = require('./ratelimit.wrapper');
+                let limiter = await createRateLimit(config.rateLimit);
+                this._app.use(limiter);
+                logger.info('>>>>>> Rate limitation enabled. <<<<<<');
+            } catch (err) {
+                logger.error(`****** Setup limitation error! - ${err.message}`);
+            }
+        } else {
+            logger.info('>>>>>> Rate limitation disabled. <<<<<<');
+        }
+        // Step 3: Setup cookie if configed
+        const authConfig = config.authentication;
+        if (authConfig && authConfig.type === eRequestAuthType.COOKIE) {
+            try {
+                const session = require('./session')(authConfig.store, authConfig.options);
+                this._app.use(session);
+            } catch (ex) {
+                logger.error(`!!! Setup session error! - ${ex.message}`);
+            }
+        }
+        // Step 4: Setup customer specified middlewares
+        if (config.middlewares) {
+            try {
+                const result = {};
+                let fullPath = path.join(appRoot.path, config.middlewares);
+                const mws = require(fullPath);
+                mws.forEach(mw => {
+                    try {
+                        this._app.use(mw.fn);
+                        result[mw.name] = 'ok'
+                    } catch (err) {
+                        result[mw.name] = err.message;
+                    }
+                })
+                logger.info(`>>> Load express middlewares: ${tools.inspect(result)}`);
+            } catch (err) {
+                logger.error(`*** Load middlewares from file: ${fullPath} error! - ${err.message}`)
+            }
+        }
+        // Step 5: Setup routes
+        try {
+            this._routeManager.init(router, config);
+            this._app.use('/', router);
+        } catch (err) {
+            logger.error(`*** Setup routes error! - ${err.message}`);
+        }
+        // The 404 and forware to error handler
+        this._app.use(function (req, res, next) {
+            next(createError(404));
+        })
+        this._app.use(function (err, req, res, next) {
+            // set locals, only providing error in development
+            logger.error(err, err.stack);
+            res.locals.message = err.message;
+            //
+            if (this._app.get('env') === 'development') {
+                res.locals.error = err;
+            } else {
+                res.locals.error = {};
+            }
+            // render the error page
+            res.status(err.status || 500);
+            res.render('error');
+        });
+        this._app.set('port', this._port);
+        // Create HTTP server and associated WebSocket server
+        this._server = http.createServer(this._app);
+        this._server.on('error', (error) => {
+            if (error.syscall !== 'listen') {
+                throw error;
+            }
+            let bind = typeof this._port === 'string'
+                ? 'Pipe ' + this._port
+                : 'Port ' + this._port;
+
+            // handle specific listen errors with friendly messages
+            switch (error.code) {
+                case 'EACCES':
+                    logger.error(`!!! ${this.$name}[${this._state}]>> ${bind} requires elevated privileges.`);
+                    this._state = eModuleState.OOS;
+                    //
+                    theApp.emit('app.exit', 1);
+                    break;
+                case 'EADDRINUSE':
+                    logger.error(`!!! ${this.$name}[${this._state}]>> ${bind} is already in use.`);
+                    this._state = eModuleState.OOS;
+                    //
+                    theApp.emit('app.exit', 1);
+                    break;
+                default:
+                    throw error;
+            }
+        });
+        this._server.on('listening', () => {
+            let addr = this._server.address();
+            let bind = typeof addr === 'string'
+                ? 'pipe ' + addr
+                : 'port ' + addr.port;
+            logger.info('Listening on ' + bind);
+            //
+            this._state = eModuleState.ACTIVE;
+        });
+        // Create combined wss if configed
+        if (config.wss) { 
+            try {
+                this.emit(eDomainEvent.EP_HTTP_EXT_WSS, config.wss, this._server);
+            } catch (err) {
+                logger.error(`*** ${this.$name}[${this._state}]>> Init embedded wss error! - ${err.message}.`);
+            }
+        }
+        // TODO: additional initialiazing codes go here ...
         // Update state
         this._state = eModuleState.READY;
+        return true;
     }
-    async start() {
+
+    async start(options) {
         if (this._state !== eModuleState.READY) {
             logger.error(`${this.$name}: endpoint is not ready!`);
             return false;
         }
+        this._state = eModuleState.START_PENDING;
+        // Start the server
         try {
-            this._state = eModuleState.START_PENDING;
-            // Dynamicly load http and express libs
-            const http = require('http');
-            const cookieParser = require('cookie-parser');
-            const createError = require('http-errors');
-            const router = express.Router();
-            const MorganWrapper = require('../base/morgan.wrapper');
-            const httpLogger = MorganWrapper(process.env.SRV_ROLE);
-            //
-            const app = express();
-            if (this._config.trustProxy !== undefined) {
-                try {
-                    let numberOfProxies = parseInt(this._config.trustProxy);
-                    app.set('trust proxy', numberOfProxies);
-                } catch (ex) {
-                    logger.error(`!!! Set trust-proxy error! - ${ex.message}`);
-                }
-            }
-            // Step 1: Setup view engine
-            app.set('views', this._config.viewPath || path.join(appRoot.path, 'views'));
-            app.set('view engine', this._config.engine || 'ejs');
-            // Step 2: Setup mandatory middlewares
-            app.use(httpLogger);
-            app.use(express.json({ limit: this._config.payloadLimit || '50mb' }));
-            app.use(express.urlencoded({ extended: false }));
-            app.use(cookieParser());
-            app.use(express.static(this._config.staticPath || path.join(appRoot.path, 'public')));
-            if (this._config.enableRateLimit && this._config.rateLimit) {
-                try {
-                    const { createRateLimit } = require('./ratelimit.wrapper');
-                    let limiter = await createRateLimit(this._config.rateLimit);
-                    app.use(limiter);
-                    logger.info('>>>>>> Rate limitation enabled. <<<<<<');
-                } catch(err) {
-                    logger.error(`****** Setup limitation error! - ${err.message}`);
-                }
-            } else {
-                logger.info('>>>>>> Rate limitation disabled. <<<<<<');
-            }
-            // Step 3: Setup cookie if configed
-            const authConfig = this._config.authentication;
-            if (authConfig && authConfig.type === eRequestAuthType.COOKIE) {
-                try {
-                    const session = require('./session')(authConfig.store, authConfig.options);
-                    app.use(session);
-                } catch (ex) {
-                    logger.error(`!!! Setup session error! - ${ex.message}`);
-                }
-            }
-            // Step 4: Setup customer specified middlewares
-            if (this._config.middlewares) {
-                try {
-                    const result = {};
-                    let fullPath = path.join(appRoot.path, this._config.middlewares);
-                    const mws = require(fullPath);
-                    mws.forEach(mw => {
-                        try {
-                            app.use(mw.fn);
-                            result[mw.name] = 'ok'
-                        } catch(err) {
-                            result[mw.name] = err.message;
-                        }
-                    })
-                    logger.info(`>>> Load express middlewares: ${tools.inspect(result)}`);
-                } catch (err) {
-                    logger.error(`*** Load middlewares from file: ${fullPath} error! - ${err.message}`)
-                }
-            }
-            // Step 5: Setup routes
-            try {
-                const { RouteManager } = require('./router');
-                this._routeManager = new RouteManager({
-                    $name: `${this.$name}@ep`
-                });
-                this._routeManager.init(router, this._config);
-                app.use('/', router);    
-            } catch(err) {
-                logger.error(`*** Setup routes error! - ${err.message}`);
-            }
-            // The 404 and forware to error handler
-            app.use(function (req, res, next) {
-                next(createError(404));
-            })
-            app.use(function (err, req, res, next) {
-                // set locals, only providing error in development
-                logger.error(err, err.stack);
-                res.locals.message = err.message;
-                //
-                if (req.app.get('env') === 'development') {
-                    res.locals.error = err;
-                } else {
-                    res.locals.error = {};
-                }
-                // render the error page
-                res.status(err.status || 500);
-                res.render('error');
-            });
-            app.set('port', this._port);
-            this._server = http.createServer(app);
-            this._server.on('error', (error) => {
-                if (error.syscall !== 'listen') {
-                    throw error;
-                }
-                let bind = typeof this._port === 'string'
-                    ? 'Pipe ' + this._port
-                    : 'Port ' + this._port;
-
-                // handle specific listen errors with friendly messages
-                switch (error.code) {
-                    case 'EACCES':
-                        console.error(bind + ' requires elevated privileges');
-                        //
-                        theApp.emit('app.exit', 1);
-                        //process.exit(1);
-                        break;
-                    case 'EADDRINUSE':
-                        console.error(bind + ' is already in use');
-                        theApp.emit('app.exit', 1);
-                        //process.exit(1);
-                        break;
-                    default:
-                        throw error;
-                }
-            });
-            this._server.on('listening', () => {
-                let addr = this._server.address();
-                let bind = typeof addr === 'string'
-                    ? 'pipe ' + addr
-                    : 'port ' + addr.port;
-                logger.info('Listening on ' + bind);
-                //
-                this._state = eModuleState.ACTIVE;
-            });
             this._server.listen(this._port);
             return 'ok';
         } catch (ex) {
@@ -205,9 +260,8 @@ class HttpEndpoint extends Endpoint {
     async dispose() {
         if (this._server) {
             this._server.close();
-            return `${this.$name} closed`;
         }
-        return 0;
+        return `${this.$name} closed.`;
     }
 }
 

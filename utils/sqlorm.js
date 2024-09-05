@@ -46,6 +46,14 @@ function _getOperatorString(operator) {
     return str;
 }
 
+function _parseArrayData(arr) {
+    let data = [];
+    arr.forEach(d => {
+        data.push(typeof d === 'string'? `"${d}"` : d);
+    })
+    return data.join(', ');
+}
+
 function _parseExprOperator(k, v) {
     let exprArr = [];
     let nextAllowed = _OPR_ALL;
@@ -55,7 +63,16 @@ function _parseExprOperator(k, v) {
         if (nextAllowed.includes(operator)) {
             let oprStr = _getOperatorString(operator);
             if (oprStr !== null) {
-                let expr = typeof v[operator] === 'string'? `${k} ${oprStr} "${v[operator]}"` : `${k} ${oprStr} ${v[operator]}`;
+                let expr = null;
+                //
+                if (typeof v[operator] === 'string') {
+                    expr = `${k} ${oprStr} "${v[operator]}"`;
+                } else if (Array.isArray(v[operator])) {
+                    let arrData = _parseArrayData(v[operator]);
+                    expr = `${k} ${oprStr} (${arrData})`;
+                } else {
+                    expr = `${k} ${oprStr} ${v[operator]}`;
+                }
                 exprArr.push(expr);
                 nextAllowed = _ALLOWED_OPERATORS[operator] || [];
             } else {
@@ -188,7 +205,22 @@ function parseQueryOptions(table, orm) {
     return { count, stmt };
 }
 
+/**
+ * 
+ * @param { Object } setObj - The $set object
+ * @returns 
+ */
+function parseSetExpr(setObj) {
+    const exprArr = [];
+    Object.keys(setObj).forEach(k => {
+        let v = setObj[k];
+        let expr = typeof v === 'string'? `${k} = "${v}"` : `${k} = ${v}`;
+        exprArr.push(expr);
+    })
+    return exprArr.join(', ');
+}
 
 module.exports = exports = {
-    parseQueryOptions
+    parseQueryOptions,
+    parseSetExpr
 }
