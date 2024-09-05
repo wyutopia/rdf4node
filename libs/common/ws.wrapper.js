@@ -259,8 +259,6 @@ class WebSockConnectionManager extends EventObject {
     }
 }
 
-const _reSysFile = new RegExp(/^\./)
-
 // The WebSocketRouter class
 class WebSockRouter extends EventModule {
     constructor(appCtx, props) {
@@ -284,7 +282,7 @@ class WebSockRouter extends EventModule {
         logger.info(`${this.$name}[${this._state}]>> scan directory: ${currentDir}`);
         const entries = fs.readdirSync(currentDir, { withFileTypes: true });
         entries.forEach(dirent => {
-            if (dirent.isDirectory() || _reSysFile.test(dirent.name)) { // Ignore sub-dirs and system files
+            if (dirent.isDirectory() || tools.isJsModule(dirent.name)) { // Ignore sub-dirs and non javascript files
                 return null;
             }
             let filePath = path.join(currentDir, dirent.name);

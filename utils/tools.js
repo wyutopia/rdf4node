@@ -509,3 +509,13 @@ exports.parseNumberArrayFromString = function (s) {
         throw err;
     }
 }
+
+const _reJsModule = new RegExp(/\.js$/);
+exports.isJsModule = function(f) {
+    return _reJsModule.test(f);
+}
+
+const _reSysFile = new RegExp(/^\./)
+exports.isSysFile = function(fd) {
+    return _reSysFile.test(fd);
+}
