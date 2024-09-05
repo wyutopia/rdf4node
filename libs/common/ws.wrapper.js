@@ -332,17 +332,18 @@ class WebSockRouter extends EventModule {
     }
 }
 
+let _routerNum = 0;
 // The WebSocket endpoint
 class WebSockEndpoint extends Endpoint {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
         this._wss = null;
-        this._router = new WebSockRouter(appCtx, {$name: '_wsrt_'});
+        //
+        this._router = new WebSockRouter(appCtx, {$name: `_wsrt:${_routerNum++}_`});
         //
         this._state = sysdefs.eModuleState.CREATE;
     }
-
     /**
      * 
      * @param { Object } config
