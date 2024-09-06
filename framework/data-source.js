@@ -13,9 +13,25 @@ const tools = require('../utils/tools');
 const _DS_DEFAULT = 'default';
 
 /**
+ * @typedef MySqlOptions
+ */
+
+/**
+ * @typedef MongoOptions
+ * @property { string } host - The host string
+ * @property { string } ip - The host ip. Omitted when host present.
+ * @property { string } port - The host port. Omitted when host present. 
+ * @property { string } user - The account username
+ * @property { string } pwd - The account password
+ * @property { string? } db - The target database
+ * @property { string } authSource - The authentication source database
+ */
+
+/**
  * @typedef DataSourceConfig
- * @property { 'mongo'|'mysql' } type
- * @property { Object } Object
+ * @property { 'mongo' | 'mysql' | 'pg' } type
+ * @property { MySqlOptions | MongoOptions } config - The actual dataSource configuration
+ * @property { boolean } enabled - Enable or disable the dataSource. Default is false.
  */
 
 /**
@@ -49,13 +65,33 @@ function _initProcMemoryStorage(config) {
     this._memStorage = {};
 }
 
+/**
+ * @typedef MySqlConfig
+ * @property { string } host - The server host
+ * @property { string } user - 
+ * @property { string } password - 
+ * @property { string } database - The database name 
+ * @returns 
+ */
+
+
+/**
+ * 
+ * @param { MySqlConfig } config 
+ * @returns 
+ */
 async function _initMySqlConnection(config) {
     try {
-
+        const { mysql } = require('mysql2/promise');
+        this._conn = await mysql.createConnection({
+            host: 'localhost',
+            user: 'root',
+            database: 'test'
+        })
+        this.isConnected = true;
     } catch(err) {
-
+        return err.message;
     }
-
 }
 
 // The class
@@ -162,10 +198,10 @@ class DataSourceFactory extends EventModule {
                 let ds = new DataSource({
                     $name: `${dsName}@ds`,
                     //
-                    dbType: options.type,
-                    conf: options.config
+                    dbType: options.type
                 });
-                await ds.init();
+                // TODO: add events handler here ...
+                await ds.init(options.config);
                 this._ds[dsName] = ds;
                 return true;
             } catch(ex) {
