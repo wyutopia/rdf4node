@@ -108,10 +108,7 @@ module.exports = exports = {
                     confPath: "dataSources.default.config"
                 }
             },
-            middlewares: {
-                path: 'endpoints',  // The relative path from app root
-                file: 'middlewares.express.js'   // The middlewares file
-            }
+            middlewares: 'endpoints/middlewares.express.js'
         }
     }],
     dataModels: {

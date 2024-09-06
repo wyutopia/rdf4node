@@ -173,7 +173,7 @@ class HttpEndpoint extends Endpoint {
         this._app.use(function (req, res, next) {
             next(createError(404));
         })
-        this._app.use(function (err, req, res, next) {
+        this._app.use( (err, req, res, next) => {
             // set locals, only providing error in development
             logger.error(err, err.stack);
             res.locals.message = err.message;
