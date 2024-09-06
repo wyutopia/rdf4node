@@ -4,12 +4,6 @@
 const path = require('path');
 const appRoot = require('app-root-path');
 const express = require('express');
-const http = require('http');
-const cookieParser = require('cookie-parser');
-const createError = require('http-errors');
-const router = express.Router();
-const MorganWrapper = require('../base/morgan.wrapper');
-const httpLogger = MorganWrapper(process.env.SRV_ROLE);
 // The project libs
 const { eRequestAuthType, eModuleState } = require('../../include/sysdefs');
 const { eDomainEvent } = require('../../include/events');
@@ -98,9 +92,17 @@ class HttpEndpoint extends Endpoint {
             logger.error(`${this.$name}: Already initialized!`);
             return null;
         }
-        this._state !== eModuleState.INIT
-        // Create and initialize the express instance
-        this._port = normalizePort(config.port || process.env.PORT || '3000');
+        this._state = eModuleState.INIT
+        // Load the dependency libs
+        const http = require('http');
+        const cookieParser = require('cookie-parser');
+        const createError = require('http-errors');
+        const router = express.Router();
+        const MorganWrapper = require('../base/morgan.wrapper');
+        const httpLogger = MorganWrapper(process.env.SRV_ROLE);
+        /**
+         * Create and initialize the express instance
+         */
         this._app = express();
         if (config.trustProxy !== undefined) {
             try {
@@ -185,6 +187,8 @@ class HttpEndpoint extends Endpoint {
             res.status(err.status || 500);
             res.render('error');
         });
+        // Set port
+        this._port = normalizePort(config.port || process.env.PORT || '3000');
         this._app.set('port', this._port);
         // Create HTTP server and associated WebSocket server
         this._server = http.createServer(this._app);
