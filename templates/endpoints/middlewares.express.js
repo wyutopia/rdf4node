@@ -6,8 +6,6 @@ const {
     WinstonLogger
 } = require('../app');
 const logger = WinstonLogger();
-const { modelName: tntModel } = require('../models/tenant');
-const repoFactory = theApp.repoFactory;
 
 //
 module.exports = exports = [{

@@ -13,11 +13,22 @@ const tools = require('../utils/tools');
 const _DS_DEFAULT = 'default';
 
 /**
- * @typedef MySqlOptions
+ * @typedef MySqlConfig
+ * @property { string } host - The host string
+ * @property { string } user - The account username
+ * @property { string } password - The account password
+ * @property { string } database - The database
+ * @property { boolean } waitForConnections - default: true
+ * @property { number } connectionLimit - default 10
+ * @property { number } maxIdle - default 10
+ * @property { number } idleTimeout - default 60000
+ * @property { number } queueLimit - default 0
+ * @property { boolean } enableKeepAlive - default true
+ * @property { number } keepAliveInitialDelay - default 0  
  */
 
 /**
- * @typedef MongoOptions
+ * @typedef MongoConfig
  * @property { string } host - The host string
  * @property { string } ip - The host ip. Omitted when host present.
  * @property { string } port - The host port. Omitted when host present. 
@@ -30,7 +41,7 @@ const _DS_DEFAULT = 'default';
 /**
  * @typedef DataSourceConfig
  * @property { 'mongo' | 'mysql' | 'pg' } type
- * @property { MySqlOptions | MongoOptions } config - The actual dataSource configuration
+ * @property { Object<MySqlConfig | MongoConfig> } config - The actual dataSource configuration
  * @property { boolean } enabled - Enable or disable the dataSource. Default is false.
  */
 
@@ -45,6 +56,12 @@ const _DS_DEFAULT = 'default';
  * @prop { Object? } modification
  */
 
+
+/**
+ * 
+ * @param { MySqlConfig } config 
+ * @returns 
+ */
 async function _initMongoConnection(config) {
     try {
         const mongoose = require('mongoose');
@@ -66,16 +83,6 @@ function _initProcMemoryStorage(config) {
 }
 
 /**
- * @typedef MySqlConfig
- * @property { string } host - The server host
- * @property { string } user - 
- * @property { string } password - 
- * @property { string } database - The database name 
- * @returns 
- */
-
-
-/**
  * 
  * @param { MySqlConfig } config 
  * @returns 
@@ -83,11 +90,7 @@ function _initProcMemoryStorage(config) {
 async function _initMySqlConnection(config) {
     try {
         const { mysql } = require('mysql2/promise');
-        this._conn = await mysql.createConnection({
-            host: 'localhost',
-            user: 'root',
-            database: 'test'
-        })
+        this._conn = await mysql.createConnection(config)
         this.isConnected = true;
     } catch(err) {
         return err.message;

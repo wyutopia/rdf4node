@@ -76,11 +76,11 @@ cd ..
 echo "Folder controllers created."
 
 # Step 8: Add middlewares folder
-mkdir -p middlewares
-cd middlewares
-cp "${TEMP_DIR}/middlewares/middlewares.express.js" .
+mkdir -p endpoints
+cd endpoints
+cp "${TEMP_DIR}/endpoints/middlewares.express.js" .
 cd ..
-echo "Folder middlewares created."
+echo "Folder endpoints created."
 
 # Step 9: Add services folder
 mkdir -p services
