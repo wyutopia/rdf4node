@@ -74,6 +74,7 @@ async function _initMongoConnection(config) {
         logger.debug(`>>> ${this.$name}: mongodb://${config.host} connected.`);
         this.isConnected = true;
     } catch(err) {
+        logger.error(`*** ${this.$name}>> Init mongo connection error! - ${err.message}`);
         return err.message;
     }
 }
@@ -91,8 +92,13 @@ async function _initMySqlConnection(config) {
     try {
         const { mysql } = require('mysql2/promise');
         this._conn = await mysql.createConnection(config)
+        this._conn.model = (modelName, modelSchema) => {
+
+        }
         this.isConnected = true;
+        logger.info(`${this.$name}>> mysql server:${config.host} connected.`);
     } catch(err) {
+        logger.error(`*** ${this.$name}>> Init mysql connection error! - ${err.message}`);
         return err.message;
     }
 }
@@ -156,6 +162,7 @@ class DataSourceFactory extends EventModule {
     constructor(appCtx, props) {
         super(appCtx, props);
         //
+        this._constructors = {};
         this._ds = {};
     }
     getEntries() {
@@ -194,11 +201,17 @@ class DataSourceFactory extends EventModule {
         await async.eachSeries(keys, async (dsName) => {
             let options = config[dsName];
             if (!options.enabled) {
-                logger.warn(`*** [${dsName}] is disabled!`);
+                logger.info(`### ${this.$name}>> Ignore disabled dataSource: ${dsName}.`);
                 return false;
             }
+            let DSModule = this._constructors[options.type];
             try {
-                let ds = new DataSource({
+                if (DSModule === undefined) { // Load 
+                    if (options.type === sysdefs.eDbType.MONGO) {
+                        
+                    }
+                }
+                    let ds = new DataSource({
                     $name: `${dsName}@ds`,
                     //
                     dbType: options.type

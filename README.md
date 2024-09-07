@@ -119,6 +119,15 @@ docker exec -it redis-dev redis-cli
 docker pull elasticsearch
 docker run -id --name es-dev -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:7.13.1
 ```
+### Mysql
+```
+docker pull mysql:8
+docker run -id --name mysql-dev \
+  -p 3306:3306 \
+  -v /Users/$(whoami)/.repos/mysql:/var/lib/mysql \
+  -e MYSQL_ROOT_PASSWORD=Dev#2024 \
+  mysql:8
+```
 
 ### MS sql-server 2017 
 ```
