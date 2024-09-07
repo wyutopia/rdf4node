@@ -75,18 +75,25 @@ cp "${TEMP_DIR}/controllers/users.js" .
 cd ..
 echo "Folder controllers created."
 
-# Step 8: Add services folder
+# Step 8: Add middlewares folder
+mkdir -p middlewares
+cd middlewares
+cp "${TEMP_DIR}/middlewares/middlewares.express.js" .
+cd ..
+echo "Folder middlewares created."
+
+# Step 9: Add services folder
 mkdir -p services
 cd services
 cp "${TEMP_DIR}/services/user.js" .
 cd ..
 echo "Folder services created."
 
-# Step 9: Add daemons folder
+# Step 10: Add daemons folder
 mkdir -p daemons
 echo "Folder daemons created."
 
-# Step 10: Modify routes
+# Step 11: Modify routes
 cd routes
 rm -f users.js
 cp -f "${TEMP_DIR}/routes/monitor.js" .
@@ -98,18 +105,18 @@ cd ..
 cd ..
 echo "Folder routes modified."
 
-# Step 11: Copy views
+# Step 12: Copy views
 cd views
 cp -f "${TEMP_DIR}/views/api.ejs" .
 cd ..
 echo "Folder views modified."
 
-# Step 12: Create application entry
+# Step 13: Create application entry
 mkdir -p applications
 echo "Folder applications created."
 
-echo "Install mongoose@6 redis rascal ali-oss libs ..."
-npm install mongoose@6 redis rascal ali-oss --save --no-audit
+echo "Install addtional libs: mongoose@7 redis ..."
+npm install mongoose@7 redis --save --no-audit
 
 echo "<<< Congratulations!!! >>>"
-echo "Please run command to start: node bin/www"
+echo "Please run command to start: npm run start"

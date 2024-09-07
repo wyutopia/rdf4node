@@ -28,32 +28,7 @@ module.exports = exports = {
         }
     },
     caches: {},
-    distLocker: {},
-    rabbitmq: {
-        connections: {
-            app: {
-                slashes: true,
-                protocol: 'amqp',
-                hostname: '127.0.0.1',
-                user: '<user-name>',
-                password: '<user-password>',
-                port: 5672,
-                options: {
-                    heartbeat: 4,
-                    prefetch: 1
-                }                
-            }
-        },
-        channels: {
-            default: {
-                exchanges: {},
-                queues: {},
-                bindings: {},
-                publications: {},
-                subscriptions: {}
-            }
-        }
-    },    
+    distLocker: {}, 
     eventBus: {
         lo: true,
         persistent: true,
