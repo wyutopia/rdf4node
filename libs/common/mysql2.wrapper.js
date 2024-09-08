@@ -9,8 +9,8 @@
  const eState = sysdefs.eConnectionState;
  const eRetCodes = require('../../include/retcodes');
  const {EventEmitter, EventModule} = require('../../include/events');
+ const { DataSource, DataModel } = require('../../include/data');
  const tools = require('../../utils/tools');
- const {mysql: config} = require('../../include/config');
  const {WinstonLogger} = require('../base/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'mysql2');
  
@@ -380,4 +380,30 @@ class MysqlWrapper extends EventModule {
      state: sysdefs.eModuleState.ACTIVE,
      config: config
  });
- module.exports = exports = mysqlWrapper;
+
+class MySqlDataModel extends DataModel {
+    constructor(props) {
+        super(props);
+    }
+}
+
+class MySqlDataSource extends DataSource {
+    constructor(props) {
+        // Implement init method
+        this.init = async config => {
+            this._conn = await mysql.createConnection(config);
+            this._conn.model = (modelName, modelSchema) => {
+                if (this._models[modelName]) {
+                    return this._models[modelName];
+                }
+                this._models[modelName] = new MySqlDataModel({modelName, modelSchema});
+            }
+            this.isConnected = true;
+        }
+    }
+}
+
+ // Define module
+ module.exports = exports = {
+    MySqlDataSource
+ }

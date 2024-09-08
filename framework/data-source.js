@@ -197,31 +197,47 @@ class DataSourceFactory extends EventModule {
      * @returns 
      */
     async init(config) {
+        const result = {};
         let keys = Object.keys(config);
         await async.eachSeries(keys, async (dsName) => {
             let options = config[dsName];
             if (!options.enabled) {
                 logger.info(`### ${this.$name}>> Ignore disabled dataSource: ${dsName}.`);
+                result[dsName] = 'disabled';
                 return false;
             }
-            let DSModule = this._constructors[options.type];
             try {
-                if (DSModule === undefined) { // Load 
+                let fn = this._constructors[options.type];
+                if (fn === undefined) { // Load dataSource constructor if not exists
                     if (options.type === sysdefs.eDbType.MONGO) {
-                        
+                        const { MongoDataSource } = require('../libs/common/mongoose.wrapper');
+                        fn = MongoDataSource;
+                    } else if (options.type === sysdefs.eDbType.MYSQL) {
+                        const { MySqlDataSource } = require('../libs/common/mysql2.wrapper');
+                        fn = MySqlDataSource;
+                    } else if (options.type === sysdefs.eDbType.SQLSERVER) {
+                        const { SqlServerDataSource } = require('../libs/common/tedious.wrapper');
+                        fn = SqlServerDataSource;
                     }
                 }
-                    let ds = new DataSource({
-                    $name: `${dsName}@ds`,
-                    //
-                    dbType: options.type
-                });
-                // TODO: add events handler here ...
-                await ds.init(options.config);
-                this._ds[dsName] = ds;
+                if (fn) {
+                    this._constructors[options.type] = fn;
+                    let ds = new fn({
+                        $name: `${dsName}@ds`,
+                        //
+                        dbType: options.type
+                    })
+                    // TODO: add events handler here ...
+                    await ds.init(options.config);
+                    this._ds[dsName] = ds;
+                    result[dsName] = 'ok';
+                } else {
+                    result[dsName] = `Un-supprted dataSource type - ${options.type}`;
+                }
                 return true;
             } catch(ex) {
                 logger.error(`*** Create [${dsName}] error! - ${ex.message}`);
+                result[dsName] = ex.message;
                 return false;
             }
         })
@@ -234,7 +250,7 @@ class DataSourceFactory extends EventModule {
                 conf: {}
             })
         }
-        return 'ok';
+        return result;
     }
 }
 

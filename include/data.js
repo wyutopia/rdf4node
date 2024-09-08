@@ -13,10 +13,57 @@ const tools = require('../utils/tools');
 const _DS_DEFAULT = 'default';
 
 
+class Query {
+    constructor(props) {
+
+    }
+
+}
+
+
+
+
+
+function _initDataModel(props) {
+
+}
+
+// The DataModel class
 class DataModel extends EventObject {
     constructor(props) {
         super(props);
         //
+        this._db = props.conn;
+        this._modelName = props.modelName || 'users';
+        this._modelSchema = props.modelSchema || {};
+        // Implementing the query operators
+        this.create = async (data) => {
+
+        }
+        this.find = async filter => {
+
+        }
+        this.findOne = async filter => {
+
+        }
+        this.findById = async id => {
+
+        }
+        this.findOneAndUpdate = async (filter, updates, options) => {
+
+        }
+        this.updateMany = async (filter, updates) => {
+
+        }
+        this.count = async filter => {
+
+        }
+        this.findOneAndDelete = async filter => {
+
+        }
+        this.deleteMany = async filter => {
+
+        }
     }
 }
 
