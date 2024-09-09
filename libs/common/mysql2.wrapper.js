@@ -383,10 +383,30 @@ class MySqlDataModel extends DataModel {
     }
 }
 
+/**
+ * @typedef MySqlConfig
+ * @property { string } host - The host string
+ * @property { string } user - The account username
+ * @property { string } password - The account password
+ * @property { string } database - The database
+ * @property { boolean } waitForConnections - default: true
+ * @property { number } connectionLimit - default 10
+ * @property { number } maxIdle - default 10
+ * @property { number } idleTimeout - default 60000
+ * @property { number } queueLimit - default 0
+ * @property { boolean } enableKeepAlive - default true
+ * @property { number } keepAliveInitialDelay - default 0  
+ */
+
+// The class
 class MySqlDataSource extends DataSource {
     constructor(props) {
         super(props);
         // Implement init method
+        /**
+         * 
+         * @param { MySqlConfig } config 
+         */
         this.init = async config => {
             this._conn = await mysql.createConnection(config);
             // Append model method for connection instance
@@ -400,7 +420,7 @@ class MySqlDataSource extends DataSource {
                 return this._models[modelName];
             }
             this.isConnected = true;
-            logger.info(`>> mysql server:${config.host} connected.`);
+            logger.info(`${this.$name}>> mysql server:${config.host} connected.`);
         }
     }
 }

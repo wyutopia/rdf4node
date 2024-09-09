@@ -24,7 +24,8 @@ exports.WinstonLogger = require('@icedeer/rdf4node/libs/base/winston.wrapper').W
 exports.monitor = require('@icedeer/rdf4node/libs/base/prom.monitor');
 
 // common libs
-exports.mongoose = require('@icedeer/rdf4node/libs/common/mongoose.wrapper');
+const { mongoose } = require('@icedeer/rdf4node/libs/common/mongoose.wrapper');
+exports.mongoose = mongoose; 
 exports.redisWrapper = require('@icedeer/rdf4node/libs/common/redis.wrapper');
 
 // framework components

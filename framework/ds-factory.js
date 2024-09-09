@@ -14,32 +14,6 @@ const tools = require('../utils/tools');
 const _DS_DEFAULT = 'default';
 
 /**
- * @typedef MySqlConfig
- * @property { string } host - The host string
- * @property { string } user - The account username
- * @property { string } password - The account password
- * @property { string } database - The database
- * @property { boolean } waitForConnections - default: true
- * @property { number } connectionLimit - default 10
- * @property { number } maxIdle - default 10
- * @property { number } idleTimeout - default 60000
- * @property { number } queueLimit - default 0
- * @property { boolean } enableKeepAlive - default true
- * @property { number } keepAliveInitialDelay - default 0  
- */
-
-/**
- * @typedef MongoConfig
- * @property { string } host - The host string
- * @property { string } ip - The host ip. Omitted when host present.
- * @property { string } port - The host port. Omitted when host present. 
- * @property { string } user - The account username
- * @property { string } pwd - The account password
- * @property { string? } db - The target database
- * @property { string } authSource - The authentication source database
- */
-
-/**
  * @typedef DataSourceConfig
  * @property { 'mongo' | 'mysql' | 'pg' } type
  * @property { Object<MySqlConfig | MongoConfig> } config - The actual dataSource configuration
@@ -64,20 +38,7 @@ const _DS_DEFAULT = 'default';
  * @returns 
  */
 async function _initMongoConnection(config) {
-    try {
-        const mongoose = require('mongoose');
-        const options = {
-            useUnifiedTopology: true,
-            useNewUrlParser: true
-        };
-        let uri = tools.packMongoUri(config);
-        this._conn = mongoose.createConnection(uri, options);
-        logger.debug(`>>> ${this.$name}: mongodb://${config.host} connected.`);
-        this.isConnected = true;
-    } catch(err) {
-        logger.error(`*** ${this.$name}>> Init mongo connection error! - ${err.message}`);
-        return err.message;
-    }
+
 }
 
 function _initProcMemoryStorage(config) {
@@ -90,18 +51,7 @@ function _initProcMemoryStorage(config) {
  * @returns 
  */
 async function _initMySqlConnection(config) {
-    try {
-        const { mysql } = require('mysql2/promise');
-        this._conn = await mysql.createConnection(config)
-        this._conn.model = (modelName, modelSchema) => {
 
-        }
-        this.isConnected = true;
-        logger.info(`${this.$name}>> mysql server:${config.host} connected.`);
-    } catch(err) {
-        logger.error(`*** ${this.$name}>> Init mysql connection error! - ${err.message}`);
-        return err.message;
-    }
 }
 
 // The class
