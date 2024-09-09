@@ -8,7 +8,7 @@
  const eState = sysdefs.eConnectionState;
  const eRetCodes = require('../../include/retcodes');
  const {EventEmitter, EventModule} = require('../../include/events');
- const { DataSource, DataModel } = require('../../include/data');
+ const { DataSource, DataModel } = require('../../include/db');
  const tools = require('../../utils/tools');
  const {WinstonLogger} = require('../base/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'mysql2');

@@ -78,11 +78,9 @@ class DataModel extends EventObject {
 
         }
         this.findOne = filter => {
-            return new Promise((resolve, reject) => {
-                let query = Query({
-                    db: this._db,
-                    filter
-                })
+            return new Query({
+                db: this._db,
+                filter
             })
         }
         /**
