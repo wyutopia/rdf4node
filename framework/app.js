@@ -26,7 +26,7 @@ const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || 'app');
 // The framework components
 const { Registry } = require('./registry');
-const { DataSourceFactory } = require('./data-source');
+const { DataSourceFactory } = require('./ds-factory');
 const { EventBus } = require('./ebus');
 const { RepositoryFactory } = require('./repository');
 const { CacheFactory } = require('./cache');

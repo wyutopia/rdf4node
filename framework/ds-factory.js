@@ -6,6 +6,7 @@ const async = require('async');
 const sysdefs = require('../include/sysdefs');
 const _MODULE_NAME = sysdefs.eFrameworkModules.DATASOURCE;
 const { EventModule, EventObject } = require('../include/events');
+const { DataSource } = require('../include/data');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
@@ -104,58 +105,58 @@ async function _initMySqlConnection(config) {
 }
 
 // The class
-class DataSource extends EventObject {
-    constructor(props) {
-        super(props);
-        // Save class properites
-        this.dbType = props.dbType || sysdefs.eDbType.NATIVE;
-        // Declaring member variables
-        this.isConnected = false;
-        this._conn = null;
-        this._models = {};
-    }
-    /**
-     * Initialize the dataSource instance
-     * @param { DataSourceConfig } config 
-     */
-    async init(config) {
-        let fn = null;
-        switch (this.dbType) {
-            case sysdefs.eDbType.NATIVE:
-                fn = _initProcMemoryStorage.bind(this, config);
-                break;
-            case sysdefs.eDbType.MONGO:
-                fn = _initMongoConnection.bind(this, config);
-                break;
-            case sysdefs.eDbType.MYSQL:
-                fn = _initMySqlConnection.bind(this, config);
-                break;
-            default:
-                break;
-        }
-        if (!fn) {
-            throw new Error(`Unrecognized database type: ${this.dbType}`);
-        }
-        await fn();
-    }
-    // Implenting member methods
-    /**
-     * 
-     * @param { string } modelName 
-     * @param { DataModelSchema } modelSchema 
-     * @param { Object? } modification
-     * @returns 
-     */
-    getModel(modelName, modelSchema, modification) {
-        if (!this.isConnected) {
-            return null;
-        }
-        if (this._models[modelName] === undefined) {
-            this._models[modelName] = this._conn.model(modelName, modelSchema);
-        }
-        return this._models[modelName];
-    }
-}
+// class DataSource extends EventObject {
+//     constructor(props) {
+//         super(props);
+//         // Save class properites
+//         this.dbType = props.dbType || sysdefs.eDbType.NATIVE;
+//         // Declaring member variables
+//         this.isConnected = false;
+//         this._conn = null;
+//         this._models = {};
+//     }
+//     /**
+//      * Initialize the dataSource instance
+//      * @param { DataSourceConfig } config 
+//      */
+//     async init(config) {
+//         let fn = null;
+//         switch (this.dbType) {
+//             case sysdefs.eDbType.NATIVE:
+//                 fn = _initProcMemoryStorage.bind(this, config);
+//                 break;
+//             case sysdefs.eDbType.MONGO:
+//                 fn = _initMongoConnection.bind(this, config);
+//                 break;
+//             case sysdefs.eDbType.MYSQL:
+//                 fn = _initMySqlConnection.bind(this, config);
+//                 break;
+//             default:
+//                 break;
+//         }
+//         if (!fn) {
+//             throw new Error(`Unrecognized database type: ${this.dbType}`);
+//         }
+//         await fn();
+//     }
+//     // Implenting member methods
+//     /**
+//      * 
+//      * @param { string } modelName 
+//      * @param { DataModelSchema } modelSchema 
+//      * @param { Object? } modification
+//      * @returns 
+//      */
+//     getModel(modelName, modelSchema, modification) {
+//         if (!this.isConnected) {
+//             return null;
+//         }
+//         if (this._models[modelName] === undefined) {
+//             this._models[modelName] = this._conn.model(modelName, modelSchema);
+//         }
+//         return this._models[modelName];
+//     }
+// }
 
 // The factory class
 class DataSourceFactory extends EventModule {

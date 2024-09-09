@@ -4,7 +4,6 @@
  const async = require('async');
  const mysql = require('mysql2');
  //
- const theApp = require('../../app');
  const sysdefs = require('../../include/sysdefs');
  const eState = sysdefs.eConnectionState;
  const eRetCodes = require('../../include/retcodes');
@@ -175,10 +174,9 @@ function _removeQueueElement (arr, cid) {
 function _updateLastActiveTime () {
     this._lastActiveTime = new Date();
 }
+
+/**
 class MySqlConnectionPool extends EventEmitter{
-    /**
-     * @param props = {id, connectionLimit, reuse, ttl, dbConf = {host, port, database, user, password, charset}}
-     */
     constructor(props) {
         super(props);
         //
@@ -314,9 +312,6 @@ class MysqlWrapper extends EventModule {
         this._pools = {};
         this._config = props.config || {};
         // Implementing methods
-        /**
-         * @param dbConf = {host, port, database, user, password, charset, ttl}
-         */
         this.createConnection = (dbConf) => {
             let conn = null;
             if (this.state !== sysdefs.eModuleState.ACTIVE) {
@@ -371,15 +366,16 @@ class MysqlWrapper extends EventModule {
         })();
     }
 }
+*/
  
- const mysqlWrapper = new MysqlWrapper({
-     $name: _MODULE_NAME,
-     $type: sysdefs.eModuleType.CM,
-     //
-     mandatory: true,
-     state: sysdefs.eModuleState.ACTIVE,
-     config: config
- });
+//  const mysqlWrapper = new MysqlWrapper({
+//      $name: _MODULE_NAME,
+//      $type: sysdefs.eModuleType.CM,
+//      //
+//      mandatory: true,
+//      state: sysdefs.eModuleState.ACTIVE,
+//      config: config
+//  });
 
 class MySqlDataModel extends DataModel {
     constructor(props) {
@@ -389,16 +385,22 @@ class MySqlDataModel extends DataModel {
 
 class MySqlDataSource extends DataSource {
     constructor(props) {
+        super(props);
         // Implement init method
         this.init = async config => {
             this._conn = await mysql.createConnection(config);
+            // Append model method for connection instance
             this._conn.model = (modelName, modelSchema) => {
-                if (this._models[modelName]) {
-                    return this._models[modelName];
+                if (this._models[modelName] === undefined) {
+                    this._models[modelName] = new MySqlDataModel({
+                        db: this._conn,
+                        modelName, modelSchema
+                    });
                 }
-                this._models[modelName] = new MySqlDataModel({modelName, modelSchema});
+                return this._models[modelName];
             }
             this.isConnected = true;
+            logger.info(`>> mysql server:${config.host} connected.`);
         }
     }
 }

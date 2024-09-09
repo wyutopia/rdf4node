@@ -722,13 +722,20 @@ class Repository extends EventObject {
     }
 }
 
+/**
+ * 
+ * @param { Object[] } modelSpecs - Total modelSpecs loaded
+ * @param { string } key - Current modelName
+ * @param { string[] } totalRefs - Total 
+ * @returns 
+ */
 function _deepGetModelRefs(modelSpecs, key, totalRefs) {
     let spec = modelSpecs[key];
     if (!spec) {
         // Ignore no spec model
         return;
     }
-    if (totalRefs.indexOf(key) === -1) {
+    if (!totalRefs.includes(key)) {
         totalRefs.push(key);
     }
     let refs = spec.refs;
@@ -738,7 +745,7 @@ function _deepGetModelRefs(modelSpecs, key, totalRefs) {
     }
     let nextKeys = [];
     refs.forEach(refKey => {
-        if (totalRefs.indexOf(refKey) === -1) {
+        if (!totalRefs.includes(refKey)) { // Continue with new refKey
             nextKeys.push(refKey);
         }
     });

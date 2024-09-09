@@ -15,18 +15,41 @@ const _DS_DEFAULT = 'default';
 
 class Query {
     constructor(props) {
+        //
+        this._db = props.db;
+        this._filter = props.filter || {};
+        //
+        this.select = fields => {
 
+        }
+        this.populate = options => {
+
+        }
+        this.size = sz => {
+
+        }
+        this.skip = n => {
+
+        }
+        this.limit = n => {
+
+        }
+
+        this.where = string => {
+
+        }
+        this.sort = options => {
+
+        }
+        //
+        this.exec = async () => {
+            let stmt = 'SELECT * FROM users;';
+            const [results, fields] = await this._db.query(stmt);
+            return results;
+        }
     }
-
 }
 
-
-
-
-
-function _initDataModel(props) {
-
-}
 
 // The DataModel class
 class DataModel extends EventObject {
@@ -43,11 +66,24 @@ class DataModel extends EventObject {
         this.find = async filter => {
 
         }
-        this.findOne = async filter => {
-
+        this.findOne = filter => {
+            return new Query({
+                db: this._db,
+                filter
+            })
         }
+        /**
+         * 
+         * @param { string | number } id 
+         * @returns {Object<Query>}
+         */
         this.findById = async id => {
-
+            return new Query({
+                db: this._db,
+                filter: {
+                    _id: id
+                }
+            })
         }
         this.findOneAndUpdate = async (filter, updates, options) => {
 
@@ -71,6 +107,7 @@ class DataSource extends EventObject {
     constructor(props) {
         super(props);
         //
+        this._type = props.dbType;
         this._conn = null;
         this._models = {};
         this.isConnected = false;
@@ -98,11 +135,10 @@ class DataSource extends EventObject {
                 return null;
             }
             if (this._models[modelName] === undefined) {
-                this._models[modelName] = this._conn.model(modelName, modelSchema);
+                this._models[modelName] = this._conn.model(modelName, modelSchema, options);
             }
             return this._models[modelName];
         }
-
 
         this.dispose = async () => {
             //TODO
