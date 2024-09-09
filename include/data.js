@@ -28,9 +28,19 @@ class Query {
         this.size = sz => {
 
         }
+
+        /**
+         * 
+         * @param { number } n 
+         */
         this.skip = n => {
 
         }
+
+        /**
+         * 
+         * @param { number } n 
+         */
         this.limit = n => {
 
         }
@@ -38,14 +48,15 @@ class Query {
         this.where = string => {
 
         }
+
         this.sort = options => {
 
         }
         //
         this.exec = async () => {
             let stmt = 'SELECT * FROM users;';
-            const [results, fields] = await this._db.query(stmt);
-            return results;
+            const [rows, fields] = await this._db.query(stmt);
+            return rows;
         }
     }
 }
@@ -56,7 +67,7 @@ class DataModel extends EventObject {
     constructor(props) {
         super(props);
         //
-        this._db = props.conn;
+        this._db = props.db;
         this._modelName = props.modelName || 'users';
         this._modelSchema = props.modelSchema || {};
         // Implementing the query operators
@@ -67,9 +78,11 @@ class DataModel extends EventObject {
 
         }
         this.findOne = filter => {
-            return new Query({
-                db: this._db,
-                filter
+            return new Promise((resolve, reject) => {
+                let query = Query({
+                    db: this._db,
+                    filter
+                })
             })
         }
         /**

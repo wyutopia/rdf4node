@@ -2,7 +2,7 @@
  * Created by Eric on 2021/11/15
  */
  const async = require('async');
- const mysql = require('mysql2');
+ const mysql = require('mysql2/promise');
  //
  const sysdefs = require('../../include/sysdefs');
  const eState = sysdefs.eConnectionState;
