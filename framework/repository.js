@@ -163,15 +163,12 @@ function _cacheValueUpdated(valueKeys, { mandatory, updates }) {
 
 /**
  * 
- * @param { Object } data 
- * @param { Object } options 
+ * @param { Object<string, *> } data 
+ * @param { Object? } options 
  * @returns { Promise<*> }
  */
-async function _appendCache(data, options) {
-    if (options === undefined) {
-        options = { mandatory: true }
-    }
-    if (this.allowCache === false || options.ignoreCache !== undefined || !data || !_cacheValueUpdated(this.cacheSpec.valueKeys, options)) { // Ignore
+async function _appendCache(data, options = { mandatory: true }) {
+    if (!data || options.ignoreCache !== undefined || this.allowCache === false || !_cacheValueUpdated(this.cacheSpec.valueKeys, options)) { // Ignore
         //logger.debug(`Ignore cache updating dur no cacheValue changed!`);
         return data;
     }

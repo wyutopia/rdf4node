@@ -9,55 +9,61 @@ const { EventModule, EventObject } = require('./events');
 const { WinstonLogger } = require('../libs/base/winston.wrapper');
 const logger = WinstonLogger(process.env.SRV_ROLE || _MODULE_NAME);
 const tools = require('../utils/tools');
+const sqlBuilder = require('../utils/sqlorm');
 
 const _DS_DEFAULT = 'default';
 
+
+function _throwIfInitialized() {
+    if (this.initialized) {
+        throw new Error('Already initialized');
+    }
+}
 
 class Query {
     constructor(props) {
         //
         this._db = props.db;
-        this._filter = props.filter || {};
+        this._modelName = props.modelName;
+        this._operator = props.op || 'query';
+        this.filter = props.filter || {};
+        this.options = props.options || {};
         //
-        this.select = fields => {
-
-        }
-        this.populate = options => {
-
-        }
-        this.size = sz => {
-
-        }
-
-        /**
-         * 
-         * @param { number } n 
-         */
-        this.skip = n => {
-
-        }
-
-        /**
-         * 
-         * @param { number } n 
-         */
-        this.limit = n => {
-
-        }
-
-        this.where = string => {
-
-        }
-
-        this.sort = options => {
-
-        }
+        this.initialized = false;
         //
         this.exec = async () => {
-            let stmt = 'SELECT * FROM users;';
-            const [rows, fields] = await this._db.query(stmt);
-            return rows;
+            let queryOptions = Object.assign({ filter: this.filter }, this.options);
+            let {count, stmt} = sqlBuilder.parseQueryOptions(this._modelName, queryOptions);
+            logger.debug(`>>> The query statement: ${stmt}`);
+            const [results, fields] = await this._db.query(stmt);
+            let limit = this.options.limit;
+            if (!limit) {
+                return results;
+            }
+            if (limit === 1) {
+                return results[0];
+            }
+            return results.slice(0, limit);
         }
+    }
+    limit(value) {
+        _throwIfInitialized.call(this);
+        if (typeof value !== 'number') {
+            throw new Error('Operation "limit" requires an integer');
+        }
+        this.options.limit = value;
+        return this;
+    }
+    skip(value) {
+        _throwIfInitialized.call(this);
+        if (typeof value !== 'number') {
+            throw new Error('Operation "skip" requires an integer');
+        }
+        this.options.skip = value;
+        return this;
+    }
+    then(callback) {
+        this.exec().then(callback);
     }
 }
 
@@ -74,28 +80,7 @@ class DataModel extends EventObject {
         this.create = async (data) => {
 
         }
-        this.find = async filter => {
 
-        }
-        this.findOne = filter => {
-            return new Query({
-                db: this._db,
-                filter
-            })
-        }
-        /**
-         * 
-         * @param { string | number } id 
-         * @returns {Object<Query>}
-         */
-        this.findById = async id => {
-            return new Query({
-                db: this._db,
-                filter: {
-                    _id: id
-                }
-            })
-        }
         this.findOneAndUpdate = async (filter, updates, options) => {
 
         }
@@ -112,6 +97,32 @@ class DataModel extends EventObject {
 
         }
     }
+    /**
+     *
+     * @param { string | number } id
+     * @param { Object? } options
+     * @returns
+     */
+    findById(id, options = {}) {
+        return this.find({_id: id}, options).limit(1);
+    }
+    /**
+     *
+     * @param { Object? } filter
+     * @param { Object? } options
+     * @returns
+     */
+    findOne(filter = {}, options = {}) {
+        return this.find(filter, options).limit(1);
+    }
+
+    find(filter = {}, options = {}) {
+        return new Query({
+            db: this._db,
+            modelName: this._modelName,
+            filter, options
+        })
+    }
 }
 
 class DataSource extends EventObject {
@@ -126,7 +137,7 @@ class DataSource extends EventObject {
 
         /**
          * Initialize the dataSource by Creating connection
-         * @param {*} config 
+         * @param {*} config
          */
         this.init = async (config) => {
             logger.info(`### ${this.$name}: Override to implemnet your own ...`);
@@ -135,8 +146,8 @@ class DataSource extends EventObject {
 
         /**
          * Get the dataModel handler
-         * @param { string } modelName 
-         * @param { Object } modelSchema 
+         * @param { string } modelName
+         * @param { Object } modelSchema
          * @param { Object } options
          * @param { string } options.dsName
          * @param { Object } options.modification
