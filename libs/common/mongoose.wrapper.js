@@ -1,15 +1,18 @@
 /**
  * Created by Eric on 2021/11/15.
  * Modified by Eric on 2023/11/21
+ * MOdified by Eric on 2024/09/09 to support multiple database engines in one application
  */
 const mongoose = require('mongoose');
 mongoose.set('strictQuery', true);
 mongoose.set('strictPopulate', false);
 const ObjectId = mongoose.Types.ObjectId;
 const Schema = mongoose.Schema;
-//mongoose.Promise = require('bluebird');
+//
+const { DataSource } = require('../../include/db');
 const tools = require("../../utils/tools");
-
+const { WinstonLogger } = require('../../libs/base/winston.wrapper');
+const logger = WinstonLogger(process.env.SRV_ROLE || 'mongo');
 
 // Add new SchemaDL class into mongoose lib
 
@@ -192,7 +195,44 @@ function _extractValidator3 (path, options) {
     return validator;
 }
 */
-module.exports = exports = mongoose;
+
+/**
+ * @typedef MongoConfig
+ * @property { string } host - The host string
+ * @property { string } ip - The host ip. Omitted when host present.
+ * @property { string } port - The host port. Omitted when host present. 
+ * @property { string } user - The account username
+ * @property { string } pwd - The account password
+ * @property { string? } db - The target database
+ * @property { string } authSource - The authentication source database
+ */
+
+//https://mongoosejs.com/docs/7.x/docs/api/mongoose.html#Mongoose.prototype.createConnection()
+class MongoDataSource extends DataSource {
+    constructor(props) {
+        super(props);
+        //
+        /**
+         * 
+         * @param { MongoConfig } config 
+         */
+        this.init = async config => {
+            const options = {
+                useUnifiedTopology: true,
+                useNewUrlParser: true
+            };
+            let uri = tools.packMongoUri(config);
+            this._conn = await mongoose.createConnection(uri, options).asPromise();
+            this.isConnected = true;
+            logger.debug(`${this.$name}>> mongodb://${config.host} connected.`);
+        }
+    }
+}
+
+
+module.exports = exports = {
+    mongoose, SchemaDL, MongoDataSource
+};
 
 //http://mongoosejs.com/docs/middleware.html
 //https://mongoosejs.com/docs/deprecations.html#-findandmodify-

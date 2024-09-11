@@ -81,13 +81,13 @@ module.exports = exports = {
     // Followings are module configurations
     modules: { },
     upload: {
-        engine: "native",
+        engine: "native",  // Values: native, alioss, minio
         alioss: {},
         minio: {}
     },
     endpoints: [{
         name: 'web',
-        protocol: 'http',
+        protocol: 'http',  // Values: http, ws, gRpc, tcp, udp
         options: {
             //viewPath: 'views',
             //viewEngine: 'ejs',
@@ -104,7 +104,19 @@ module.exports = exports = {
                     type: "mongo",
                     confPath: "dataSources.default.config"
                 }
+            },
+            middlewares: 'endpoints/middlewares.express.js',
+            // Embedded wss goes here ...
+            wss: {
+                routePath: 'wss2'  // The relative routes dir
             }
+        }
+    }, {
+        name: 'wss',
+        protocol: 'ws',
+        options: {
+            port: 10086,
+            routePath: 'wss'   // The relative routes dir
         }
     }],
     dataModels: {

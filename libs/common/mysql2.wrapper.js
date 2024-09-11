@@ -2,21 +2,20 @@
  * Created by Eric on 2021/11/15
  */
  const async = require('async');
- const mysql = require('mysql2');
+ const mysql = require('mysql2/promise');
  //
- const theApp = require('../../app');
  const sysdefs = require('../../include/sysdefs');
  const eState = sysdefs.eConnectionState;
  const eRetCodes = require('../../include/retcodes');
  const {EventEmitter, EventModule} = require('../../include/events');
+ const { DataSource, DataModel } = require('../../include/db');
  const tools = require('../../utils/tools');
- const {mysql: config} = require('../../include/config');
  const {WinstonLogger} = require('../base/winston.wrapper');
  const logger = WinstonLogger(process.env.SRV_ROLE || 'mysql2');
  
  const mntService = require('../base/prom.monitor');
  
- const MODULE_NAME = 'MYSQL_CM';  //
+ const _MODULE_NAME = 'MYSQL_CM';  //
  /*********************************************
   * Set monitor metrics
   *********************************************/
@@ -31,7 +30,7 @@ const eMetricsName = {
 };
 
 const metricsCollector = mntService.regMetrics({
-    moduleName: MODULE_NAME,
+    moduleName: _MODULE_NAME,
     metrics: [{
         name: eMetricsName.poolActive,
         type: sysdefs.eMetricType.Gauge
@@ -175,10 +174,9 @@ function _removeQueueElement (arr, cid) {
 function _updateLastActiveTime () {
     this._lastActiveTime = new Date();
 }
+
+/**
 class MySqlConnectionPool extends EventEmitter{
-    /**
-     * @param props = {id, connectionLimit, reuse, ttl, dbConf = {host, port, database, user, password, charset}}
-     */
     constructor(props) {
         super(props);
         //
@@ -314,9 +312,6 @@ class MysqlWrapper extends EventModule {
         this._pools = {};
         this._config = props.config || {};
         // Implementing methods
-        /**
-         * @param dbConf = {host, port, database, user, password, charset, ttl}
-         */
         this.createConnection = (dbConf) => {
             let conn = null;
             if (this.state !== sysdefs.eModuleState.ACTIVE) {
@@ -371,13 +366,66 @@ class MysqlWrapper extends EventModule {
         })();
     }
 }
+*/
  
- const mysqlWrapper = new MysqlWrapper({
-     $name: MODULE_NAME,
-     $type: sysdefs.eModuleType.CM,
-     //
-     mandatory: true,
-     state: sysdefs.eModuleState.ACTIVE,
-     config: config
- });
- module.exports = exports = mysqlWrapper;
+//  const mysqlWrapper = new MysqlWrapper({
+//      $name: _MODULE_NAME,
+//      $type: sysdefs.eModuleType.CM,
+//      //
+//      mandatory: true,
+//      state: sysdefs.eModuleState.ACTIVE,
+//      config: config
+//  });
+
+class MySqlDataModel extends DataModel {
+    constructor(props) {
+        super(props);
+    }
+}
+
+/**
+ * @typedef MySqlConfig
+ * @property { string } host - The host string
+ * @property { string } user - The account username
+ * @property { string } password - The account password
+ * @property { string } database - The database
+ * @property { boolean } waitForConnections - default: true
+ * @property { number } connectionLimit - default 10
+ * @property { number } maxIdle - default 10
+ * @property { number } idleTimeout - default 60000
+ * @property { number } queueLimit - default 0
+ * @property { boolean } enableKeepAlive - default true
+ * @property { number } keepAliveInitialDelay - default 0  
+ */
+
+// The class
+class MySqlDataSource extends DataSource {
+    constructor(props) {
+        super(props);
+        // Implement init method
+        /**
+         * 
+         * @param { MySqlConfig } config 
+         */
+        this.init = async config => {
+            this._conn = await mysql.createConnection(config);
+            // Append model method for connection instance
+            this._conn.model = (modelName, modelSchema) => {
+                if (this._models[modelName] === undefined) {
+                    this._models[modelName] = new MySqlDataModel({
+                        db: this._conn,
+                        modelName, modelSchema
+                    });
+                }
+                return this._models[modelName];
+            }
+            this.isConnected = true;
+            logger.info(`${this.$name}>> mysql server:${config.host} connected.`);
+        }
+    }
+}
+
+ // Define module
+ module.exports = exports = {
+    MySqlDataSource
+ }
